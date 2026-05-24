@@ -1,0 +1,10 @@
+maps/*.bsp filter=lfs diff=lfs merge=lfs -text
+maps/*.nav filter=lfs diff=lfs merge=lfs -text
+mods/*.tar.gz filter=lfs diff=lfs merge=lfs -text
+mods/*.zip filter=lfs diff=lfs merge=lfs -text
+mods/*.smx filter=lfs diff=lfs merge=lfs -text
+*.bsp filter=lfs diff=lfs merge=lfs -text
+*.nav filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.smx filter=lfs diff=lfs merge=lfs -text
