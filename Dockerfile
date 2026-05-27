@@ -51,7 +51,8 @@ COPY --chown=steam:steam entrypoint.sh entrypoint.sh
 RUN mkdir -p /home/steam/.steam && \
     ln -s /home/steam/linux32/ /home/steam/.steam/sdk32
 
-RUN cd /home/steam/css/cstrike && \
+RUN mkdir -p /home/steam/css/cstrike/addons/sourcemod/plugins && \
+    cd /home/steam/css/cstrike && \
     tar zxvf /tmp/mods/mmsource-1.10.6-linux.tar.gz && \
     tar zxvf /tmp/mods/sourcemod-1.7.3-git5275-linux.tar.gz && \
     unzip /tmp/mods/rankme.zip && \
