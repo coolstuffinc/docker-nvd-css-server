@@ -1,100 +1,70 @@
-# Docker Image for Counter-Strike Source
+# NVD (NemViDeOnde) - Counter-Strike: Source Server
 
-[![Docker Stars](https://img.shields.io/docker/stars/foxylion/steam-css.svg?style=flat-square)](https://hub.docker.com/r/foxylion/steam-css/)
-[![Docker Pulls](https://img.shields.io/docker/pulls/foxylion/steam-css.svg?style=flat-square)](https://hub.docker.com/r/foxylion/steam-css/)
+[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?style=flat-square&logo=docker)](https://github.com/coolstuffinc/docker-nvd-css-server/pkgs/container/css-server)
 
-This docker image provides a preconfigured Counter-Strike Source server with several plugins.
+Docker image oficial do servidor de Counter-Strike: Source do clã **NVD (NemViDeOnde)**. Baseado na arquitetura Ubuntu 22.04, pré-configurado com MetaMod, SourceMod e plugins essenciais para 4Fun e Mix.
 
-The Docker image in the Docker Hub can be found [here](https://hub.docker.com/r/foxylion/steam-css/).
+## 📦 Plugins Incluídos
 
-The image build now downloads the bundled maps and plugin archives during `docker build`, which keeps the repository checkout much smaller while preserving the same runtime contents.
+* [MetaMod:Source v1.10.6](http://www.metamodsource.net/)
+* [SourceMod v1.7.3-5275](http://www.sourcemod.net/)
+* **RankMe**: Sistema de ranking completo com banco de dados SQLite.
+* **Bot2Player**: Permite que jogadores mortos assumam o controle de bots vivos (`!bot`).
+* **Quake Sounds**: Locução clássica de Unreal/Quake para killstreaks (`!quake`).
+* **MixMod**: Sistema de gerenciamento automático de Mix/Pug.
+* **Damage Report/Enemies Left**: Mostra o dano causado e quem ainda está vivo no final do round.
+* Entre outros: *DropBomb, Save Scores, VoiceComm, Cash, PlayerStacker, ForceRoundEnd.*
 
-## Asset branch workflow
+## 🚀 Como Iniciar o Container
 
-Bundled map and plugin binaries are stored on the `assets` branch.
-That branch was seeded from commit `ff7d5b25b8c09ed891af6959c6f8f596aaab6f82`, and is continuously updated as the authoritative source for the latest binary assets.
-`assets/maps.txt` and `assets/mods.txt` in the main development branch remain the source manifests used by the Docker build.
+A imagem já atualiza automaticamente o motor do CS:S via SteamCMD durante a inicialização (comando `update`). Recomendamos usar o `docker run` com as portas e variáveis de ambiente abaixo:
 
-The Docker build uses `ASSET_REF` (default: `assets`) to fetch binary files:
-
-```
-docker build --build-arg ASSET_REF=assets .
-```
-
-You can pin to a specific commit when needed:
-
-```
-docker build --build-arg ASSET_REF=<commit-sha> .
-```
-
-When adding or replacing binary assets, update the `assets` branch contents first, then update `assets/maps.txt` and `assets/mods.txt` in the development branch.
-`sv_downloadurl` is intentionally pinned to the `assets` branch so clients always fetch the latest published asset set.
-
-List of used plugins:
-- [metamod:source v1.10.6](http://www.metamodsource.net/downloads/)
-- [SourceMod v1.7.3-5275](http://www.sourcemod.net/downloads.php?branch=stable)
-- [Quake Sounds v1.8](https://forums.alliedmods.net/showthread.php?t=58548)
-- [Damage Report/Stats v1.1.13](https://forums.alliedmods.net/showthread.php?t=64661)
-- [MapChooser Extended 1.10.2](https://forums.alliedmods.net/showthread.php?t=156974)
-
-## Start the container
-
-The docker container requires some ports to be exposed, therefore a more advanced run command is required.
-
-```
-docker run -d --name css-server-27015 \
-           -p 27015:27015 -p 27015:27015/udp -p 1200:1200 \
-           -p 27005:27005/udp -p 27020:27020/udp -p 26901:26901/udp \
-           -e RCON_PASSWORD=mypassword \
-           foxylion/steam-css
+```bash
+docker run -d --name css-server \
+    -p 27015:27015/tcp \
+    -p 27015:27015/udp \
+    -p 1200:1200/tcp \
+    -p 27005:27005/udp \
+    -p 27020:27020/udp \
+    -p 26901:26901/udp \
+    -e CSS_HOSTNAME="NVD (NemViDeOnde) - Matrix Server" \
+    -e RCON_PASSWORD="sua_senha_rcon" \
+    -e STEAM_TOKEN="seu_game_server_login_token" \
+    ghcr.io/coolstuffinc/docker-nvd-css-server/css-server:latest \
+    ./entrypoint.sh update
 ```
 
-## Restart the container
+### Variáveis de Ambiente Suportadas:
+* `CSS_HOSTNAME`: O nome do servidor que aparecerá na lista da Steam.
+* `RCON_PASSWORD`: A senha de administração remota (RCON).
+* `CSS_PASSWORD`: (Opcional) Senha para trancar o servidor para visitantes.
+* `STEAM_TOKEN`: O *Game Server Login Token (GSLT)* gerado na Steam para o App ID **240**. Essencial para o servidor não ficar anônimo.
 
-Due to the linux kernel is caching the udp connection state you have to manually clean the udp connection tracking, before you can immediately reconenct to the server. More details can be found [here](https://github.com/docker/docker/issues/8795).
+## 🛠️ Arquitetura de Assets (Mapas e Mods)
 
-```
-apt-get install conntrack
-conntrack -D -p udp
-```
+Este repositório foi otimizado para que a branch `main` seja leve. Todos os arquivos pesados (Mapas e Plugins pré-compilados `.smx`/`.zip`) residem exclusivamente na branch `assets` utilizando o Git LFS.
 
-## Available Environment Variables
+Durante a construção da imagem, o Dockerfile lê o manifesto (`assets/maps.txt` e `assets/mods.txt`) e baixa os binários necessários diretamente do repositório via `media.githubusercontent.com`. Isso garante que a imagem tenha tudo que precisa sem poluir o histórico do Git com centenas de megabytes.
 
-- ``RCON_PASSWORD`` is your personal RCON password to authenticate as the administrator
-- ``CSS_HOSTNAME`` is your custom server name shown in the server list
-- ``CSS_PASSWORD`` is the password a user may require to connect, can be left empty
+## 🕹️ Comandos In-Game
 
-## Expose you maps and sounds as a htdocs directory
+* **Para jogadores:**
+  * `!rank` / `!top`: Visualiza as estatísticas do servidor.
+  * `!bot`: Controla um Bot do time (se morto).
+  * `!quake`: Abre o menu de sons.
+* **Para Admins (via RCON):**
+  * `rcon_password <senha>`: Logar como admin no console do cliente.
+  * `rcon exec mr15` ou `rcon exec mr3`: Carrega configs rápidas de campeonatos.
+  * `rcon sm plugins list`: Verifica os plugins carregados.
 
-You can mount a directory where the css server should copy all currently installed maps and sounds so you can use the `sv_downloadurl` option.
+## Customizações via Volumes (Opcional)
 
-```
-- v /path/to/target:/home/steam/htdocs
-```
+Se desejar alterar as configurações originais do NVD sem precisar recriar a imagem, você pode extrair os arquivos `.cfg` de dentro do container, editá-los e injetá-los novamente, ou mapeá-los usando Volumes (cuidado para não sobrescrever pastas inteiras se o container não tiver inicializado o jogo ainda).
 
-## Other files to override
-
-### Custom mapcycle.txt
-
-```
--v /path/to/mapcycle.txt:/home/steam/css/cstrike/cfg/mapcycle.txt
-```
-
-### SourceMod admins_simple.ini
-
-To control the SourceMod admins on the server you can use your own admins.cfg or admins_simple.ini file.
-
-```
--v /path/to/admins_simple.ini:/home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
+```bash
+# Exemplo de extração do server.cfg para edição local:
+docker cp css-server:/home/steam/css/cstrike/cfg/server.cfg ./meu_server.cfg
 ```
 
-### Modified server.cfg
-
-The default server.cfg can also be overriden, but you can also only override some specific settings, therefore use the following pattern
-```
--v /path/to/my-server.cfg:/home/steam/css/cstrike/cfg/my-server.cfg
-```
-
-### Other configuration files
-
-Any other configuration file can also be overriden using the same method as above, you must just locate the right file in the docker container. The folder structure is the same as when you install the server locally.
+---
+*Fork original de [foxylion/docker-steam-css](https://github.com/foxylion/docker-steam-css) - Adaptado para o clan NemViDeOnde.*

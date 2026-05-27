@@ -1,45 +1,33 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd">
 <html>
 <head>
-<title>Cstrike MOTD</title>
+<title>NVD (NemViDeOnde) - Matrix Server</title>
 <style type="text/css">
-pre 	{
-		font-family:Verdana,Tahoma;
-		color:#FFB000;
-    	}
-body	{
-		background:#000000;
-		margin-left:8px;
-		margin-top:0px;
-		}
-a	{
-    	text-decoration:    underline;
-	}
-a:link  {
-    color:  #FFFFFF;
-    }
-a:visited   {
-    color:  #FFFFFF;
-    }
-a:active    {
-    color:  #FFFFFF;
-    }
-a:hover {
-    color:  #FFFFFF;
-    text-decoration:    underline;
-    }
+body { background-color:#1E1E1E; color:#E0E0E0; font-family:Verdana,Tahoma; font-size: 14px; margin: 20px; }
+h1 { color: #58A6FF; border-bottom: 1px solid #30363D; padding-bottom: 5px; }
+h2 { color: #3FB950; margin-top: 20px; }
+ul { list-style-type: square; }
+.cmd { background-color: #0D1117; border: 1px solid #30363D; padding: 2px 5px; border-radius: 4px; color: #FF7B72; font-family: monospace; }
 </style>
 </head>
-<body scroll="no">
-<pre>
-Bem Vindo ao [N.V.D] Nem Vi Deonde 
-Digite !ready no chat quando estiver pronto para começar o mix
-Por enquanto é necessário 10 players prontos para começar automaticamente.
-Caso algum admin esteja online pode ser que o jogo comece mesmo com bots.
+<body>
+<h1>Bem-vindo ao servidor NVD (NemViDeOnde)</h1>
+<p>Servidor 4Fun / Mix operando 24/7 hospedado no Laboratório da Matrix.</p>
 
----
+<h2>🔫 Comandos Úteis</h2>
+<ul>
+<li><strong>RankMe:</strong> Digite <span class="cmd">!rank</span> para ver sua posição, ou <span class="cmd">!top</span> para ver os melhores do servidor.</li>
+<li><strong>Assumir Bot (Bot2Player):</strong> Se você morrer, assista a um Bot do seu time e digite <span class="cmd">!bot</span> no chat para assumir o controle dele! Você também pode colocar isso no console: <span class="cmd">bind "e" "sm_bot"</span></li>
+<li><strong>Sons:</strong> Digite <span class="cmd">!quake</span> para configurar a locução de killstreaks (Monster Kill, Godlike, etc).</li>
+</ul>
 
-<a href="https://www.twitch.tv/zoidicabra">Visite a live do ZoiDiCabra (Muito ruim pqp!)</a>
-</pre>
+<h2>📜 Regras do Servidor</h2>
+<ul>
+<li>Mantenha o respeito com os membros do NVD e visitantes.</li>
+<li>É proibido uso de cheats/hacks (Bans via VAC e SourceMod).</li>
+<li>Caso algum admin esteja online, o jogo pode iniciar em modo competitivo (Mix) mesmo com bots preenchendo as vagas.</li>
+</ul>
+<br>
+<p><em>Bom jogo e distribua headshots!</em></p>
 </body>
 </html>
