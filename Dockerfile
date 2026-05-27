@@ -24,6 +24,8 @@ RUN mkdir -p /home/steam/css && \
     ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit || :
 
 COPY --chown=steam:steam assets/ /tmp/assets/
+# Copy CI-compiled mods if they exist in the build context
+COPY --chown=steam:steam mods/*.smx /tmp/mods/ 2>/dev/null || true
 RUN mkdir -p /tmp/mods /tmp/maps && \
     while read -r file; do \
         wget -q -O "/tmp/mods/${file}" "https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets/mods/${file}"; \
