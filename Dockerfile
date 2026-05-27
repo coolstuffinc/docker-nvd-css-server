@@ -25,7 +25,7 @@ RUN mkdir -p /home/steam/css && \
 
 COPY --chown=steam:steam assets/ /tmp/assets/
 # Copy CI-compiled mods if they exist in the build context
-COPY --chown=steam:steam ci_mods/ /tmp/mods/
+COPY --chown=steam:steam ci_mods/ /tmp/ci_mods/
 RUN mkdir -p /tmp/mods /tmp/maps && \
     while read -r file; do \
         wget -q -O "/tmp/mods/${file}" "https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets/mods/${file}"; \
@@ -68,7 +68,9 @@ RUN mkdir -p /home/steam/css/cstrike/addons/sourcemod/plugins && \
     mv /tmp/mods/voicecomm.smx addons/sourcemod/plugins && \
     mv /tmp/mods/forceroundend.smx addons/sourcemod/plugins && \
     mv /tmp/mods/Cash.smx addons/sourcemod/plugins && \
-    rm -rf /tmp/mods /tmp/assets
+    # APPLY CI PATCHES LAST (Overwrite any old versions from zips/wget)
+    ([ -d /tmp/ci_mods ] && cp -v /tmp/ci_mods/*.smx addons/sourcemod/plugins/ || true) && \
+    rm -rf /tmp/mods /tmp/assets /tmp/ci_mods
 
 RUN mv /tmp/maps/* /home/steam/css/cstrike/maps/ && \
     rmdir /tmp/maps
