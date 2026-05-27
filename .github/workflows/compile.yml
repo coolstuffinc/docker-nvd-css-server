@@ -33,14 +33,11 @@ jobs:
       - name: Compile Plugins
         run: |
           mkdir -p compiled_plugins
-          # Find the 32-bit loader path (dynamic based on nix-shell)
-          LOADER_PATH=$(nix-shell shell.nix --run "find /nix/store -name ld-linux.so.2 -path '*/lib/*' | head -n 1")
-          
           for spfile in src/*.sp; do
             if [ -s "$spfile" ]; then
               smxname=$(basename "${spfile%.sp}.smx")
               echo "Compiling $spfile..."
-              nix-shell shell.nix --run "$LOADER_PATH .sourcepawn/addons/sourcemod/scripting/spcomp $spfile -ocompiled_plugins/$smxname"
+              ./spcomp-nix "$spfile" -ocompiled_plugins/"$smxname"
             fi
           done
 
