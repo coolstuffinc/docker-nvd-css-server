@@ -28,10 +28,14 @@ COPY --chown=steam:steam assets/ /tmp/assets/
 COPY --chown=steam:steam ci_mods/ /tmp/ci_mods/
 RUN mkdir -p /tmp/mods /tmp/maps && \
     while read -r file; do \
-        wget -q -O "/tmp/mods/${file}" "https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets/mods/${file}"; \
+        [ -z "$file" ] && continue; \
+        echo "Downloading mod: ${file}"; \
+        wget -q -O "/tmp/mods/${file}" "https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets/mods/${file}" || echo "Failed to download ${file}"; \
     done < /tmp/assets/mods.txt && \
     while read -r file; do \
-        wget -q -O "/tmp/maps/${file}" "https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets/maps/${file}"; \
+        [ -z "$file" ] && continue; \
+        echo "Downloading map: ${file}"; \
+        wget -q -O "/tmp/maps/${file}" "https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets/maps/${file}" || echo "Failed to download ${file}"; \
     done < /tmp/assets/maps.txt
 
 ENV CSS_HOSTNAME=""
@@ -58,11 +62,11 @@ RUN mkdir -p /home/steam/css/cstrike/addons/sourcemod/plugins && \
     cd /home/steam/css/cstrike && \
     tar zxvf /tmp/mods/mmsource-1.10.6-linux.tar.gz && \
     tar zxvf /tmp/mods/sourcemod-1.7.3-git5275-linux.tar.gz && \
-    unzip /tmp/mods/rankme.zip && \
-    unzip /tmp/mods/bot2player.zip && \
-    unzip /tmp/mods/save_scores.zip && \
-    unzip /tmp/mods/enemies_left.zip && \
-    unzip /tmp/mods/dropbomb1.1.zip && \
+    unzip -o /tmp/mods/rankme.zip && \
+    unzip -o /tmp/mods/bot2player.zip && \
+    unzip -o /tmp/mods/save_scores.zip && \
+    unzip -o /tmp/mods/enemies_left.zip && \
+    unzip -o /tmp/mods/dropbomb1.1.zip && \
     mv /tmp/mods/mixmod.smx addons/sourcemod/plugins && \
     mv /tmp/mods/playerstacker.smx addons/sourcemod/plugins && \
     mv /tmp/mods/voicecomm.smx addons/sourcemod/plugins && \
@@ -70,10 +74,9 @@ RUN mkdir -p /home/steam/css/cstrike/addons/sourcemod/plugins && \
     mv /tmp/mods/Cash.smx addons/sourcemod/plugins && \
     # APPLY CI PATCHES LAST (Overwrite any old versions from zips/wget)
     ([ -d /tmp/ci_mods ] && cp -v /tmp/ci_mods/*.smx addons/sourcemod/plugins/ || true) && \
-    rm -rf /tmp/mods /tmp/assets /tmp/ci_mods
-
-RUN mv /tmp/maps/* /home/steam/css/cstrike/maps/ && \
-    rmdir /tmp/maps
+    # MOVE MAPS
+    (ls /tmp/maps/*.bsp >/dev/null 2>&1 && cp -v /tmp/maps/* /home/steam/css/cstrike/maps/ || echo "No maps to copy") && \
+    rm -rf /tmp/mods /tmp/assets /tmp/ci_mods /tmp/maps
 
 # Add default configuration files
 COPY cfg/ /home/steam/css/cstrike/cfg
