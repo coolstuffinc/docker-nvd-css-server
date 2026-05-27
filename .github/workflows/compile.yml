@@ -23,9 +23,6 @@ jobs:
       - name: Setup Git LFS
         run: |
           git lfs install
-          # Fetch the assets branch to get the mod zips (includes)
-          git fetch origin assets
-          git checkout origin/assets -- mods/ || true
           git lfs pull
 
       - name: Prepare SourcePawn Environment
@@ -40,10 +37,16 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout assets || git checkout -b assets
+          
+          # Fetch and switch to assets branch, using -- to disambiguate from assets/ directory
+          git fetch origin assets
+          git checkout assets -- || git checkout -b assets origin/assets || git checkout -b assets
+          
           mkdir -p mods
           cp compiled_plugins/*.smx mods/
-          git add mods/*.smx
+          
+          # Force add because mods/ is gitignored
+          git add -f mods/*.smx
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
