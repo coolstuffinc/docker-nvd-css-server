@@ -20,7 +20,8 @@ RUN ./steamcmd.sh +quit
 
 # Install CSS once to speed up container startup.
 # SteamCMD requires +force_install_dir before +login.
-RUN ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit
+RUN mkdir -p /home/steam/css && \
+    ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit || :
 
 COPY --chown=steam:steam assets/ /tmp/assets/
 RUN mkdir -p /tmp/mods /tmp/maps && \
