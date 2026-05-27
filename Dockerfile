@@ -15,6 +15,9 @@ RUN wget -O /tmp/steamcmd_linux.tar.gz https://steamcdn-a.akamaihd.net/client/in
     tar -xvzf /tmp/steamcmd_linux.tar.gz && \
     rm /tmp/steamcmd_linux.tar.gz
 
+# Run steamcmd once just to let it self-update and create necessary state folders
+RUN ./steamcmd.sh +quit
+
 # Install CSS once to speed up container startup.
 # SteamCMD requires +force_install_dir before +login.
 RUN ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit
@@ -22,10 +25,10 @@ RUN ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_updat
 COPY --chown=steam:steam assets/ /tmp/assets/
 RUN mkdir -p /tmp/mods /tmp/maps && \
     while read -r file; do \
-        wget -q -O "/tmp/mods/${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-steam-css/${ASSET_REF}/mods/${file}"; \
+        wget -q -O "/tmp/mods/''${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/''${ASSET_REF}/mods/''${file}"; \
     done < /tmp/assets/mods.txt && \
     while read -r file; do \
-        wget -q -O "/tmp/maps/${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-steam-css/${ASSET_REF}/maps/${file}"; \
+        wget -q -O "/tmp/maps/''${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/''${ASSET_REF}/maps/''${file}"; \
     done < /tmp/assets/maps.txt
 
 ENV CSS_HOSTNAME=""
