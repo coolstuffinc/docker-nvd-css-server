@@ -16,8 +16,8 @@ fi
 
 cd css
 # Fix for "undefined symbol: floorf" in older SourceMod on newer Ubuntu
-# Preloading 32-bit math and zlib libraries
-export LD_PRELOAD="/usr/lib32/libm.so.6 /usr/lib32/libz.so.1"
+# Preloading 32-bit math library from correct path
+export LD_PRELOAD="/lib32/libm.so.6"
 ./srcds_run -game cstrike \
             +exec server.cfg \
             +hostname "$CSS_HOSTNAME" \
