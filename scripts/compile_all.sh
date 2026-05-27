@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
 
 TOOLS_DIR="$(pwd)/.sourcepawn"
 SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
@@ -8,34 +7,42 @@ COMPILED_DIR="$(pwd)/compiled_plugins"
 
 mkdir -p "$COMPILED_DIR"
 
-# Find 32-bit loader
-LOADER=$(find /nix/store -name ld-linux.so.2 -path '*/lib/*' | head -n 1)
-
-if [ -z "$LOADER" ]; then
-    echo "Error: 32-bit loader not found in Nix store!"
+# Use loader from environment variable set in shell.nix
+if [ -z "$SP_LOADER" ]; then
+    echo "Error: SP_LOADER not found in environment. Are you running inside nix-shell?"
     exit 1
 fi
 
+LOADER="$SP_LOADER"
 echo "Using loader: $LOADER"
 
+FAILED=0
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
-        smxname=$(basename "${spfile%.sp}.smx")
+        spname=$(basename "$spfile")
+        smxname="${spname%.sp}.smx"
         echo "----------------------------------------"
         echo "Compiling $spfile..."
         
         # We MUST pass the include directory and ensure paths are correct
+        # Running from project root
         "$LOADER" "$SPCOMP" "$spfile" \
             -i"$INCLUDE_DIR" \
+            -i"src" \
             -o"$COMPILED_DIR/$smxname" \
             -v1
             
         if [ $? -ne 0 ]; then
             echo "FAILED: $spfile"
-            exit 1
+            FAILED=1
         fi
     fi
 done
 
 echo "----------------------------------------"
-echo "All plugins compiled successfully!"
+if [ $FAILED -eq 1 ]; then
+    echo "Some plugins failed to compile!"
+    exit 1
+else
+    echo "All plugins compiled successfully!"
+fi

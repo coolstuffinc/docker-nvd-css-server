@@ -23,6 +23,18 @@ if [ ! -d "$TOOLS_DIR/addons/sourcemod/scripting/include/smlib" ]; then
     rm -rf "$TOOLS_DIR/smlib-source"
 fi
 
+# Install common includes if missing
+if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/include/colors.inc" ]; then
+    echo "Installing Colors include..."
+    wget -q -O "$TOOLS_DIR/addons/sourcemod/scripting/include/colors.inc" https://raw.githubusercontent.com/alliedmodders/sourcemod/master/plugins/include/colors.inc || \
+    wget -q -O "$TOOLS_DIR/addons/sourcemod/scripting/include/colors.inc" https://raw.githubusercontent.com/exvel/colors/master/colors.inc || true
+fi
+
+if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/include/autoupdate.inc" ]; then
+    echo "Installing AutoUpdate include..."
+    wget -q -O "$TOOLS_DIR/addons/sourcemod/scripting/include/autoupdate.inc" https://raw.githubusercontent.com/GoDtm666/Auto-Update/master/autoupdate.inc || true
+fi
+
 SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 if [ -f "$SPCOMP" ]; then
     echo "Found spcomp at $SPCOMP"

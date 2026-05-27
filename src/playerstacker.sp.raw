@@ -1,0 +1,108 @@
+public PlVers:__version =
+{
+	version = 5,
+	filevers = "1.3.6",
+	date = "01/15/2011",
+	time = "18:56:17"
+};
+new Float:NULL_VECTOR[3];
+new String:NULL_STRING[4];
+public Extension:__ext_core =
+{
+	name = "Core",
+	file = "core",
+	autoload = 0,
+	required = 0,
+};
+new MaxClients;
+public Extension:__ext_sdktools =
+{
+	name = "SDKTools",
+	file = "sdktools.ext",
+	autoload = 1,
+	required = 1,
+};
+public Extension:__ext_sdkhooks =
+{
+	name = "sdkhooks",
+	file = "sdkhooks.ext",
+	autoload = 1,
+	required = 1,
+};
+new Handle:hEnable;
+new EnableTeam;
+public Plugin:myinfo =
+{
+	name = "Player Stacker",
+	description = "Removes player stacking limit",
+	author = "Blodia",
+	version = "1.0",
+	url = ""
+};
+public __ext_core_SetNTVOptional()
+{
+	MarkNativeAsOptional("GetFeatureStatus");
+	MarkNativeAsOptional("RequireFeature");
+	MarkNativeAsOptional("AddCommandListener");
+	MarkNativeAsOptional("RemoveCommandListener");
+	VerifyCoreVersion();
+	return 0;
+}
+
+public OnPluginStart()
+{
+	CreateConVar("playerstacker_version", "1.0", "Player Stacker version", 270592, false, 0.0, false, 0.0);
+	hEnable = CreateConVar("playerstacker_enable", "1", "0 disables plugin, 1 removes stack limit for both teams, 2 removes stack limit for terrorist only, 3 removes stack limit for counter terrorist only", 270592, true, 0.0, true, 3.0);
+	HookConVarChange(hEnable, ConVarChange);
+	EnableTeam = GetConVarInt(hEnable);
+	new client = 1;
+	while (client <= MaxClients)
+	{
+		if (IsClientInGame(client))
+		{
+			SDKHook(client, SDKHookType:5, OnPostThink);
+		}
+		client++;
+	}
+	return 0;
+}
+
+public ConVarChange(Handle:cvar, String:oldVal[], String:newVal[])
+{
+	if (hEnable == cvar)
+	{
+		EnableTeam = GetConVarInt(hEnable);
+	}
+	return 0;
+}
+
+public OnClientPutInServer(client)
+{
+	SDKHook(client, SDKHookType:5, OnPostThink);
+	return 0;
+}
+
+public OnPostThink(client)
+{
+	if (!EnableTeam)
+	{
+		return 0;
+	}
+	if (!IsPlayerAlive(client))
+	{
+		return 0;
+	}
+	new var1;
+	if (EnableTeam > 1 && EnableTeam != GetEntProp(client, PropType:0, "m_iTeamNum", 4))
+	{
+		return 0;
+	}
+	new GroundEnt = GetEntPropEnt(client, PropType:0, "m_hGroundEntity");
+	new var2;
+	if (GroundEnt > 0 && GroundEnt <= MaxClients)
+	{
+		SetEntPropEnt(client, PropType:0, "m_hGroundEntity", 0);
+	}
+	return 0;
+}
+

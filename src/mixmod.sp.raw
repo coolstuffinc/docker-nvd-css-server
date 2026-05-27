@@ -1,7 +1,3 @@
-#include <sourcemod>
-#include <sdktools>
-#include <cstrike>
-
 public PlVers:__version =
 {
 	version = 5,
@@ -9,8 +5,8 @@ public PlVers:__version =
 	date = "06/10/2014",
 	time = "09:22:38"
 };
-//new Float:NULL_VECTOR[3];
-//new String:NULL_STRING[4];
+new Float:NULL_VECTOR[3];
+new String:NULL_STRING[4];
 public Extension:__ext_core =
 {
 	name = "Core",
@@ -18,7 +14,7 @@ public Extension:__ext_core =
 	autoload = 0,
 	required = 0,
 };
-//new MaxClients;
+new MaxClients;
 public Extension:__ext_sdktools =
 {
 	name = "SDKTools",
@@ -176,26 +172,71 @@ public Plugin:myinfo =
 	version = "4.3",
 	url = ""
 };
-
-
-
-		i++;
-	}
-	//return 0;
+public __ext_core_SetNTVOptional()
+{
+	MarkNativeAsOptional("GetFeatureStatus");
+	MarkNativeAsOptional("RequireFeature");
+	MarkNativeAsOptional("AddCommandListener");
+	MarkNativeAsOptional("RemoveCommandListener");
+	VerifyCoreVersion();
+	return 0;
 }
 
+bool:operator<(Float:,Float:)(Float:oper1, Float:oper2)
+{
+	return FloatCompare(oper1, oper2) < 0;
+}
 
+bool:StrEqual(String:str1[], String:str2[], bool:caseSensitive)
+{
+	return strcmp(str1, str2, caseSensitive) == 0;
+}
+
+PrintToChatAll(String:format[])
+{
+	decl String:buffer[192];
+	new i = 1;
+	while (i <= MaxClients)
+	{
+		if (IsClientInGame(i))
+		{
+			SetGlobalTransTarget(i);
+			VFormat(buffer, 192, format, 2);
+			PrintToChat(i, "%s", buffer);
+		}
+		i++;
+	}
+	return 0;
+}
+
+bool:GetEntityClassname(entity, String:clsname[], maxlength)
+{
+	return !!GetEntPropString(entity, PropType:1, "m_iClassname", clsname, maxlength);
+}
+
+EmitSoundToAll(String:sample[], entity, channel, level, flags, Float:volume, pitch, speakerentity, Float:origin[3], Float:dir[3], bool:updatePos, Float:soundtime)
+{
+	new clients[MaxClients];
+	new total;
+	new i = 1;
+	while (i <= MaxClients)
+	{
+		if (IsClientInGame(i))
+		{
+			total++;
+			clients[total] = i;
+		}
 		i++;
 	}
 	if (!total)
 	{
-		//return 0;
+		return 0;
 	}
 	EmitSound(clients, total, sample, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
-	//return 0;
+	return 0;
 }
 
-public void OnPluginStart()
+public OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	g_CvarEnabled = CreateConVar("sm_mixmod_enable", "1", "Enable or disable this mixmod plugin and its features: 0 - Disable, 1 - Enable.", 0, false, 0.0, false, 0.0);
@@ -244,16 +285,27 @@ public void OnPluginStart()
 	g_iAccount = FindSendPropOffs("CCSPlayer", "m_iAccount");
 	if (g_iAccount == -1)
 	{
+		PrintToChatAll("\x04[%s]:\x03 Can't find the m_iAccount offest! - Money wont be shown in the mix!", "Mix");
+	}
 	g_hRestartGame = FindConVar("mp_restartgame");
 	if (!g_hRestartGame)
 	{
+		PrintToChatAll("\x04[%s]:\x03 Couldn't find the cvar mp_restartgame !", "Mix");
+		SetFailState("[%s]: Couldn't find the cvar mp_restartgame !", "Mix");
+	}
 	HookConVarChange(g_hRestartGame, OnGameRestarted);
 	g_hFreezeTime = FindConVar("mp_freezetime");
 	if (!g_hFreezeTime)
 	{
-	g_iToolsAmmo = FindSendPropInfo("CBasePlayer", "m_iAmmo", _, _, _);
+		PrintToChatAll("\x04[%s]:\x03 Couldn't find the cvar mp_freezetime !", "Mix");
+		SetFailState("[%s]: Couldn't find the cvar mp_freezetime !", "Mix");
+	}
+	g_iToolsAmmo = FindSendPropInfo("CBasePlayer", "m_iAmmo", 0, 0, 0);
 	if (g_iToolsAmmo == -1)
 	{
+		PrintToChatAll("\x04[%s]:\x03 Couldn't find the offest: m_iAmmo!", "Mix");
+		SetFailState("Offset CBasePlayer::m_iAmmo was not found");
+	}
 	g_hPassword = FindConVar("sv_password");
 	g_hHostName = FindConVar("hostname");
 	GetConVarString(g_hHostName, g_HostName, 150);
@@ -325,10 +377,10 @@ public void OnPluginStart()
 	isMixMenuGenerated = false;
 	CreateMixMenu();
 	CreateHelpPanel();
-	//return 0;
+	return 0;
 }
 
-public void OnClientAuthorized(int client, const char[] auth)
+public OnClientAuthorized(client, String:auth[])
 {
 	if (!IsFakeClient(client))
 	{
@@ -345,7 +397,7 @@ public void OnClientAuthorized(int client, const char[] auth)
 			g_ArrPause[client][1] = GetRandomInt(0, 1);
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:InformPlayerAboutTheMix(Handle:timer, any:client)
@@ -365,7 +417,7 @@ public Action:Command_GagPlayer(client, args)
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[%s]: Usage: sm_mgag <player>", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	decl String:pattern[64];
 	decl String:buffer[64];
@@ -377,7 +429,7 @@ public Action:Command_GagPlayer(client, args)
 	if (0 >= count)
 	{
 		PrintToChat(client, "\x04[%s] |\x03No such a target %d", "Mix", pattern);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	new i;
 	while (i < count)
@@ -388,7 +440,7 @@ public Action:Command_GagPlayer(client, args)
 		PrintToChat(targets[i], "\x04[%s]:\x03 You have been gagged!", "Mix");
 		i++;
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Command_UnGagPlayer(client, args)
@@ -396,7 +448,7 @@ public Action:Command_UnGagPlayer(client, args)
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[%s]: Usage: sm_mungag <player>", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	decl String:pattern[64];
 	decl String:buffer[64];
@@ -408,7 +460,7 @@ public Action:Command_UnGagPlayer(client, args)
 	if (0 >= count)
 	{
 		PrintToChat(client, "\x04[%s] |\x03No such a target %d", "Mix", pattern);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	new i;
 	while (i < count)
@@ -419,7 +471,7 @@ public Action:Command_UnGagPlayer(client, args)
 		PrintToChat(targets[i], "\x04[%s]:\x03 You have been un-gagged!", "Mix");
 		i++;
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Command_MutePlayer(client, args)
@@ -431,7 +483,7 @@ public Action:Command_MutePlayer(client, args)
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[%s]: Usage: sm_mmute <player>", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	decl String:pattern[64];
 	decl String:buffer[64];
@@ -443,7 +495,7 @@ public Action:Command_MutePlayer(client, args)
 	if (0 >= count)
 	{
 		PrintToChat(client, "\x04[%s] |\x03No such a target %d", "Mix", pattern);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	new i;
 	while (i < count)
@@ -455,7 +507,7 @@ public Action:Command_MutePlayer(client, args)
 		PrintToChat(targets[i], "\x04[%s]:\x03 You have been muted!", "Mix");
 		i++;
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Command_UnMutePlayer(client, args)
@@ -467,7 +519,7 @@ public Action:Command_UnMutePlayer(client, args)
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[%s]: Usage: sm_munmute <player>", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	decl String:pattern[64];
 	decl String:buffer[64];
@@ -479,7 +531,7 @@ public Action:Command_UnMutePlayer(client, args)
 	if (0 >= count)
 	{
 		PrintToChat(client, "\x04[%s] |\x03No such a target %d", "Mix", pattern);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	new i;
 	while (i < count)
@@ -491,7 +543,7 @@ public Action:Command_UnMutePlayer(client, args)
 		PrintToChat(targets[i], "\x04[%s]:\x03 You have been un-muted!", "Mix");
 		i++;
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Command_Last(client, args)
@@ -499,16 +551,20 @@ public Action:Command_Last(client, args)
 	if (StrContains(g_LastEntered_SteamID, "STEAM", true) == -1)
 	{
 		PrintToChat(client, "\x04[%s]:\x03 No player has joined since the plugin loaded...", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
+	PrintToChatAll("\x04[%s]:\x03 The last player that joined is:", "Mix");
+	PrintToChatAll("\x04[\x03%s\x04] \x03%s .", g_LastEntered_SteamID, g_LastEntered_Name);
+	return Action:3;
+}
 
 public VersionHasBeenChanged(Handle:convar, String:oldValue[], String:newValue[])
 {
 	SetConVarString(convar, "4.3", false, false);
-	//return 0;
+	return 0;
 }
 
-public void OnMapEnd()
+public OnMapEnd()
 {
 	if (GetConVarInt(g_CvarEnableAutoSourceTVRecord) == 1)
 	{
@@ -516,10 +572,10 @@ public void OnMapEnd()
 	}
 	g_IsRecording = false;
 	g_IsRecordManual = false;
-	//return 0;
+	return 0;
 }
 
-public void OnMapStart()
+public OnMapStart()
 {
 	if (isBuyZoneDisabled)
 	{
@@ -547,15 +603,20 @@ public void OnMapStart()
 	g_iAccount = FindSendPropOffs("CCSPlayer", "m_iAccount");
 	if (g_iAccount == -1)
 	{
+		PrintToChatAll("\x04[%s]:\x03 Can't find the m_iAccount offest! - Money wont be shown in the mix!", "Mix");
+	}
 	g_hRestartGame = FindConVar("mp_restartgame");
 	if (!g_hRestartGame)
 	{
+		PrintToChatAll("\x04[%s]:\x03 Couldn't find the cvar mp_restartgame !", "Mix");
+		SetFailState("[%s]: Couldn't find the cvar mp_restartgame !", "Mix");
+	}
 	HookConVarChange(g_hRestartGame, OnGameRestarted);
 	GetConVarString(g_hHostName, g_HostName, 150);
 	isMapListGenerated = false;
 	CreateMapList();
 	CheckPropsForCurrentMap();
-	//return 0;
+	return 0;
 }
 
 CheckPropsForCurrentMap()
@@ -569,7 +630,7 @@ CheckPropsForCurrentMap()
 	{
 		g_IsMapValidToRemoveProps = 0;
 	}
-	//return 0;
+	return 0;
 }
 
 public Event_PlayerSpawn(Handle:event, String:name[], bool:dontBroadcast)
@@ -687,7 +748,7 @@ public Event_PlayerSpawn(Handle:event, String:name[], bool:dontBroadcast)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:DisablePause(Handle:timer, any:team)
@@ -719,10 +780,14 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 		{
 			if (GetConVarInt(g_CvarHalfAutoLiveStart) == 1)
 			{
+				PrintToChatAll("\x04[%s]:\x03 Ko3 is running...", "Mix");
+			}
 			else
 			{
 				if (hasMixStarted)
 				{
+					PrintToChatAll("\x04[%s]:\x03 Ko3 is running... type !live to start the match", "Mix");
+				}
 			}
 			new i = 1;
 			while (i <= MaxClients)
@@ -739,6 +804,9 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 				}
 				i++;
 			}
+			PrintToChatAll("\x04[%s]:\x03 This round is decisive on who will pick their side.", "Mix");
+			return 0;
+		}
 		if (hasMixStarted)
 		{
 			CreateTimer(0.5, DisablePause, any:0, 0);
@@ -770,8 +838,12 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 				}
 				if (GetConVarInt(g_CvarShowScores) == 1)
 				{
+					PrintToChatAll("\x04[%s]:\x03 Round\x03 %d \x04- Half\x03 %d\x04 /\x03 2\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", "Mix", g_CurrentRound, g_CurrentHalf, teamAName, g_nCTScoreH1, teamBName, g_nTScoreH1);
+				}
 				if (!didLiveStarted)
 				{
+					PrintToChatAll("\x04[%s]:\x03 Not Live!", "Mix");
+				}
 			}
 			else
 			{
@@ -851,6 +923,8 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 						}
 						if (GetConVarInt(g_CvarShowScores) == 1)
 						{
+							PrintToChatAll("\x04[%s]:\x03 Round\x03 %d \x04- Half\x03 %d\x04 /\x03 2\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", "Mix", g_CurrentRound, g_CurrentHalf, teamAName, g_nCTScore, teamBName, g_nTScore);
+						}
 						new var7;
 						if (g_nCTScore == 15 && g_nTScore == 15 && GetConVarInt(g_CvarMr3Enabled) == 1)
 						{
@@ -875,35 +949,55 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 								{
 									PrecacheSound("ambient/misc/brass_bell_C.wav", true);
 								}
+								EmitSoundToAll("ambient/misc/brass_bell_C.wav", -2, 0, 75, 0, 1.0, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+							}
 							Command_Mr3(0, 0);
 							if (GetConVarInt(g_CvarHalfAutoLiveStart))
 							{
+								PrintToChatAll("\x04[%s]:\x03 Teams swapped. Mr3 settings are loaded!", "Mix");
+							}
 							else
 							{
+								PrintToChatAll("\x04[%s]:\x03 Teams swapped. Mr3 settings are loaded! \x01- \x03Type\x04 !live \x03to start.", "Mix");
+							}
 						}
 						if (GetConVarInt(g_CvarMr3Enabled) == 1)
 						{
 							new var9;
 							if (g_nCTScore == 15 && g_nTScore == 14)
 							{
+								PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s - \x04If %s wins, Mr3 will be loaded!", "Mix", teamAName, teamBName);
+							}
 							else
 							{
 								new var10;
 								if (g_nCTScore == 14 && g_nTScore == 15)
 								{
+									PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s - \x04If %s wins, Mr3 will be loaded!", "Mix", teamBName, teamAName);
+								}
 								if (g_nCTScore == 15)
 								{
+									PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamAName);
+								}
 								if (g_nTScore == 15)
 								{
+									PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamBName);
+								}
 							}
 						}
 						if (g_nCTScore == 15)
 						{
+							PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamAName);
+						}
 						if (g_nTScore == 15)
 						{
+							PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamBName);
+						}
 					}
 					if (!didLiveStarted)
 					{
+						PrintToChatAll("\x04[%s]:\x03 Not Live!", "Mix");
+					}
 				}
 				if (g_CurrentHalf > 2)
 				{
@@ -917,12 +1011,20 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 					}
 					if (GetConVarInt(g_CvarShowScores) == 1)
 					{
+						PrintToChatAll("\x04[%s]:\x03 Round\x03 %d \x04- Half\x03 %d\x04 /\x03 4\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", "Mix", g_CurrentRound, g_CurrentHalf, teamAName, g_nCTScore, teamBName, g_nTScore);
+					}
 					if (g_nCTScore == 18)
 					{
+						PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamAName);
+					}
 					if (g_nTScore == 18)
 					{
+						PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamBName);
+					}
 					if (!didLiveStarted)
 					{
+						PrintToChatAll("\x04[%s]:\x03 Not Live!", "Mix");
+					}
 				}
 			}
 			new var11;
@@ -958,6 +1060,8 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 					}
 					else
 					{
+						PrintToChatAll("\x04[%s]:\x03 Teams will be swaped AUTOMATICALLY after this round. Do \x01NOT\x03 change your team.", "Mix");
+					}
 				}
 				new var14;
 				if (g_CurrentHalf == 3 && g_CurrentRound == 4)
@@ -986,6 +1090,8 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 						}
 						CloseHandle(panel);
 					}
+					PrintToChatAll("\x04[%s]:\x03 Teams will be swapped AUTOMATICALLY after this round. Do \x01NOT\x03 change your team.", "Mix");
+				}
 			}
 			if (GetConVarInt(g_CvarShowMoneyAndWeapons) == 1)
 			{
@@ -993,7 +1099,7 @@ public Event_RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 RemovePlayerGuns(client)
@@ -1012,7 +1118,7 @@ RemovePlayerGuns(client)
 		i++;
 	}
 	ClientCommand(client, "slot3");
-	//return 0;
+	return 0;
 }
 
 WeaponAmmoGetGrenadeCount(client, WeaponAmmoGrenadeType:type)
@@ -1068,7 +1174,7 @@ GetPrimaryNum(ent)
 
 public Handler_DoNothing(Handle:menu, MenuAction:action, param1, param2)
 {
-	//return 0;
+	return 0;
 }
 
 PrintToTeamChat(team, String:message[])
@@ -1083,7 +1189,7 @@ PrintToTeamChat(team, String:message[])
 		}
 		i++;
 	}
-	//return 0;
+	return 0;
 }
 
 ShowTeamMoneyAndWeapons()
@@ -1210,6 +1316,20 @@ ShowTeamMoneyAndWeapons()
 			new i;
 			new max;
 			new pos = -1;
+			PrintToChatAll("----------------------------");
+			while (max != -1)
+			{
+				max = -1;
+				i = 1;
+				while (i <= MaxClients)
+				{
+					if (!wasMaxed[i])
+					{
+						new var2;
+						if (!IsClientInGame(i) || !IsClientInGame(i))
+						{
+							wasMaxed[i] = true;
+						}
 						team = GetClientTeam(i);
 						if (team <= 1)
 						{
@@ -1242,7 +1362,7 @@ ShowTeamMoneyAndWeapons()
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Handle_TeamsVoteMenu(Handle:menu, MenuAction:action, param1, param2)
@@ -1277,8 +1397,11 @@ public Handle_TeamsVoteMenu(Handle:menu, MenuAction:action, param1, param2)
 				}
 			}
 			isKo3Running = false;
+			PrintToChatAll("x04[%s]:\x03 Teams has been decided!");
+			Command_Mr15(0, 0);
+		}
 	}
-	//return 0;
+	return 0;
 }
 
 public EventBombExploded(Handle:event, String:name[], bool:dontBroadcast)
@@ -1307,7 +1430,7 @@ public EventBombExploded(Handle:event, String:name[], bool:dontBroadcast)
 			g_ScoresOfTheGame[client] += 3;
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public EventBombDefused(Handle:event, String:name[], bool:dontBroadcast)
@@ -1318,7 +1441,7 @@ public EventBombDefused(Handle:event, String:name[], bool:dontBroadcast)
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
 		g_ScoresOfTheGame[client] += 3;
 	}
-	//return 0;
+	return 0;
 }
 
 public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
@@ -1329,7 +1452,7 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 		{
 			SetTeamScore(3, g_nCTScoreH1);
 			SetTeamScore(2, g_nTScoreH1);
-			//return 0;
+			return 0;
 		}
 		if (isKo3Running)
 		{
@@ -1367,10 +1490,14 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 				VoteMenu(switchteams, clientsArr, found, 12, 0);
 				if (win_team == 2)
 				{
+					PrintToChatAll("\x04[%s]:\x03 Terrorists will choose now their team!", "Mix");
+				}
 				else
 				{
 					if (win_team == 3)
 					{
+						PrintToChatAll("\x04[%s]:\x03 Counter-Terrorists will choose now their team!", "Mix");
+					}
 				}
 				if (EnableBuyZone())
 				{
@@ -1381,7 +1508,7 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 					Command_Live(0, 0);
 					didLiveStarted = true;
 				}
-				//return 0;
+				return 0;
 			}
 			new var2;
 			if (GetConVarInt(g_CvarHalfAutoLiveStart) == 1 && hasMixStarted)
@@ -1394,7 +1521,7 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 				isBuyZoneDisabled = false;
 			}
 			isKo3Running = false;
-			//return 0;
+			return 0;
 		}
 		new var3;
 		if (hasMixStarted && didLiveStarted)
@@ -1435,12 +1562,18 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 				new kills = max;
 				if (kills == 5)
 				{
+					PrintToChatAll("\x04[%s]:\x03 Round\x01 %d \x03MVP:\x04 %s , \x03Did an \x04ACE!", "Mix", g_CurrentRound + -1, attackerName, kills);
+				}
 				else
 				{
 					if (kills == 4)
 					{
+						PrintToChatAll("\x04[%s]:\x03 Round\x01 %d \x03MVP:\x04 %s , \x03Did a \x04MINI!", "Mix", g_CurrentRound + -1, attackerName, kills);
+					}
 					if (kills == 3)
 					{
+						PrintToChatAll("\x04[%s]:\x03 Round\x01 %d \x03MVP:\x04 %s , \x03Killed:\x04 %d \x03Enemies!", "Mix", g_CurrentRound + -1, attackerName, kills);
+					}
 				}
 			}
 		}
@@ -1458,12 +1591,24 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 				time = 0.1;
 			}
 			CreateTimer(time, SwapTimer, any:0, 0);
+			PrintToChatAll("\x04[%s]:\x03 Swapping teams...", "Mix");
+			g_nTScoreH1 = 0;
+			g_nCTScoreH1 = 0;
+			g_CurrentRound = 1;
+			g_CurrentHalf = 2;
+			new var5;
+			if (GetConVarInt(g_CvarHalfAutoLiveStart) && g_IsItManual)
+			{
+				didLiveStarted = false;
+			}
 			if (GetConVarInt(g_CvarPlayTeamSwapedSound) == 1)
 			{
 				if (!IsSoundPrecached("ambient/misc/brass_bell_C.wav"))
 				{
 					PrecacheSound("ambient/misc/brass_bell_C.wav", true);
 				}
+				EmitSoundToAll("ambient/misc/brass_bell_C.wav", -2, 0, 75, 0, 1.0, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+			}
 			if (GetConVarInt(g_CvarHalfAutoLiveStart))
 			{
 				new executed;
@@ -1487,8 +1632,14 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 					}
 					ServerCommand("mp_restartgame 3");
 				}
+				PrintToChatAll("\x04[%s]:\x03 Teams swapped. HALF 2 Will begin in a few seconds!", "Mix");
+				PrintToChatAll("\x04[%s]:\x03 Teams swapped. HALF 2 Will begin in a few seconds!", "Mix");
+				PrintToChatAll("\x04[%s]:\x03 Teams swapped. HALF 2 Will begin in a few seconds!", "Mix");
+			}
 			else
 			{
+				PrintToChatAll("\x04[%s]:\x03 Teams swapped. HALF 2! \x01- \x03Type\x04 !live \x03to start.", "Mix");
+			}
 			g_SwapNow = false;
 		}
 		new var6;
@@ -1584,17 +1735,33 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 						time = 0.1;
 					}
 					CreateTimer(time, SwapTimer, any:0, 0);
+					PrintToChatAll("\x04[%s]:\x03 Swapping teams...", "Mix");
+					g_nTScoreH1 = 0;
+					g_nCTScoreH1 = 0;
+					g_CurrentRound = 1;
+					g_CurrentHalf = 3;
+					new var10;
+					if (GetConVarInt(g_CvarHalfAutoLiveStart) && g_IsItManual)
+					{
+						didLiveStarted = false;
+					}
 					if (GetConVarInt(g_CvarPlayTeamSwapedSound) == 1)
 					{
 						if (!IsSoundPrecached("ambient/misc/brass_bell_C.wav"))
 						{
 							PrecacheSound("ambient/misc/brass_bell_C.wav", true);
 						}
+						EmitSoundToAll("ambient/misc/brass_bell_C.wav", -2, 0, 75, 0, 1.0, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+					}
 					Command_Mr3(0, 0);
 					if (GetConVarInt(g_CvarHalfAutoLiveStart))
 					{
+						PrintToChatAll("\x04[%s]:\x03 Teams swapped. Mr3 settings are loaded!", "Mix");
+					}
 					else
 					{
+						PrintToChatAll("\x04[%s]:\x03 Teams swapped. Mr3 settings are loaded! \x01- \x03Type\x04 !live \x03to start.", "Mix");
+					}
 				}
 			}
 		}
@@ -1642,16 +1809,32 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 					time = 0.1;
 				}
 				CreateTimer(time, SwapTimer, any:0, 0);
+				PrintToChatAll("\x04[%s]:\x03 Swapping teams...", "Mix");
+				g_nTScoreH1 = 0;
+				g_nCTScoreH1 = 0;
+				g_CurrentRound = 1;
+				g_CurrentHalf = 4;
+				new var13;
+				if (GetConVarInt(g_CvarHalfAutoLiveStart) && g_IsItManual)
+				{
+					didLiveStarted = false;
+				}
 				if (GetConVarInt(g_CvarPlayTeamSwapedSound) == 1)
 				{
 					if (!IsSoundPrecached("ambient/misc/brass_bell_C.wav"))
 					{
 						PrecacheSound("ambient/misc/brass_bell_C.wav", true);
 					}
+					EmitSoundToAll("ambient/misc/brass_bell_C.wav", -2, 0, 75, 0, 1.0, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+				}
 				if (GetConVarInt(g_CvarHalfAutoLiveStart))
 				{
+					PrintToChatAll("\x04[%s]:\x03 Teams swapped. LAST HALF!", "Mix");
+				}
 				else
 				{
+					PrintToChatAll("\x04[%s]:\x03 Teams swapped. LAST HALF! \x01- \x03Type\x04 !live \x03to start.", "Mix");
+				}
 				g_SwapNow = false;
 			}
 			new var14;
@@ -1712,7 +1895,7 @@ public Event_RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Event_PlayerHurt(Handle:event, String:name[], bool:dontBroadcast)
@@ -1729,8 +1912,10 @@ public Event_PlayerHurt(Handle:event, String:name[], bool:dontBroadcast)
 			decl String:attackerName[32];
 			GetClientName(victim, victimName, 32);
 			GetClientName(attacker, attackerName, 32);
+			PrintToChatAll("\x04[%s]:\x03 %s teamattacked %s with\x01 %d \x03HP,\x01 %d\x03 armor!", "Mix", attackerName, victimName, GetEventInt(event, "dmg_health"), GetEventInt(event, "dmg_armor"));
+		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:Event_PlayerDeath(Handle:event, String:name[], bool:dontBroadcast)
@@ -1768,11 +1953,11 @@ public Action:Command_TvRecord(client, args)
 		if (g_IsRecording && client)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Source-Tv is already recording. You can either stop the record, or wait for the end of the mix.", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		StartRecord();
 		g_IsRecordManual = true;
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -1784,7 +1969,7 @@ public Action:Command_TvStopRecord(client, args)
 		ServerCommand("tv_stoprecord");
 		g_IsRecording = false;
 		g_IsRecordManual = false;
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -1816,7 +2001,7 @@ StartRecord()
 		ServerCommand("tv_record \"%s.dem\"", recordName);
 	}
 	g_IsRecording = true;
-	//return 0;
+	return 0;
 }
 
 public Action:Command_Pcw(client, args)
@@ -1826,12 +2011,12 @@ public Action:Command_Pcw(client, args)
 		if (hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is already running.", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (GetConVarInt(g_CvarShowMVP) != 1)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 To use sm_pcw, MVP Scores must be shown!", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		new var1;
 		if (client && GetConVarInt(g_CvarAutoMixEnabled) == 1)
@@ -1862,7 +2047,7 @@ public Action:Command_Pcw(client, args)
 		if (GetConVarInt(g_CvarEnableKnifeRound) == 1 && g_IsItManual)
 		{
 			Command_KO3(client, 0);
-			return Plugin_Handled;
+			return Action:3;
 		}
 		new var3;
 		if (GetConVarInt(g_CvarEnableAutoSourceTVRecord) == 1 && !g_IsRecordManual)
@@ -1900,7 +2085,7 @@ public Action:Command_Pcw(client, args)
 			}
 			ServerCommand("mp_restartgame 1");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	PrintToChat(client, "\x04[%s]:\x03 This plugin is disabled ... To enable it: \x01sm_mixmod_enable 1", "Mix");
 	return Action:0;
@@ -1913,7 +2098,7 @@ public Action:Command_Start(client, args)
 		if (hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is already running.", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		new var1;
 		if (client && GetConVarInt(g_CvarAutoMixEnabled) == 1)
@@ -1945,7 +2130,7 @@ public Action:Command_Start(client, args)
 		if (GetConVarInt(g_CvarEnableKnifeRound) == 1 && g_IsItManual)
 		{
 			Command_KO3(client, 0);
-			return Plugin_Handled;
+			return Action:3;
 		}
 		new var3;
 		if (GetConVarInt(g_CvarEnableAutoSourceTVRecord) == 1 && !g_IsRecordManual)
@@ -1983,7 +2168,7 @@ public Action:Command_Start(client, args)
 			}
 			ServerCommand("mp_restartgame 1");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	PrintToChat(client, "\x04[%s]:\x03 This plugin is disabled ... To enable it: \x01sm_mixmod_enable 1", "Mix");
 	return Action:0;
@@ -2004,12 +2189,12 @@ public Action:Command_Stop(client, args)
 		{
 			isKo3Running = false;
 			PrintToChat(client, "\x04[%s]:\x03 Knife round has been disabled!", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (!hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is not running...", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		hasMixStarted = false;
 		didLiveStarted = false;
@@ -2040,11 +2225,13 @@ public Action:Command_Stop(client, args)
 			if (FileExists("cfg/stop.cfg", false))
 			{
 				ServerCommand("exec stop");
-				return Plugin_Handled;
+				return Action:3;
 			}
+			PrintToChatAll("\x04[%s]:\x03 Couldn't find: stop.cfg so prac or warmup cfg will be executed instead!", "Mix");
+		}
 		SetConVarString(g_hHostName, g_HostName, false, false);
 		Command_Prac(client, 0);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2056,12 +2243,12 @@ public Action:Command_Live(client, args)
 		if (didLiveStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Live is already running!", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (!hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is not running...", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		g_CurrentRound = 1;
 		g_nTScoreH1 = 0;
@@ -2093,6 +2280,17 @@ public Action:Command_Live(client, args)
 			}
 		}
 		ServerCommand("mp_friendlyfire 1");
+		PrintToChatAll("\x04[%s]:\x03 Live is running!", "Mix");
+		if (GetConVarInt(g_CvarUseZBMatchCommand) == 1)
+		{
+			new Handle:zbWarMode = FindConVar("zb_warmode");
+			if (zbWarMode)
+			{
+				if (GetConVarInt(zbWarMode) == 1)
+				{
+					ServerCommand("zb_lo3");
+					return Action:3;
+				}
 			}
 		}
 		if (0 < GetConVarInt(g_CvarRestartTimeInLiveCommand))
@@ -2103,7 +2301,7 @@ public Action:Command_Live(client, args)
 		{
 			ServerCommand("mp_restartgame 1");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2115,12 +2313,12 @@ public Action:Command_NotLive(client, args)
 		if (!didLiveStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Live is not running...", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (!hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is not running...", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		isKo3Running = false;
 		didLiveStarted = false;
@@ -2130,6 +2328,9 @@ public Action:Command_NotLive(client, args)
 			g_nTScore = g_nTScoreH1;
 		}
 		ServerCommand("mp_friendlyfire 0");
+		PrintToChatAll("\x04[%s]:\x03 Not Live!", "Mix");
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2140,7 +2341,7 @@ public Action:Command_RandomTeams(client, args)
 		if (hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is already running. You can't random teams now!", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		new i = 1;
 		while (i <= MaxClients)
@@ -2153,6 +2354,9 @@ public Action:Command_RandomTeams(client, args)
 			i++;
 		}
 		RandomCTPlayers();
+		PrintToChatAll("\x04[%s]:\x03 Teams have been randomized!", "Mix");
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2172,7 +2376,10 @@ RandomCTPlayers()
 			numSwitched++;
 		}
 		LogMessage("ERROR with Randomizing CT Players...");
-	//return 0;
+		PrintToChatAll("\x04[%s]:\x01 ERROR: Failed to get a random player from T team!", "Mix");
+		return 0;
+	}
+	return 0;
 }
 
 public SwitchPlayerTeam(client, team)
@@ -2186,7 +2393,7 @@ public SwitchPlayerTeam(client, team)
 	{
 		ChangeClientTeam(client, team);
 	}
-	//return 0;
+	return 0;
 }
 
 set_random_model(client, team)
@@ -2206,7 +2413,7 @@ set_random_model(client, team)
 		{
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 GetRandomPlayer(team)
@@ -2238,19 +2445,22 @@ public Action:Command_Pause(client, args)
 		if (!didLiveStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Live is not running...", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (!hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix is not running...", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (isPauseBeingUsed)
 		{
-			return Plugin_Handled;
+			return Action:3;
 		}
 		isPauseBeingUsed = true;
 		g_CurrentRound -= 1;
+		PrintToChatAll("\x04[%s]:\x03 This round won't be counted!", "Mix");
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2260,12 +2470,22 @@ public Action:InformMix(Handle:timer, any:team)
 	decl String:teamBName[32];
 	GetConVarString(g_CvarCusomNameTeamCT, teamAName, 32);
 	GetConVarString(g_CvarCusomNameTeamT, teamBName, 32);
+	PrintToChatAll("\x04--- Mix-Plugin created by iDragon ---");
+	PrintToChatAll("\x04[%s]:\x03 The mix has Ended!", "Mix");
+	if (team == any:3)
+	{
+		PrintToChatAll("\x04[%s]: \x03The winner is:\x04 %s", "Mix", teamAName);
+	}
 	else
 	{
 		if (team == any:2)
 		{
+			PrintToChatAll("\x04[%s]: \x03The winner is:\x04 %s", "Mix", teamBName);
+		}
 		if (team == any:1)
 		{
+			PrintToChatAll("\x04[%s]: \x03There was no winner.\x04 IT'S A DRAW!", "Mix");
+		}
 	}
 	CreateTimer(2.0, DisplayScores, any:0, 0);
 	if (isBuyZoneDisabled)
@@ -2297,9 +2517,18 @@ public Action:DisplayScores(Handle:timer)
 	}
 	if (win < 1)
 	{
+		PrintToChatAll("\x04[%s]:\x03 There was an error trying to find the mvp player...", "Mix");
+		return Action:0;
+	}
 	decl String:winnerName[36];
 	GetClientName(win, winnerName, 33);
 	new kills = g_ScoresOfTheGame[win];
+	PrintToChatAll("\x04[%s]:\x03 Kills Stat:", "Mix");
+	PrintToChatAll("------------------");
+	PrintToChatAll("\x03 - The \x01MVP:\x04 %s , \x03Killed:\x04 %d \x03Enemies!", winnerName, kills);
+	Command_TvStopRecord(0, 0);
+	return Action:0;
+}
 
 CreateWinningTeamPanel(team)
 {
@@ -2347,7 +2576,7 @@ CreateWinningTeamPanel(team)
 		i++;
 	}
 	CreateTimer(2.0, DisplayScores, any:0, 0);
-	//return 0;
+	return 0;
 }
 
 public Action:Command_Mr15(client, args)
@@ -2380,7 +2609,9 @@ public Action:Command_Mr15(client, args)
 			{
 				ServerCommand("exec esl5on5");
 			}
-		return Plugin_Handled;
+			PrintToChatAll("\x04[%s]:\x03 Couldn't execute the %s / match / mr15 / live / esl5on5 config!", "Mix", cfgName);
+		}
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2407,7 +2638,9 @@ public Action:Command_Prac(client, args)
 			{
 				ServerCommand("exec warmup");
 			}
-		return Plugin_Handled;
+			PrintToChatAll("\x04[%s]:\x03 Couldn't execute the %s / warmup / prac config!", "Mix", cfgName);
+		}
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2425,17 +2658,23 @@ public Action:Command_Mr3(client, args)
 			if (FileExists(cfgPath, false))
 			{
 				ServerCommand("exec %s", cfgName);
+				PrintToChatAll("\x04[%s]:\x03 %s Config has been loaded...", "Mix", cfgName);
+			}
 			else
 			{
 				if (FileExists("cfg/mr3.cfg", false))
 				{
 					ServerCommand("exec mr3");
+					PrintToChatAll("\x04[%s]:\x03 MR3 Config has been loaded...", "Mix");
+				}
+				PrintToChatAll("\x04[%s]:\x03 Couldn't execute the mr3 config!", "Mix");
+			}
 		}
 		else
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mr3 is disabled... mr3 settings will not be loaded!", "Mix");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2446,6 +2685,9 @@ public Action:Command_KO3(client, args)
 	{
 		if (didLiveStarted)
 		{
+			PrintToChatAll("\x04[%s]:\x03 Live is running... ko3 settings won't load!", "Mix");
+			return Action:3;
+		}
 		isKo3Running = true;
 		if (!isBuyZoneDisabled)
 		{
@@ -2462,7 +2704,7 @@ public Action:Command_KO3(client, args)
 				if (GetConVarInt(zbWarMode) == 1)
 				{
 					ServerCommand("zb_ko3");
-					return Plugin_Handled;
+					return Action:3;
 				}
 			}
 		}
@@ -2474,6 +2716,16 @@ public Action:Command_KO3(client, args)
 		{
 			ServerCommand("mp_restartgame 1");
 		}
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		PrintToChatAll("\x04[%s]:\x03 Knives round!", "Mix");
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2488,6 +2740,8 @@ public Action:Command_Pass(client, args)
 			GetConVarString(g_hPassword, sPass, 64);
 			if (GetUserAdmin(client) != -1)
 			{
+				PrintToChatAll("\x04[%s]:\x03 The server password is: %s", "Mix", sPass);
+			}
 			else
 			{
 				new var2;
@@ -2509,9 +2763,12 @@ public Action:Command_Pass(client, args)
 				new String:pass[64];
 				GetCmdArg(1, pass, 64);
 				SetConVarString(g_hPassword, pass, false, false);
+				PrintToChatAll("\x04[%s]:\x03 Server password is now: %s", "Mix", pass);
+				isRandomPasswordWasLastPw = false;
+			}
 			PrintToChat(client, "[SM] Only admins can change the password!");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2526,10 +2783,17 @@ public Action:Command_GenerateRandomPassword(client, args)
 		new var3;
 		if (GetConVarInt(g_CvarRpwShowPass) == 1 || (!g_IsItManual && client))
 		{
+			PrintToChatAll("\x04[%s]:\x03 The server password is: %d", "Mix", rnd);
+		}
 		else
 		{
 			if (!(GetConVarInt(g_CvarRpwShowPass)))
 			{
+				PrintToChatAll("\x04[%s]:\x03 The server password is: ***RANDOM***", "Mix");
+				if (client)
+				{
+					PrintToChat(client, "\x04*** %d", rnd);
+				}
 				else
 				{
 					PrintToServer("[%s]: Random pass: %d", rnd);
@@ -2537,7 +2801,7 @@ public Action:Command_GenerateRandomPassword(client, args)
 				isRandomPasswordWasLastPw = true;
 			}
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2548,6 +2812,10 @@ public Action:Command_RemovePass(client, args)
 	if (GetConVarInt(g_CvarEnabled) == 1 && GetConVarInt(g_CvarEnablePasswords) == 1)
 	{
 		SetConVarString(g_hPassword, "none", false, false);
+		PrintToChatAll("\x04[%s]:\x03 Password has been removed!", "Mix");
+		isRandomPasswordWasLastPw = false;
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2560,7 +2828,7 @@ public Action:Command_SwapTeams(client, args)
 			if (args == 1)
 			{
 				ReplyToCommand(client, "[%s]: Usage: sm_st <player> <team>", "Mix");
-				return Plugin_Handled;
+				return Action:3;
 			}
 			if (args >= 2)
 			{
@@ -2592,7 +2860,7 @@ public Action:Command_SwapTeams(client, args)
 					if (team <= 0 || team > 3)
 					{
 						PrintToChat(client, "\x04[%s]:\x03 Usage: sm_st <player> [team] (legal teams: t,ct,spec,1,2,3)", "Mix");
-						return Plugin_Handled;
+						return Action:3;
 					}
 				}
 				found = ProcessTargetString(searchFor, client, targetsArr, 64, 0, target_name, 64, isML);
@@ -2624,7 +2892,7 @@ public Action:Command_SwapTeams(client, args)
 				{
 					PrintToChat(client, "\x04[%s]:\x03Couldn't find %s in the server...", "Mix", searchFor);
 				}
-				return Plugin_Handled;
+				return Action:3;
 			}
 		}
 		new bool:flag;
@@ -2656,7 +2924,12 @@ public Action:Command_SwapTeams(client, args)
 			}
 			i++;
 		}
-		return Plugin_Handled;
+		PrintToChatAll("\x04[%s]:\x03 All players have been swapped.", "Mix");
+		if (flag)
+		{
+			didLiveStarted = true;
+		}
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2675,7 +2948,7 @@ public Action:Command_RestartTheGame(client, args)
 				t = StringToInt(ax, 10);
 			}
 			ServerCommand("mp_restartgame %d", t);
-			return Plugin_Handled;
+			return Action:3;
 		}
 	}
 	return Action:0;
@@ -2690,7 +2963,7 @@ public OnGameRestarted(Handle:cvar, String:oldVal[], String:newVal[])
 			RestartTheGame();
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 RestartTheGame()
@@ -2699,7 +2972,7 @@ RestartTheGame()
 	{
 		if (!hasMixStarted)
 		{
-			//return 0;
+			return 0;
 		}
 		g_CurrentRound = 0;
 		g_nTScoreH1 = -1;
@@ -2721,7 +2994,7 @@ RestartTheGame()
 			i++;
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:ShowScores(client, args)
@@ -2733,7 +3006,7 @@ public Action:ShowScores(client, args)
 			if (!hasMixStarted)
 			{
 				PrintToChat(client, "\x04[%s]:\x03 Mix is not running yet...", "Mix");
-				return Plugin_Handled;
+				return Action:3;
 			}
 			decl String:teamAName[36];
 			decl String:teamBName[36];
@@ -2757,23 +3030,35 @@ public Action:ShowScores(client, args)
 						new var1;
 						if (g_nCTScore == 15 && g_nTScore == 14)
 						{
+							PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s - \x04If %s wins, Mr3 will be loaded!", "Mix", teamAName, teamBName);
+						}
 						else
 						{
 							new var2;
 							if (g_nCTScore == 14 && g_nTScore == 15)
 							{
+								PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s - \x04If %s wins, Mr3 will be loaded!", "Mix", teamBName, teamAName);
+							}
 							if (g_nCTScore == 15)
 							{
+								PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamAName);
+							}
 							if (g_nTScore == 15)
 							{
+								PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamBName);
+							}
 						}
 					}
 					else
 					{
 						if (g_nCTScore == 15)
 						{
+							PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamAName);
+						}
 						if (g_nTScore == 15)
 						{
+							PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamBName);
+						}
 					}
 					if (!didLiveStarted)
 					{
@@ -2785,8 +3070,12 @@ public Action:ShowScores(client, args)
 					PrintToChat(client, "\x04[%s]:\x03 Round\x03 %d \x04- Half\x03 %d\x04 /\x03 4\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", "Mix", g_CurrentRound, g_CurrentHalf, teamAName, g_nCTScore, teamBName, g_nTScore);
 					if (g_nCTScore == 18)
 					{
+						PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamAName);
+					}
 					if (g_nTScore == 18)
 					{
+						PrintToChatAll("\x04[%s]:\x03 LR \x04for\x03 %s", "Mix", teamBName);
+					}
 					if (!didLiveStarted)
 					{
 						PrintToChat(client, "\x04[%s]:\x03 Not Live!", "Mix");
@@ -2794,7 +3083,7 @@ public Action:ShowScores(client, args)
 				}
 			}
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2807,7 +3096,7 @@ public Action:Command_SetMixScore(client, args)
 		if (args < 3)
 		{
 			PrintToChat(client, "[Usage]: sm_setmixscore <half> <ct> <t>");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		decl String:half[16];
 		decl String:ct[16];
@@ -2819,7 +3108,7 @@ public Action:Command_SetMixScore(client, args)
 		g_nTScore = StringToInt(t, 10);
 		g_CurrentHalf = StringToInt(half, 10);
 		PrintToChat(client, "Scores has been set!");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2829,6 +3118,9 @@ public Action:Command_KickCT(client, args)
 	if (GetConVarInt(g_CvarEnabled) == 1)
 	{
 		KickTeam(client, 3, GetConVarInt(g_CvarKickAdmins));
+		PrintToChatAll("\x04[%s]:\x03 Counter-Terrorist team has been kicked!", "Mix");
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2837,6 +3129,9 @@ public Action:Command_KickT(client, args)
 	if (GetConVarInt(g_CvarEnabled) == 1)
 	{
 		KickTeam(client, 2, GetConVarInt(g_CvarKickAdmins));
+		PrintToChatAll("\x04[%s]:\x03 Terrorist team has been kicked!", "Mix");
+		return Action:3;
+	}
 	return Action:0;
 }
 
@@ -2859,7 +3154,7 @@ KickTeam(client, team, adminsImmunity)
 		}
 		i++;
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:Command_Maps(client, args)
@@ -2876,7 +3171,7 @@ public Action:Command_Maps(client, args)
 			CreateMapList();
 			PrintToChat(client, "\x04[%s]:\x03 Map list is being created right now! please use\x01 sm_maps\x03 command agaon in a few seconds...", "Mix");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2935,7 +3230,7 @@ CreateMapList()
 		SetMenuExitButton(g_MapListMenu, true);
 		isMapListGenerated = true;
 	}
-	//return 0;
+	return 0;
 }
 
 public MapListMenuHandler(Handle:menu, MenuAction:action, param1, param2)
@@ -2943,15 +3238,18 @@ public MapListMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	if (action == MenuAction:4)
 	{
 		decl String:map[64];
-		new bool:worked = GetMenuItem(menu, param2, map, 64, _, "", 0);
+		new bool:worked = GetMenuItem(menu, param2, map, 64, 0, "", 0);
 		if (worked)
 		{
+			PrintToChatAll("\x04[%s]:\x03 Changing map to:\x01 %s", "Mix", map);
+			ServerCommand("changelevel %s", map);
+		}
 		else
 		{
 			PrintToChat(param1, "\x04[%s]:\x03 Failed to change map to:\x01 %s", "Mix", map);
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:Command_DisableChat(client, args)
@@ -2961,7 +3259,7 @@ public Action:Command_DisableChat(client, args)
 		if (args < 1)
 		{
 			ReplyToCommand(client, "[%s]: Usage: sm_disablechat <num> (0-Enable chat, 1-Disable chat, 2-Disable only when live)", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		decl String:setTo[4];
 		GetCmdArg(1, setTo, 2);
@@ -2970,22 +3268,28 @@ public Action:Command_DisableChat(client, args)
 		if (num > 2 || num < 0)
 		{
 			ReplyToCommand(client, "[%s]: Usage: sm_disablechat <num> (0-Enable chat, 1-Disable chat, 2-Disable only when live)", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		SetConVarString(g_CvarDisableSayCommand, setTo, false, false);
 		switch (num)
 		{
 			case 0:
 			{
+				PrintToChatAll("\x04[%s]:\x03 Public chat is enabled!", "Mix");
+			}
 			case 1:
 			{
+				PrintToChatAll("\x04[%s]:\x03 Public chat is disabled!", "Mix");
+			}
 			case 2:
 			{
+				PrintToChatAll("\x04[%s]:\x03 Public chat is disabled when live is running!", "Mix");
+			}
 			default:
 			{
 			}
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -2996,12 +3300,12 @@ public Action:Command_SayChat(client, args)
 	{
 		if (g_GaggedPlayers[client])
 		{
-			return Plugin_Handled;
+			return Action:3;
 		}
 		new var3;
 		if (GetConVarInt(g_CvarEnabled) == 1 && (GetConVarInt(g_CvarDisableSayCommand) == 1 || (GetConVarInt(g_CvarDisableSayCommand) == 2 && hasMixStarted && didLiveStarted)))
 		{
-			return Plugin_Handled;
+			return Action:3;
 		}
 	}
 	return Action:0;
@@ -3020,7 +3324,7 @@ public Action:Command_MixHelp(client, args)
 			CreateHelpPanel();
 			PrintToChat(client, "\x04[%s]:\x03 Try again in a few seconds!", "Mix");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -3078,14 +3382,14 @@ CreateHelpPanel()
 	AddMenuItem(g_HelpPanel, "http://forums.alliedmods.net/showthread.php?p=1512637", "Download this plugin (click)", 0);
 	AddMenuItem(g_HelpPanel, "-----------------------", "-----------------------", 0);
 	SetMenuExitButton(g_HelpPanel, true);
-	//return 0;
+	return 0;
 }
 
 public HelpMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3093,7 +3397,7 @@ public HelpMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 		GetMenuItem(menu, param2, info, 128, 0, "", 0);
 		PrintToChat(param1, "\x04[%s]:\x03 %s", "Mix", info);
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:Command_Spec(client, args)
@@ -3103,7 +3407,7 @@ public Action:Command_Spec(client, args)
 		if (args < 1)
 		{
 			ReplyToCommand(client, "[%s]: Usage: sm_spec <player>", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		decl String:searchFor[64];
 		decl String:target_name[64];
@@ -3127,7 +3431,7 @@ public Action:Command_Spec(client, args)
 		{
 			PrintToChat(client, "\x04[%s]:\x03Couldn't find %s in the server...", "Mix", searchFor);
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -3145,7 +3449,7 @@ public Action:Command_MixMenu(client, args)
 			CreateMixMenu();
 			PrintToChat(client, "\x04[%s]:\x03 Mix Menu is being created right now! please use\x01 sm_mix\x03 command again in a few seconds...", "Mix");
 		}
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -3184,14 +3488,14 @@ CreateMixMenu()
 		SetMenuExitButton(g_AdminMenu, true);
 		isMixMenuGenerated = true;
 	}
-	//return 0;
+	return 0;
 }
 
 public MixMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3237,14 +3541,14 @@ public MixMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public AdminMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3292,6 +3596,8 @@ public AdminMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 					}
 					i++;
 				}
+				PrintToChatAll("\x04[%s]:\x03 All players are in spectors team!", "Mix");
+			}
 			case 5:
 			{
 				Command_GenerateRandomPassword(param1, 0);
@@ -3524,14 +3830,14 @@ public AdminMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public SwapMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3576,14 +3882,14 @@ public SwapMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		CloseHandle(menu);
 	}
-	//return 0;
+	return 0;
 }
 
 public SwapPlayerMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3617,14 +3923,14 @@ public SwapPlayerMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		CloseHandle(menu);
 	}
-	//return 0;
+	return 0;
 }
 
 public KickMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3645,6 +3951,8 @@ public KickMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 			case 3:
 			{
 				KickTeam(param1, 1, GetConVarInt(g_CvarKickAdmins));
+				PrintToChatAll("\x04[%s]:\x03 Spectors team has been kicked!", "Mix");
+			}
 			case 4:
 			{
 				decl String:clientName[128];
@@ -3676,14 +3984,14 @@ public KickMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		CloseHandle(menu);
 	}
-	//return 0;
+	return 0;
 }
 
 public KickPlayerMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3705,14 +4013,14 @@ public KickPlayerMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		CloseHandle(menu);
 	}
-	//return 0;
+	return 0;
 }
 
 public CvarMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3731,14 +4039,14 @@ public CvarMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		CloseHandle(menu);
 	}
-	//return 0;
+	return 0;
 }
 
 public CfgMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 {
 	if (action == MenuAction:256)
 	{
-		//return 0;
+		return 0;
 	}
 	if (action == MenuAction:4)
 	{
@@ -3769,7 +4077,7 @@ public CfgMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 	{
 		CloseHandle(menu);
 	}
-	//return 0;
+	return 0;
 }
 
 bool:IsValidMapToRemoveProps()
@@ -3785,7 +4093,7 @@ RemoveProps()
 {
 	if (!IsValidMapToRemoveProps())
 	{
-		//return 0;
+		return 0;
 	}
 	decl String:propClass[32];
 	new maxEntities = GetMaxEntities();
@@ -3802,7 +4110,7 @@ RemoveProps()
 		}
 		i++;
 	}
-	//return 0;
+	return 0;
 }
 
 bool:IsValidToBeRemoved(ent)
@@ -3831,7 +4139,7 @@ public Event_PlayerDisconnect(Handle:event, String:name[], bool:dontBroadcast)
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
 		if (IsFakeClient(client))
 		{
-			//return 0;
+			return 0;
 		}
 		if (g_ReadyPlayers[client])
 		{
@@ -3847,12 +4155,12 @@ public Event_PlayerDisconnect(Handle:event, String:name[], bool:dontBroadcast)
 			if (0 <= banTime)
 			{
 				new String:auth[64];
-				GetClientAuthId(client, auth, 64);
+				GetClientAuthString(client, auth, 64);
 				ServerCommand("sm_addban %d %s Left the mix", banTime, auth);
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:Command_JoinTeam(client, args)
@@ -3863,7 +4171,7 @@ public Action:Command_JoinTeam(client, args)
 	if (hasMixStarted && GetConVarInt(g_CvarAllowManualSwitching) && GetClientTeam(client) != 1)
 	{
 		PrintToChat(client, "\x04[%s]:\x03 You can not change your team when mix is running!", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -3887,7 +4195,7 @@ public Action:Command_ForceReady(client, args)
 		}
 		clients++;
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Command_Ready(client, args)
@@ -3899,20 +4207,20 @@ public Action:Command_Ready(client, args)
 			if (!g_AllowReady)
 			{
 				PrintToChat(client, "\x04[%s]:\x03 There are already 10 players ready!", "Mix");
-				return Plugin_Handled;
+				return Action:3;
 			}
 			if (hasMixStarted)
 			{
 				if (GetPlayersInServerAndReady() >= 10)
 				{
 					PrintToChat(client, "\x04[%s]:\x03 Mix is running! This command is now disabled.", "Mix");
-					return Plugin_Handled;
+					return Action:3;
 				}
 			}
 			if (GetClientTeam(client) < 2)
 			{
 				PrintToChat(client, "\x04[%s]:\x03 You must be in Terrorist or Counter-Terrorist team to use this command.", "Mix");
-				return Plugin_Handled;
+				return Action:3;
 			}
 			if (!g_ReadyPlayers[client])
 			{
@@ -3926,8 +4234,11 @@ public Action:Command_Ready(client, args)
 					StartAutoMix();
 				}
 			}
+			PrintToChatAll("\x04[%s]:\x03 You are ready!", "Mix");
+			return Action:3;
+		}
 		PrintToChat(client, "\x04[%s]:\x03 Auto-War is not running! This command is disabled.", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -3986,7 +4297,7 @@ StartAutoMix()
 		}
 		Command_Start(0, 0);
 	}
-	//return 0;
+	return 0;
 }
 
 GetRandomClient(clients[])
@@ -4056,7 +4367,7 @@ AreTeamsBalanced()
 	{
 		return -1;
 	}
-	//return 0;
+	return 0;
 }
 
 bool:BalanceTeams()
@@ -4127,7 +4438,7 @@ public Action:Command_ShowTeams(client, args)
 				{
 					PrintToChat(client, "\x04[%s]:\x03 Teams weren't randomized!", "Mix");
 				}
-				return Plugin_Handled;
+				return Action:3;
 			}
 		}
 		new var1;
@@ -4139,7 +4450,7 @@ public Action:Command_ShowTeams(client, args)
 				{
 					PrintToChat(client, "\x04[%s]:\x03 This command is enabled only when mix is running");
 				}
-				return Plugin_Handled;
+				return Action:3;
 			}
 		}
 		decl String:teamAName[32];
@@ -4157,6 +4468,8 @@ public Action:Command_ShowTeams(client, args)
 		}
 		else
 		{
+			PrintToChatAll("\x04[%s]:\x03 Teams:", "Mix");
+		}
 		new i = 1;
 		while (i <= MaxClients)
 		{
@@ -4182,7 +4495,10 @@ public Action:Command_ShowTeams(client, args)
 		}
 		else
 		{
-		return Plugin_Handled;
+			PrintToChatAll(teamAPlayers);
+			PrintToChatAll(teamBPlayers);
+		}
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -4196,15 +4512,18 @@ public Action:Command_UnReady(client, args)
 			if (hasMixStarted)
 			{
 				PrintToChat(client, "\x04[%s]:\x03 Mix is running! This command is now disabled.", "Mix");
-				return Plugin_Handled;
+				return Action:3;
 			}
 			if (g_ReadyPlayers[client])
 			{
 				g_ReadyCount -= 1;
 				g_ReadyPlayers[client] = 0;
 			}
+			PrintToChatAll("\x04[%s]:\x03 You are not ready!", "Mix");
+			return Action:3;
+		}
 		PrintToChat(client, "\x04[%s]:\x03 Auto-War is not running! This command is now disabled.", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -4216,7 +4535,7 @@ public Action:Command_ShowMvp(client, args)
 		if (!hasMixStarted)
 		{
 			PrintToChat(client, "\x04[%s]:\x03 Mix/Pcw is not running! This command is now disabled.", "Mix");
-			return Plugin_Handled;
+			return Action:3;
 		}
 		if (GetConVarInt(g_CvarShowMVP))
 		{
@@ -4241,22 +4560,22 @@ public Action:Command_ShowMvp(client, args)
 			if (0 >= kills)
 			{
 				PrintToChat(client, "\x04[%s]:\x03 MVP wasn't chosen yet. Please wait a few minutes.", "Mix");
-				return Plugin_Handled;
+				return Action:3;
 			}
 			PrintToChat(client, "\x04[%s]:\x03 MVP:", "Mix");
 			PrintToChat(client, "------------------");
 			PrintToChat(client, "\x03 - The \x01MVP:\x04 %s , \x03Killed:\x04 %d \x03Enemies!", mvpName, kills);
 			if (client == index)
 			{
-				return Plugin_Handled;
+				return Action:3;
 			}
 			decl String:clientName[36];
 			GetClientName(client, clientName, 33);
 			PrintToChat(client, "\x03 You killed:\x04 %d \x03 Enemies.", g_ScoresOfTheGame[client]);
-			return Plugin_Handled;
+			return Action:3;
 		}
 		PrintToChat(client, "\x04[%s]:\x03 MVP Stats is disabled! thsi command is now disabled.", "Mix");
-		return Plugin_Handled;
+		return Action:3;
 	}
 	return Action:0;
 }
@@ -4292,13 +4611,13 @@ UpdateReadyPanel()
 	DrawPanelText(readyStatus, notReady);
 	DrawPanelText(readyStatus, "\n \n");
 	DrawPanelItem(readyStatus, "Exit", 0);
-	//return 0;
+	return 0;
 }
 
 ShowReadyPanel(client)
 {
 	SendPanelToClient(readyStatus, client, Handler_DoNothing, 20);
-	//return 0;
+	return 0;
 }
 
 bool:DisableBuyZone()

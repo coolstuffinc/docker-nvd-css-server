@@ -100,7 +100,7 @@ public OnMapStart()
 	}	
 	gameround = 1
 }
-public Action:Event_RoundStart(Handle:Event, const String:name[], bool:dontBroadcast)
+public Action:Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	for (new i = 1; i <= MaxClients; i++)
 	{
@@ -108,7 +108,7 @@ public Action:Event_RoundStart(Handle:Event, const String:name[], bool:dontBroad
 		WrongTeamWarning[i] = 0
 	}
 }
-public Action:Event_RoundEnd(Handle:Event, const String:name[], bool:dontBroadcast)
+public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	for (new i = 1; i <= MaxClients; i++)
 	{
@@ -133,7 +133,7 @@ public Action:Event_RoundEnd(Handle:Event, const String:name[], bool:dontBroadca
 	}
 	gameround++
 }
-public Action:Event_RoundFreezeEnd(Handle:Event, const String:name[], bool:dontBroadcast)
+public Action:Event_RoundFreezeEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	//This entire routine is for debugging only
 	PrintToServer("Round %i -----------------------------------------------------------------------", gameround)
@@ -349,10 +349,10 @@ public Action:DisplayTakeOverMessage(Handle:timer, any:iClient)
 	}
 	return Plugin_Continue
 }
-public Action:Event_PlayerDeath(Handle:Event, const String:name[], bool:dontBroadcast)
+public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	if (!b2pEnabled) return Plugin_Continue
-	new iClient = GetClientOfUserId(GetEventInt(Event, "userid"))
+	new iClient = GetClientOfUserId(GetEventInt(event, "userid"))
 	if (!IsClientConnected(iClient)) return Plugin_Continue
 	if (!IsFakeClient(iClient)) CreateTimer(6.75, DisplayTakeOverMessage, iClient)
 	for (new i = 1; i <= MaxClients; i++)
