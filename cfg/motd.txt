@@ -17,7 +17,7 @@ ul { list-style-type: square; }
 <h2>🔫 Comandos Úteis</h2>
 <ul>
 <li><strong>RankMe:</strong> Digite <span class="cmd">!rank</span> para ver sua posição, ou <span class="cmd">!top</span> para ver os melhores do servidor.</li>
-<li><strong>Assumir Bot (Bot2Player):</strong> Se você morrer, assista a um Bot do seu time e digite <span class="cmd">!bot</span> no chat para assumir o controle dele! Você também pode colocar isso no console: <span class="cmd">bind "e" "sm_bot"</span></li>
+<li><strong>Assumir Bot (Bot2Player):</strong> Se você morrer, assista a um Bot do seu time e aperte a tecla <strong>E</strong> (ou a sua tecla de "Use") para assumir o controle dele! Custa $0 no NVD.</li>
 <li><strong>Sons:</strong> Digite <span class="cmd">!quake</span> para configurar a locução de killstreaks (Monster Kill, Godlike, etc).</li>
 </ul>
 
