@@ -1,0 +1,1 @@
+#define AUTOUPDATE_INC

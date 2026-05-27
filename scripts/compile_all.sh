@@ -25,10 +25,11 @@ for spfile in src/*.sp; do
         echo "Compiling $spfile..."
         
         # We MUST pass the include directory and ensure paths are correct
-        # Running from project root
+        # -i"src/include" adds our local dependencies
         "$LOADER" "$SPCOMP" "$spfile" \
             -i"$INCLUDE_DIR" \
             -i"src" \
+            -i"src/include" \
             -o"$COMPILED_DIR/$smxname" \
             -v1
             
