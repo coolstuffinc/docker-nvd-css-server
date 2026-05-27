@@ -9,7 +9,7 @@ Docker image oficial do servidor de Counter-Strike: Source do clã **NVD (NemViD
 * [MetaMod:Source v1.10.6](http://www.metamodsource.net/)
 * [SourceMod v1.7.3-5275](http://www.sourcemod.net/)
 * **RankMe**: Sistema de ranking completo com banco de dados SQLite.
-* **Bot2Player**: Permite que jogadores mortos assumam o controle de bots vivos (`!bot`).
+* **Bot2Player**: Permite que jogadores mortos assumam o controle de bots vivos (apertando a tecla `E` enquanto assiste o bot).
 * **Quake Sounds**: Locução clássica de Unreal/Quake para killstreaks (`!quake`).
 * **MixMod**: Sistema de gerenciamento automático de Mix/Pug.
 * **Damage Report/Enemies Left**: Mostra o dano causado e quem ainda está vivo no final do round.
@@ -50,7 +50,7 @@ Durante a construção da imagem, o Dockerfile lê o manifesto (`assets/maps.txt
 
 * **Para jogadores:**
   * `!rank` / `!top`: Visualiza as estatísticas do servidor.
-  * `!bot`: Controla um Bot do time (se morto).
+  * Aperte a tecla `E` (Use) ao assistir um Bot para assumir o controle dele.
   * `!quake`: Abre o menu de sons.
 * **Para Admins (via RCON):**
   * `rcon_password <senha>`: Logar como admin no console do cliente.
