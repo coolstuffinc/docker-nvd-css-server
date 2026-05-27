@@ -15,6 +15,8 @@ if [ -d /home/steam/htdocs ]; then
 fi
 
 cd css
+# Fix for "undefined symbol: floorf" in older SourceMod on newer Ubuntu
+export LD_PRELOAD=/lib/i386-linux-gnu/libm.so.6
 ./srcds_run -game cstrike \
             +exec server.cfg \
             +hostname "$CSS_HOSTNAME" \

@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wget lib32gcc-s1 lib32stdc++6 libtinfo5 unzip nginx && \
+    apt-get install -y --no-install-recommends ca-certificates wget lib32gcc-s1 lib32stdc++6 libtinfo5 unzip nginx lib32z1 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN useradd -ms /bin/bash steam
