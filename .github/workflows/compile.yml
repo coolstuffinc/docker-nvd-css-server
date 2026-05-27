@@ -23,6 +23,9 @@ jobs:
       - name: Setup Git LFS
         run: |
           git lfs install
+          # Fetch the assets branch to get the mod zips (includes)
+          git fetch origin assets
+          git checkout origin/assets -- mods/ || true
           git lfs pull
 
       - name: Prepare SourcePawn Environment

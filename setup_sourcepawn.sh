@@ -35,6 +35,16 @@ if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/include/autoupdate.inc" ]; then
     wget -q -O "$TOOLS_DIR/addons/sourcemod/scripting/include/autoupdate.inc" https://raw.githubusercontent.com/GoDtm666/Auto-Update/master/autoupdate.inc || true
 fi
 
+# Extract includes from local zip mods (rankme, etc.)
+if [ -d "mods" ]; then
+    echo "Extracting includes from local mod zips..."
+    for zip in mods/*.zip; do
+        unzip -q -o "$zip" "addons/sourcemod/scripting/include/*" -d "$TOOLS_DIR" 2>/dev/null || true
+        # Some zips might have different structures, try to catch .inc files regardless
+        unzip -q -j -o "$zip" "*.inc" -d "$TOOLS_DIR/addons/sourcemod/scripting/include" 2>/dev/null || true
+    done
+fi
+
 SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 if [ -f "$SPCOMP" ]; then
     echo "Found spcomp at $SPCOMP"
