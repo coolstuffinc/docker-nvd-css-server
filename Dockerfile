@@ -25,10 +25,10 @@ RUN ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_updat
 COPY --chown=steam:steam assets/ /tmp/assets/
 RUN mkdir -p /tmp/mods /tmp/maps && \
     while read -r file; do \
-        wget -q -O "/tmp/mods/''${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/''${ASSET_REF}/mods/''${file}"; \
+        wget -q -O "/tmp/mods/${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/assets/mods/${file}"; \
     done < /tmp/assets/mods.txt && \
     while read -r file; do \
-        wget -q -O "/tmp/maps/''${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/''${ASSET_REF}/maps/''${file}"; \
+        wget -q -O "/tmp/maps/${file}" "https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/assets/maps/${file}"; \
     done < /tmp/assets/maps.txt
 
 ENV CSS_HOSTNAME=""
