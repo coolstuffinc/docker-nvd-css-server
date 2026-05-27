@@ -30,15 +30,7 @@ jobs:
 
       - name: Compile Plugins
         id: compile
-        run: |
-          mkdir -p compiled_plugins
-          for spfile in src/*.sp; do
-            if [ -s "$spfile" ]; then
-              smxname=$(basename "${spfile%.sp}.smx")
-              echo "Compiling $spfile..."
-              ./spcomp-nix "$spfile" -ocompiled_plugins/"$smxname" || exit 1
-            fi
-          done
+        run: ./spcomp-nix
 
       - name: Update Assets Branch
         if: success()

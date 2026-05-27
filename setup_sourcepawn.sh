@@ -35,10 +35,9 @@ fi
 # Create a small wrapper script to run spcomp in the Nix environment
 cat > spcomp-nix <<EOF
 #!/usr/bin/env bash
-# Automatically find the 32-bit loader in the Nix environment
-LOADER=\$(nix-shell shell.nix --run "find /nix/store -name ld-linux.so.2 -path '*/lib/*' | head -n 1")
-nix-shell shell.nix --run "\$LOADER $SPCOMP \\\$@"
+nix-shell shell.nix --run "bash scripts/compile_all.sh"
 EOF
 chmod +x spcomp-nix
+chmod +x scripts/compile_all.sh
 
-echo "SourcePawn environment ready. Use ./spcomp-nix to compile."
+echo "SourcePawn environment ready. Run ./spcomp-nix to compile all plugins in src/"
