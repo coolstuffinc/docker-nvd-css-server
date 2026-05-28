@@ -1,0 +1,15 @@
+Bem-vindo ao servidor NVD (NemViDeOnde)
+
+Servidor 4Fun / Mix operando 24/7 hospedado no Laboratório da Matrix.
+
+COMANDOS UTEIS:
+- RankMe: Digite !rank para ver sua posicao, ou !top para ver os melhores.
+- Assumir Bot (Bot2Player): Se morrer, assista um Bot do seu time e aperte E para assumir. Custo: $0.
+- Sons: Digite !quake para configurar killstreaks (Monster Kill, Godlike, etc).
+
+REGRAS:
+- Mantenha o respeito com membros e visitantes.
+- Proibido cheats/hacks (VAC + SourceMod ban).
+- Admin online pode iniciar modo Mix mesmo com bots.
+
+Bom jogo e distribua headshots!
