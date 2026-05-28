@@ -34,10 +34,13 @@ sync_from_github() {
 if [ -f "assets/mods.txt" ]; then
     echo "Checking for mod updates..."
     mkdir -p "$MODS_DIR"
-    # Force copy our CI-compiled plugins over existing ones to ensure latest versions
-    if [ -d "/tmp/ci_mods" ]; then
-        echo "Applying CI-compiled plugins..."
-        cp -v /tmp/ci_mods/*.smx "$MODS_DIR/"
+    # Search for our plugins in the container, they might be in /home/steam/ci_mods instead
+    CI_MODS_DIR="/home/steam/ci_mods"
+    if [ -d "$CI_MODS_DIR" ]; then
+        echo "Applying CI-compiled plugins from $CI_MODS_DIR..."
+        cp -v "$CI_MODS_DIR"/*.smx "$MODS_DIR/"
+    else
+        echo "CI_MODS_DIR $CI_MODS_DIR not found, skipping."
     fi
     while read -r mod; do
         [ -z "$mod" ] || [[ "$mod" == *.zip ]] || [[ "$mod" == *.tar.gz ]] && continue
