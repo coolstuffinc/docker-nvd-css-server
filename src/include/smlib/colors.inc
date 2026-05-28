@@ -25,8 +25,8 @@ enum ChatColorInfo
 {
 	ChatColorInfo_Code,
 	ChatColorInfo_Alternative,
-	bool:ChatColorInfo_Supported,
-	ChatColorSubjectType:ChatColorInfo_SubjectType
+	ChatColorInfo_Supported,
+	ChatColorInfo_SubjectType
 };
 
 enum ChatColor
