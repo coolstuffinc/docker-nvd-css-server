@@ -8,44 +8,35 @@ on:
 jobs:
   compile-mods:
     runs-on: ubuntu-latest
-    outputs:
-      compilation_success: ${{ steps.compile.outcome }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v25
+        uses: DeterminateSystems/nix-installer-action@main
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
+          extra-conf: |
+            extra-experimental-features = nix-command flakes
 
-      - name: Setup Git LFS
-        run: |
-          git lfs install
-          git lfs pull
-
-      - name: Prepare SourcePawn Environment
-        run: bash setup_sourcepawn.sh
+      - name: Enable Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Compile Plugins
-        id: compile
-        run: nix develop -c bash scripts/compile_all.sh
+        run: |
+          # Use the Nix environment defined in flake.nix
+          # This guarantees 32-bit compiler and library compatibility
+          nix develop . --command bash scripts/compile_all.sh
 
       - name: Update Assets Branch
         if: success()
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Fetch and switch to assets branch, using -- to disambiguate from assets/ directory
           git fetch origin assets
           git checkout assets -- || git checkout -b assets origin/assets || git checkout -b assets
-          
           mkdir -p mods
           cp compiled_plugins/*.smx mods/
-          
-          # Force add because mods/ is gitignored
           git add -f mods/*.smx
           if git diff --staged --quiet; then
             echo "No changes to commit"
@@ -53,12 +44,6 @@ jobs:
             git commit -m "CI: Update compiled plugins [skip ci]"
             git push origin assets
           fi
-
-      - name: Upload Compiled Plugins
-        uses: actions/upload-artifact@v4
-        with:
-          name: compiled-mods
-          path: compiled_plugins/*.smx
 
   build-docker:
     needs: compile-mods
