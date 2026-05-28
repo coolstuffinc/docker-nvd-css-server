@@ -1,10 +1,10 @@
 FROM ubuntu:22.04
 
-# Install base dependencies (32-bit libs are essential for SRCDS and SourceMod)
+# Install base dependencies (32-bit libs are essential for SRCDS, SourceMod, and compilation)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wget curl lib32gcc-s1 lib32stdc++6 libtinfo5 unzip nginx lib32z1 libc6-i386 && \
+    apt-get install -y --no-install-recommends ca-certificates wget curl lib32gcc-s1 lib32stdc++6 libtinfo5 unzip nginx \
+    g++-multilib libc6-dev-i386 patchelf make && \
     rm -rf /var/lib/apt/lists/*
-
 
 RUN useradd -ms /bin/bash steam
 WORKDIR /home/steam
@@ -17,13 +17,33 @@ RUN wget -O /tmp/steamcmd_linux.tar.gz https://steamcdn-a.akamaihd.net/client/in
     rm /tmp/steamcmd_linux.tar.gz && \
     ./steamcmd.sh +quit
 
-# Copy local lists of assets (used by entrypoint for syncing)
+# Bootstrap SourceMod (for spcomp compiler + includes)
+RUN mkdir -p .sourcepawn && \
+    wget -q -O .sourcepawn/sourcemod.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
+    tar -C .sourcepawn -zxf .sourcepawn/sourcemod.tar.gz && \
+    rm .sourcepawn/sourcemod.tar.gz
+
+# Copy Source Code and Includes
+COPY --chown=steam:steam src/ /home/steam/src/
+
+# Compile Plugins Natively inside Docker (Ensures ABI compatibility)
+RUN mkdir -p css/cstrike/addons/sourcemod/plugins && \
+    SPCOMP=.sourcepawn/addons/sourcemod/scripting/spcomp && \
+    INCLUDES=.sourcepawn/addons/sourcemod/scripting/include && \
+    chmod +x "$SPCOMP" && \
+    for spfile in /home/steam/src/*.sp; do \
+        [ -f "$spfile" ] || continue; \
+        smxname=$(basename "${spfile%.sp}.smx"); \
+        echo "Compiling $spfile..."; \
+        "$SPCOMP" "$spfile" -i"$INCLUDES" -i"/home/steam/src/include" -o"css/cstrike/addons/sourcemod/plugins/$smxname" -v1; \
+    done
+
+# Install CSS
+RUN ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit || :
+
+# Copy assets and entrypoint
 COPY --chown=steam:steam assets/ /home/steam/assets/
-
-# Copy default configurations
 COPY --chown=steam:steam cfg/ /home/steam/cfg_defaults/
-
-# Copy entrypoint
 COPY --chown=steam:steam entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
@@ -38,5 +58,4 @@ ENV STEAM_TOKEN=""
 
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp
 
-# Entrypoint will handle incremental syncing and launching
 ENTRYPOINT ["./entrypoint.sh"]

@@ -6,73 +6,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  compile-mods:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          extra-conf: |
-            extra-experimental-features = nix-command flakes
-
-      - name: Enable Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Prepare SourcePawn Environment
-        run: bash setup_sourcepawn.sh
-
-      - name: Compile Plugins
-        id: compile
-        run: nix develop --command bash scripts/compile_all.sh
-
-      - name: Upload Compiled Plugins
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compiled-mods
-          path: compiled_plugins/*.smx
-
-      - name: Update Assets Branch
-        if: success()
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin assets
-          git checkout assets -- || git checkout -b assets origin/assets || git checkout -b assets
-          mkdir -p mods
-          cp compiled_plugins/*.smx mods/
-          git add -f mods/*.smx
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "CI: Update compiled plugins [skip ci]"
-            git push origin assets
-          fi
-
   build-docker:
-    needs: compile-mods
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download Compiled Plugins
-        uses: actions/download-artifact@v4
-        with:
-          name: compiled-mods
-          path: mods_out/
-
-      - name: Prepare build context
-        run: |
-          mkdir -p ci_mods
-          cp -v mods_out/*.smx ci_mods/ 2>/dev/null || true
-          touch ci_mods/.keep
 
       - name: Log into registry
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
