@@ -2,19 +2,6 @@
 set -e
 trap '' TERM INT HUP
 
-# Start Nginx in background to serve maps locally
-echo "--- Starting Nginx for FastDL ---"
-mkdir -p /var/log/nginx
-# Point nginx to our maps directory
-echo "server {
-    listen 80;
-    location /maps/ {
-        alias /home/steam/css/cstrike/maps/;
-        autoindex on;
-    }
-}" > /etc/nginx/conf.d/default.conf
-nginx
-
 CSS_DIR="/home/steam/css"
 CSTRIKE_DIR="$CSS_DIR/cstrike"
 MODS_DIR="$CSTRIKE_DIR/addons/sourcemod/plugins"
