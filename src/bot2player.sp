@@ -483,6 +483,22 @@ public Action:Timer_TeleportPlayer(Handle:timer, any:pack)
 		iTargetAngles[1] = ReadPackFloat(pack);
 		iTargetAngles[2] = ReadPackFloat(pack);
 		
+		// Teleport the player taking over to the bot's location
 		TeleportEntity(iClient, iTargetOrigin, iTargetAngles, NULL_VECTOR);
+		
+		// Move the bot far away so they don't collide
+		float hideOrigin[3];
+		hideOrigin[0] = 0.0;
+		hideOrigin[1] = 0.0;
+		hideOrigin[2] = -10000.0; // Deep underground
+		
+		int botClient = GetClientOfUserId(iBot);
+		if (botClient > 0 && IsClientInGame(botClient) && IsPlayerAlive(botClient))
+		{
+			TeleportEntity(botClient, hideOrigin, NULL_VECTOR, NULL_VECTOR);
+			// We can also just force them to die cleanly
+			ForcePlayerSuicide(botClient);
+		}
 	}
 }
+
