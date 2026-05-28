@@ -14,7 +14,21 @@ if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
     rm "$TOOLS_DIR/sourcemod.tar.gz"
 fi
 
-# Ensure permissions
-chmod +x "$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
+# Locate the compiler
+SPCOMP=$(find "$TOOLS_DIR" -name "spcomp" | head -n 1)
+DEST="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
+mkdir -p "$(dirname "$DEST")"
+
+if [ -f "$SPCOMP" ]; then
+    echo "Found spcomp at $SPCOMP"
+    # Only move if the source and destination are different files
+    if [ "$SPCOMP" != "$DEST" ]; then
+        mv "$SPCOMP" "$DEST"
+    fi
+    chmod +x "$DEST"
+else
+    echo "Error: spcomp not found after extraction!"
+    exit 1
+fi
 
 echo "SourcePawn environment ready."
