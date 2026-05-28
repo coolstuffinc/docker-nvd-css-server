@@ -11,25 +11,15 @@ GITHUB_RAW="https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-cs
 # 1. Bootstrapping (If volume is empty)
 if [ ! -f "$CSS_DIR/srcds_run" ]; then
     echo "--- Initial CSS Installation ---"
-    # Fast install: no validate
-    ./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 +quit
-fi
-
-# 2. Base Addons (Metamod/SourceMod)
-# ...
-
-# 4. Optional Full Update
-if [ "$1" == "update" ]; then
-    echo "Running SteamCMD update with validation..."
     ./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 validate +quit
 fi
-
 
 # 2. Base Addons (Metamod/SourceMod)
 if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
     echo "--- Installing Base Addons ---"
     mkdir -p /tmp/base_mods
-    curl -L -o /tmp/base_mods/mmsource.tar.gz "https://github.com/alliedmodders/metamod-source/releases/download/1.10.8-git966/mmsource-1.10.8-git966-linux.tar.gz"
+    # Using verified URLs
+    curl -L -o /tmp/base_mods/mmsource.tar.gz "https://github.com/alliedmodders/metamod-source/releases/download/1.12.0.1224/mmsource-1.12.0-git1224-linux.tar.gz"
     curl -L -o /tmp/base_mods/sourcemod.tar.gz "https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz"
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/mmsource.tar.gz
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/sourcemod.tar.gz
@@ -74,17 +64,8 @@ sync_from_github() {
 
 sync_from_github
 
-
-# 4. Optional Full Update
-if [ "$1" == "update" ]; then
-	echo "Running SteamCMD full verification..."
-	./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 validate +quit
-fi
-
 cd "$CSS_DIR"
-# Fix for 32-bit library loading on 64-bit host
-export LD_LIBRARY_PATH="/lib32:/usr/lib32:$LD_LIBRARY_PATH"
-
+# No LD_PRELOAD needed for SourceMod 1.12+ (it's compatible with Ubuntu 22.04+)
 ./srcds_run -game cstrike \
             +exec server.cfg \
             +hostname "$CSS_HOSTNAME" \
