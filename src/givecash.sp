@@ -18,11 +18,22 @@ public Plugin:myinfo =
 };
 public void OnPluginStart()
 {
-	g_iAccount = FindSendPropOffs("CCSPlayer", "m_iAccount");
+	g_iAccount = FindSendPropInfo("CCSPlayer", "m_iAccount");
 	if (g_iAccount == -1)
 	{
 		SetFailState("[CS:S] Give Cash - Failed to find offset for m_iAccount!");
 	}
+	CreateConVar("sm_givecash_version", "1.0.0", "Plugin Version", FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	v_MaxCash = CreateConVar("sm_givecash_max", "1", "Enable/Disable cap of 60,000 cash max <1/0>", 0, true, 0.0, true, 1.0);
+	v_TextEnabled = CreateConVar("sm_givecash_showtext", "1", "Set to 0 to skip telling the target client about changes to their cash", 0, true, 0.0, true, 1.0);
+	RegAdminCmd("sm_cash", SetCash, ADMFLAG_GENERIC, "sm_cash <target> <value> - Sets <target>'s cash to <value>");
+	RegAdminCmd("sm_setcash", SetCash, ADMFLAG_GENERIC, "sm_setcash <target> <value> - Sets <target>'s cash to <value>");
+	RegAdminCmd("sm_addcash", AddCash, ADMFLAG_GENERIC, "sm_addcash <target> <value> - Adds <value> to the <target>'s cash");
+	RegAdminCmd("sm_autocash", AutoCash, ADMFLAG_GENERIC, "sm_autocash <target> <value> - Sets <target>'s cash to <value> at the start of every round. Use -1 to cancel");
+	HookEvent("player_spawn", AutoCash2, EventHookMode_Post);
+	LoadTranslations("common.phrases");
+}
+
 	CreateConVar("sm_givecash_version", "1.0.0", "Plugin Version", 270656, false, 0.0, false, 0.0);
 	v_MaxCash = CreateConVar("sm_givecash_max", "1", "Enable/Disable cap of 60,000 cash max <1/0>", 0, true, 0.0, true, 1.0);
 	v_TextEnabled = CreateConVar("sm_givecash_showtext", "1", "Set to 0 to skip telling the target client about changes to their cash", 0, true, 0.0, true, 1.0);

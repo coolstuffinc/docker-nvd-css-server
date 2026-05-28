@@ -322,7 +322,7 @@ public OnPluginStart(){
 	AddCommandListener(OnSayText, "say");
 	AddCommandListener(OnSayText, "say_team");
 	
-	new Handle:cvarVersion = CreateConVar("rankme_version",PLUGIN_VERSION,"RankMe Version",FCVAR_PLUGIN|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	new Handle:cvarVersion = CreateConVar("rankme_version",PLUGIN_VERSION,"RankMe Version",FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	// UPDATE THE CVAR IF NEEDED
 	new String:sVersionOnCvar[10];
 	GetConVarString(cvarVersion,sVersionOnCvar,sizeof(sVersionOnCvar));

@@ -24,7 +24,7 @@ public OnPluginStart()
 	g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Automatically says on chat how many enemies are left. 1=Enabled | 0=Disabled");
 	g_CvarRadio = CreateConVar("sm_eleft_radio", "0", "Executes 'enemy down' radio command automatically. 1=Enabled | 0=Disabled");
 	g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you. 1=Enabled | 0=Disabled");
-	CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+	CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	AutoExecConfig(true, "enemies_left");
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_blind", OnPlayerBlind);
@@ -43,7 +43,7 @@ public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 	{
 		new iAliveEnemies = 0;
 		new i = 0;
-		new iMaxClients = GetMaxClients();
+		new iMaxClients = MaxClients;
 		for (i = 1; i <= iMaxClients; i++)
 		{
 			if (IsClientConnected (i) && IsClientInGame (i) && !IsClientObserver (i))

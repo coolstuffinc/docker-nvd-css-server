@@ -51,18 +51,18 @@ public OnPluginStart()
 	HookEvent("round_end", Event_RoundEnd, EventHookMode_Pre)
 	// round_freeze_end only used for debugging
 	//HookEvent("round_freeze_end", Event_RoundFreezeEnd)
-	g_iAccount = FindSendPropOffs("CCSPlayer", "m_iAccount");
-	g_offObserverTarget = FindSendPropOffs("CBasePlayer", "m_hObserverTarget")
+	g_iAccount = FindSendPropInfo("CCSPlayer", "m_iAccount");
+	g_offObserverTarget = FindSendPropInfo("CBasePlayer", "m_hObserverTarget")
 	if(g_offObserverTarget == -1)
 	{
 		SetFailState("Expected to find the offset to m_hObserverTarget, couldn't.")
 	}
 	AddCommandListener(NewTarget, "spec_next")
 	AddCommandListener(NewTarget, "spec_prev")
-	CreateConVar("bot2player_version", PLUGIN_VERSION, "Bot2player (public) version", FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_DONTRECORD)
-	cvar_b2p_enabled = CreateConVar("bot2player_enabled", "1", "Enable the plugin?", FCVAR_PLUGIN, true, 0.0, true, 1.0)
-	cvar_BotTakeOverStartingCost = CreateConVar("bot2player_price", "1000", "Starting cost to take over a BOT (resets each map)", FCVAR_PLUGIN)
-	cvar_BotTakeOverCostIncrement = CreateConVar("bot2player_increase", "250", "Amount to raise price each time a player takes over a BOT", FCVAR_PLUGIN)
+	CreateConVar("bot2player_version", PLUGIN_VERSION, "Bot2player (public) version", FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_SPONLY|FCVAR_DONTRECORD)
+	cvar_b2p_enabled = CreateConVar("bot2player_enabled", "1", "Enable the plugin?", 0, true, 0.0, true, 1.0)
+	cvar_BotTakeOverStartingCost = CreateConVar("bot2player_price", "1000", "Starting cost to take over a BOT (resets each map)", 0)
+	cvar_BotTakeOverCostIncrement = CreateConVar("bot2player_increase", "250", "Amount to raise price each time a player takes over a BOT", 0)
 	if (cvar_b2p_enabled == INVALID_HANDLE) 
 	{
 		new String:FailReason[256]
@@ -252,7 +252,7 @@ public GetAllClientGrenades(client)
 	Nades[client][0] = 0
 	Nades[client][1] = 0
 	Nades[client][2] = 0
-	new offsNades = FindDataMapOffs(client, "m_iAmmo") + (11 * 4);
+	new offsNades = FindDataMapInfo(client, "m_iAmmo") + (11 * 4);
 	new granadesnr = GetEntData(client, offsNades)
 	new lastgranadesnr = 0
 	if (granadesnr > lastgranadesnr)

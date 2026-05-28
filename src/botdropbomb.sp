@@ -42,7 +42,7 @@ new Handle:hDropWeapon = INVALID_HANDLE;
 public OnPluginStart()
 {
 	// Create the CVARs
-	CreateConVar("sm_bot_drop_bomb_version", PLUGIN_VERSION, "Bot, drop the bomb Version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+	CreateConVar("sm_bot_drop_bomb_version", PLUGIN_VERSION, "Bot, drop the bomb Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	
 	// Load the gamedata file
 	hGameConf = LoadGameConfigFile("botdropbomb.games");
@@ -65,7 +65,7 @@ public OnPluginStart()
 
 public Action:CommandSay(client, args)
 {
-	if(client < 1 || client > GetMaxClients() || !IsClientInGame(client))
+	if(client < 1 || client > MaxClients || !IsClientInGame(client))
 	{
 		return Plugin_Continue;
 	}	
@@ -90,7 +90,7 @@ public Action:CommandSay(client, args)
 		new team = GetClientTeam(client);
 		new Float:clientVec[3];
 		GetClientAbsOrigin(client, clientVec);
-		for(new i = 1; i <= GetMaxClients(); i++)
+		for(new i = 1; i <= MaxClients; i++)
 		{
 			if(IsClientInGame(i) && IsFakeClient(i) && GetPlayerWeaponSlot(i, 4) != -1 && GetClientTeam(i) == team)
 			{
@@ -108,7 +108,7 @@ public Action:CommandSay(client, args)
 
 public Action:CommandDropBomb(client, args)
 {
-	for(new i = 1; i <= GetMaxClients(); i++)
+	for(new i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientInGame(i) && GetPlayerWeaponSlot(i, 4) != -1)
 		{
