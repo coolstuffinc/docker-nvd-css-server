@@ -35,12 +35,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v25
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Compile Plugins
         run: |
-          chmod +x scripts/compile_all.sh
-          # The batch_compile.sh was created in root, let's fix the path or use the script
-          chmod +x batch_compile.sh
-          ./batch_compile.sh
+          nix develop --command bash -c "./batch_compile.sh"
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
