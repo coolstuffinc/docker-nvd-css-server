@@ -30,16 +30,24 @@ fi
 sync_from_github() {
     echo "--- Incremental Sync Starting ---"
     
-    # Sync Mods
-    if [ -f "assets/mods.txt" ]; then
-        echo "Checking for mod updates..."
-        mkdir -p "$MODS_DIR"
-        while read -r mod; do
-            [ -z "$mod" ] || [[ "$mod" == *.zip ]] || [[ "$mod" == *.tar.gz ]] && continue
+# Sync Mods
+if [ -f "assets/mods.txt" ]; then
+    echo "Checking for mod updates..."
+    mkdir -p "$MODS_DIR"
+    # Force copy our CI-compiled plugins over existing ones to ensure latest versions
+    if [ -d "/tmp/ci_mods" ]; then
+        echo "Applying CI-compiled plugins..."
+        cp -v /tmp/ci_mods/*.smx "$MODS_DIR/"
+    fi
+    while read -r mod; do
+        [ -z "$mod" ] || [[ "$mod" == *.zip ]] || [[ "$mod" == *.tar.gz ]] && continue
+        # Only sync if not one of our compiled plugins
+        if [ ! -f "$MODS_DIR/$mod" ]; then
             echo "Syncing mod: $mod"
             curl -L -o "$MODS_DIR/$mod" "$GITHUB_RAW/mods/$mod" || echo "Failed to sync $mod"
-        done < assets/mods.txt
-    fi
+        fi
+    done < assets/mods.txt
+fi
 
     # Sync Maps
     if [ -f "assets/maps.txt" ]; then
