@@ -2,8 +2,9 @@ FROM ubuntu:22.04
 
 # Install base dependencies (32-bit libs are essential for SRCDS and SourceMod)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wget curl lib32gcc-s1 lib32stdc++6 libtinfo5 unzip lib32z1 && \
+    apt-get install -y --no-install-recommends ca-certificates wget curl lib32gcc-s1 lib32stdc++6 libtinfo5 unzip nginx lib32z1 libc6-i386 && \
     rm -rf /var/lib/apt/lists/*
+
 
 RUN useradd -ms /bin/bash steam
 WORKDIR /home/steam

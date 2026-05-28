@@ -1,36 +1,26 @@
 #!/usr/bin/env bash
 set -e
 
-# Directory for SourcePawn tools
 TOOLS_DIR="$(pwd)/.sourcepawn"
-mkdir -p "$TOOLS_DIR"
+SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
-echo "Setting up SourcePawn environment..."
+echo "Bootstrapping spcomp..."
 
-# Download SourceMod if missing (upgrading to 1.12 to fix compatibility issues)
-if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
-    echo "Downloading SourceMod 1.12.0..."
-    # Fetching stable 1.12.0 release from GitHub Releases (avoiding 403 on alliedmods.net)
-    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz
-    tar -C "$TOOLS_DIR" -zxf "$TOOLS_DIR/sourcemod.tar.gz"
-    rm "$TOOLS_DIR/sourcemod.tar.gz"
+# Install build tools if missing (CI env)
+if command -v apt-get &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y libc6-i386 patchelf
 fi
 
-SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
-if [ -f "$SPCOMP" ]; then
-    echo "Found spcomp at $SPCOMP"
-    chmod +x "$SPCOMP"
-else
-    echo "Error: spcomp not found after setup!"
+# Find the 32-bit loader
+LOADER=$(find /lib /lib32 /usr/lib32 -name "ld-linux.so.2" | head -n 1)
+
+if [ -z "$LOADER" ]; then
+    echo "Error: Could not find 32-bit loader (ld-linux.so.2)"
     exit 1
 fi
 
-# Create a small wrapper script to run spcomp in the Nix environment
-cat > spcomp-nix <<EOF
-#!/usr/bin/env bash
-nix-shell shell.nix --run "bash scripts/compile_all.sh"
-EOF
-chmod +x spcomp-nix
-chmod +x scripts/compile_all.sh
+echo "Patching spcomp with loader: $LOADER"
+patchelf --set-interpreter "$LOADER" "$SPCOMP"
 
-echo "SourcePawn environment ready. Run ./spcomp-nix to compile all plugins in src/"
+chmod +x "$SPCOMP"
+echo "spcomp patched and ready."
