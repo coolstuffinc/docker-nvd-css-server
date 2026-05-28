@@ -6,7 +6,6 @@ CSS_DIR="/home/steam/css"
 CSTRIKE_DIR="$CSS_DIR/cstrike"
 MODS_DIR="$CSTRIKE_DIR/addons/sourcemod/plugins"
 MAPS_DIR="$CSTRIKE_DIR/maps"
-# Corrected URL to media.githubusercontent.com for LFS support
 GITHUB_RAW="https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets"
 
 # 1. Bootstrapping (If volume is empty)
@@ -73,7 +72,8 @@ fi
 
 cd "$CSS_DIR"
 # Fix for "undefined symbol: floorf"
-export LD_PRELOAD="/usr/lib32/libm.so.6"
+# Prepend 32-bit library path
+export LD_LIBRARY_PATH="/usr/lib32:$LD_LIBRARY_PATH"
 
 ./srcds_run -game cstrike \
             +exec server.cfg \
