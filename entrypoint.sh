@@ -18,7 +18,6 @@ fi
 if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
     echo "--- Installing Base Addons ---"
     mkdir -p /tmp/base_mods
-    # Using curl -L to follow redirects (essential for LFS)
     curl -L -o /tmp/base_mods/mmsource.tar.gz "$GITHUB_RAW/mods/mmsource-1.10.6-linux.tar.gz"
     curl -L -o /tmp/base_mods/sourcemod.tar.gz "$GITHUB_RAW/mods/sourcemod-1.7.3-git5275-linux.tar.gz"
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/mmsource.tar.gz
@@ -71,9 +70,8 @@ if [ "$1" == "update" ]; then
 fi
 
 cd "$CSS_DIR"
-# Fix for "undefined symbol: floorf"
-# Prepend 32-bit library path
-export LD_LIBRARY_PATH="/usr/lib32:$LD_LIBRARY_PATH"
+# Fix for 32-bit library loading on 64-bit host
+export LD_LIBRARY_PATH="/lib32:/usr/lib32:$LD_LIBRARY_PATH"
 
 ./srcds_run -game cstrike \
             +exec server.cfg \
