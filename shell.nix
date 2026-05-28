@@ -17,9 +17,11 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
+    # Use the 32-bit glibc specifically
+    export SP_LOADER="${pkgs.pkgsi686Linux.glibc}/lib/ld-linux.so.2"
     export LD_LIBRARY_PATH="${pkgs.pkgsi686Linux.stdenv.cc.cc.lib}/lib:${pkgs.glibc_multi}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
     export PATH="$PATH:$(pwd)/scripts"
-    alias rcon='python3 $(pwd)/scripts/rcon.py'
   '';
+
 
 }
