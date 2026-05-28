@@ -35,6 +35,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Compile Plugins
+        run: |
+          # Use the existing setup to compile inside the runner
+          ./batch_compile.sh
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
