@@ -8,14 +8,12 @@ SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 mkdir -p "$COMPILED_DIR"
 
-echo "Running in FHS environment..."
-
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
         smxname=$(basename "${spfile%.sp}.smx")
         echo "Compiling $spfile..."
         
-        # Execute directly within FHS environment
+        # We rely on the FHS environment to handle 32-bit linking
         "$SPCOMP" "$spfile" \
             -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \

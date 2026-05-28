@@ -30,7 +30,7 @@ jobs:
 
       - name: Compile Plugins
         id: compile
-        run: ./scripts/compile_all.sh
+        run: nix develop -c bash scripts/compile_all.sh
 
       - name: Update Assets Branch
         if: success()
