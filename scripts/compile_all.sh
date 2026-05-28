@@ -8,12 +8,15 @@ SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 mkdir -p "$COMPILED_DIR"
 
+# Ensure permissions
+chmod +x "$SPCOMP"
+
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
         smxname=$(basename "${spfile%.sp}.smx")
         echo "Compiling $spfile..."
         
-        # We rely on the FHS environment to handle 32-bit linking
+        # Native execution in Ubuntu runner
         "$SPCOMP" "$spfile" \
             -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \
