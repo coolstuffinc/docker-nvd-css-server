@@ -1,49 +1,51 @@
 #!/usr/bin/env bash
+set -e
 
 TOOLS_DIR="$(pwd)/.sourcepawn"
-SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
-INCLUDE_DIR="$TOOLS_DIR/addons/sourcemod/scripting/include"
+INCLUDE_DIR="$(pwd)/src/include"
 COMPILED_DIR="$(pwd)/compiled_plugins"
+CACHE_FILE=".sp_loader_cache"
+SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 mkdir -p "$COMPILED_DIR"
 
-# Use loader from environment variable set in shell.nix
-if [ -z "$SP_LOADER" ]; then
-    echo "Error: SP_LOADER not found in environment. Are you running inside nix-shell?"
+# Resolve loader: use env var, or cached file, or find it once
+if [ -n "$SP_LOADER" ]; then
+    LOADER="$SP_LOADER"
+elif [ -f "$CACHE_FILE" ]; then
+    LOADER=$(cat "$CACHE_FILE")
+else
+    echo "Loader not found in env or cache, searching (this is slow, but only once)..."
+    LOADER=$(find /nix/store -name ld-linux.so.2 -path '*/lib/*' | head -n 1)
+    echo "$LOADER" > "$CACHE_FILE"
+fi
+
+if [ -z "$LOADER" ]; then
+    echo "Error: 32-bit loader not found in Nix store!"
     exit 1
 fi
 
-LOADER="$SP_LOADER"
 echo "Using loader: $LOADER"
 
-FAILED=0
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
-        spname=$(basename "$spfile")
-        smxname="${spname%.sp}.smx"
+        smxname=$(basename "${spfile%.sp}.smx")
         echo "----------------------------------------"
         echo "Compiling $spfile..."
         
-        # We MUST pass the include directory and ensure paths are correct
-        # -i"src/include" adds our local dependencies
         "$LOADER" "$SPCOMP" "$spfile" \
-            -i"$INCLUDE_DIR" \
+            -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \
-            -i"src/include" \
+            -i"$INCLUDE_DIR" \
             -o"$COMPILED_DIR/$smxname" \
             -v1
             
         if [ $? -ne 0 ]; then
             echo "FAILED: $spfile"
-            FAILED=1
+            exit 1
         fi
     fi
 done
 
 echo "----------------------------------------"
-if [ $FAILED -eq 1 ]; then
-    echo "Some plugins failed to compile!"
-    exit 1
-else
-    echo "All plugins compiled successfully!"
-fi
+echo "All plugins compiled successfully!"
