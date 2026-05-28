@@ -19,6 +19,11 @@ RUN wget -O /tmp/steamcmd_linux.tar.gz https://steamcdn-a.akamaihd.net/client/in
 # Entrypoint will handle game files and mod syncing at runtime
 COPY --chown=steam:steam entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
+# Entrypoint will handle game files and mod syncing at runtime
+COPY --chown=steam:steam entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
+# Copy compiled plugins into the image
+COPY --chown=steam:steam compiled_plugins /home/steam/ci_mods
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp
