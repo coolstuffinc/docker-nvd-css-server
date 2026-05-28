@@ -10,10 +10,10 @@ sudo apt-get install -y g++-multilib libc6-dev-i386 lib32stdc++6 patchelf
 
 echo "Setting up SourcePawn environment..."
 
-# Download SourceMod 1.12.0
+# Download SourceMod 1.10.0 (Supports transitional syntax)
 if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
-    echo "Downloading SourceMod 1.12.0..."
-    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz
+    echo "Downloading SourceMod 1.10.0..."
+    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6528-linux.tar.gz
     tar -C "$TOOLS_DIR" -zxf "$TOOLS_DIR/sourcemod.tar.gz"
     rm "$TOOLS_DIR/sourcemod.tar.gz"
 fi
