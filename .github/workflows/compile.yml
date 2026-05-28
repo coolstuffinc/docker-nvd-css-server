@@ -42,6 +42,8 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Compile Plugins
         run: |
+          ls -F
+          pwd
           nix develop --command bash -c "./batch_compile.sh"
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
