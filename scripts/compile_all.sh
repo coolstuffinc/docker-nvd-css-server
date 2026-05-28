@@ -8,18 +8,15 @@ SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 mkdir -p "$COMPILED_DIR"
 
-# Use the loader path from the environment (or a fallback)
-# The Nix environment now guarantees this path
-LOADER="/lib/ld-linux.so.2"
-
-echo "Using loader: $LOADER"
+echo "Running in FHS environment..."
 
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
         smxname=$(basename "${spfile%.sp}.smx")
         echo "Compiling $spfile..."
         
-        "$LOADER" "$SPCOMP" "$spfile" \
+        # Execute directly within FHS environment
+        "$SPCOMP" "$spfile" \
             -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \
             -i"$INCLUDE_DIR" \
@@ -32,3 +29,5 @@ for spfile in src/*.sp; do
         fi
     fi
 done
+
+echo "All plugins compiled successfully!"

@@ -1,27 +1,19 @@
 { pkgs ? import <nixpkgs> {} }:
 
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    glibc_multi
-    stdenv.cc.cc.lib
-    pkgsi686Linux.stdenv.cc.cc.lib
-    pkg-config
-    ncurses
-    openjdk17
+(pkgs.buildFHSEnv {
+  name = "sourcepawn-env";
+  targetPkgs = pkgs: with pkgs; [
+    bashInteractive
+    coreutils
+    wget
+    curl
     unzip
     git
     git-lfs
-    bash
-    binutils
-    file
+    # 32-bit libs for SourceMod/spcomp
+    pkgsi686Linux.glibc
+    pkgsi686Linux.gcc-unwrapped
+    pkgsi686Linux.ncurses
   ];
-
-  shellHook = ''
-    export LD_LIBRARY_PATH="${pkgs.pkgsi686Linux.glibc}/lib:${pkgs.pkgsi686Linux.stdenv.cc.cc.lib}/lib:${pkgs.glibc_multi}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
-    export PATH="$PATH:$(pwd)/scripts"
-    alias rcon='python3 $(pwd)/scripts/rcon.py'
-  '';
-
-
-
-}
+  runScript = "bash";
+}).env
