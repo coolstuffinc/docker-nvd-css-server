@@ -79,10 +79,7 @@ public SharedPlugin:__pl_rankme=
 	#endif
 };
 
-funcenum RankCallback
-{
-	public(client, rank,any:data),
-};
+typedef RankCallback = function void (int client, int rank, any data);
 
 public __pl_rankme_SetNTVOptional()
 {
@@ -115,7 +112,7 @@ native RankMe_GivePoint(client,points,String:reason[],printtoplayer,printtoall);
  * @param data	Any data you would like that return on the callback
  * @noreturn		
  *********************************************************/
-native RankMe_GetRank(client,RankCallback:callback,any:data=0);
+native RankMe_GetRank(client, RankCallback callback, any data=0);
 
 /*********************************************************
  * Get the score (points) of a player on the server
