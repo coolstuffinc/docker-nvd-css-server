@@ -70,6 +70,10 @@ fi
         cp -rn /home/steam/cfg_defaults/* "$CSTRIKE_DIR/cfg/" 2>/dev/null || true
     fi
     
+    # Inject dynamic Server IP for FastDL
+    SERVER_IP=$(hostname -i | awk '{print $1}')
+    sed -i "s|sv_downloadurl \".*\"|sv_downloadurl \"http://$SERVER_IP/maps/\"|g" "$CSTRIKE_DIR/cfg/server.cfg"
+
     echo "--- Incremental Sync Finished ---"
 }
 
