@@ -6,7 +6,7 @@ CSS_DIR="/home/steam/css"
 CSTRIKE_DIR="$CSS_DIR/cstrike"
 MODS_DIR="$CSTRIKE_DIR/addons/sourcemod/plugins"
 MAPS_DIR="$CSTRIKE_DIR/maps"
-GITHUB_RAW="https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/assets"
+GITHUB_RAW="https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets"
 
 # 1. Bootstrapping (If volume is empty)
 if [ ! -f "$CSS_DIR/srcds_run" ]; then
