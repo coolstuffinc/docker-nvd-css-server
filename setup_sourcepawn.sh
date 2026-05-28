@@ -18,8 +18,9 @@ if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
     rm "$TOOLS_DIR/sourcemod.tar.gz"
 fi
 
-# Robustly find spcomp after potential sub-directory extraction
+# Robustly find spcomp
 SPCOMP=$(find "$TOOLS_DIR" -name "spcomp" | head -n 1)
+DEST="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 if [ -f "$SPCOMP" ]; then
     echo "Found spcomp at $SPCOMP"
@@ -31,9 +32,11 @@ if [ -f "$SPCOMP" ]; then
     patchelf --set-interpreter "$LOADER" "$SPCOMP"
     chmod +x "$SPCOMP"
     
-    # Move to the expected location just in case
-    mkdir -p "$TOOLS_DIR/addons/sourcemod/scripting"
-    mv "$SPCOMP" "$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
+    # Move to the expected location ONLY if not already there
+    if [ "$SPCOMP" != "$DEST" ]; then
+        mkdir -p "$(dirname "$DEST")"
+        mv "$SPCOMP" "$DEST"
+    fi
 else
     echo "Error: spcomp not found after extraction!"
     exit 1
