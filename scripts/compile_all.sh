@@ -8,21 +8,18 @@ SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 mkdir -p "$COMPILED_DIR"
 
-# Ensure we have a loader via environment, if not, try a direct call
-# If this fails, the environment is misconfigured
-if [ -z "$SP_LOADER" ]; then
-    # Fallback to direct execution for environments where LD_LIBRARY_PATH is enough
-    LOADER=""
-else
-    LOADER="$SP_LOADER"
-fi
+# Use the loader path from the environment (or a fallback)
+# The Nix environment now guarantees this path
+LOADER="/lib/ld-linux.so.2"
+
+echo "Using loader: $LOADER"
 
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
         smxname=$(basename "${spfile%.sp}.smx")
         echo "Compiling $spfile..."
         
-        $LOADER "$SPCOMP" "$spfile" \
+        "$LOADER" "$SPCOMP" "$spfile" \
             -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \
             -i"$INCLUDE_DIR" \
