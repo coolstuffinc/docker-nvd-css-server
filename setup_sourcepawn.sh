@@ -7,11 +7,11 @@ mkdir -p "$TOOLS_DIR"
 
 echo "Setting up SourcePawn environment..."
 
-# Download SourceMod if missing (upgrading to 1.10 to fix compatibility issues)
+# Download SourceMod if missing (upgrading to 1.12 to fix compatibility issues)
 if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
-    echo "Downloading SourceMod 1.10.0..."
-    # Fetching stable 1.10.0 release from AlliedModders official drop
-    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6528-linux.tar.gz
+    echo "Downloading SourceMod 1.12.0..."
+    # Fetching stable 1.12.0 release
+    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7236-linux.tar.gz
     tar -C "$TOOLS_DIR" -zxf "$TOOLS_DIR/sourcemod.tar.gz"
     rm "$TOOLS_DIR/sourcemod.tar.gz"
 fi

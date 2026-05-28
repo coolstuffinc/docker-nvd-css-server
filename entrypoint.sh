@@ -18,9 +18,9 @@ fi
 if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
     echo "--- Installing Base Addons ---"
     mkdir -p /tmp/base_mods
-    # Using official AlliedModders SourceMod (v1.10) to match newer Linux libs
+    # Using official AlliedModders SourceMod (v1.12 to match CI)
     curl -L -o /tmp/base_mods/mmsource.tar.gz "https://sm.alliedmods.net/mmdrop/1.10/mmsource-1.10.8-git966-linux.tar.gz"
-    curl -L -o /tmp/base_mods/sourcemod.tar.gz "https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6528-linux.tar.gz"
+    curl -L -o /tmp/base_mods/sourcemod.tar.gz "https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7236-linux.tar.gz"
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/mmsource.tar.gz
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/sourcemod.tar.gz
     rm -rf /tmp/base_mods
