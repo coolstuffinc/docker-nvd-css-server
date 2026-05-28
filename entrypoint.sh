@@ -6,6 +6,7 @@ CSS_DIR="/home/steam/css"
 CSTRIKE_DIR="$CSS_DIR/cstrike"
 MODS_DIR="$CSTRIKE_DIR/addons/sourcemod/plugins"
 MAPS_DIR="$CSTRIKE_DIR/maps"
+# Corrected URL to media.githubusercontent.com for LFS support
 GITHUB_RAW="https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-css-server/assets"
 
 # 1. Bootstrapping (If volume is empty)
@@ -18,8 +19,9 @@ fi
 if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
     echo "--- Installing Base Addons ---"
     mkdir -p /tmp/base_mods
-    wget -q -O /tmp/base_mods/mmsource.tar.gz "$GITHUB_RAW/mods/mmsource-1.10.6-linux.tar.gz"
-    wget -q -O /tmp/base_mods/sourcemod.tar.gz "$GITHUB_RAW/mods/sourcemod-1.7.3-git5275-linux.tar.gz"
+    # Using curl -L to follow redirects (essential for LFS)
+    curl -L -o /tmp/base_mods/mmsource.tar.gz "$GITHUB_RAW/mods/mmsource-1.10.6-linux.tar.gz"
+    curl -L -o /tmp/base_mods/sourcemod.tar.gz "$GITHUB_RAW/mods/sourcemod-1.7.3-git5275-linux.tar.gz"
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/mmsource.tar.gz
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/sourcemod.tar.gz
     rm -rf /tmp/base_mods
@@ -36,7 +38,7 @@ sync_from_github() {
         while read -r mod; do
             [ -z "$mod" ] || [[ "$mod" == *.zip ]] || [[ "$mod" == *.tar.gz ]] && continue
             echo "Syncing mod: $mod"
-            wget -q -O "$MODS_DIR/$mod" "$GITHUB_RAW/mods/$mod" || echo "Failed to sync $mod"
+            curl -L -o "$MODS_DIR/$mod" "$GITHUB_RAW/mods/$mod" || echo "Failed to sync $mod"
         done < assets/mods.txt
     fi
 
@@ -48,7 +50,7 @@ sync_from_github() {
             [ -z "$map" ] && continue
             if [ ! -f "$MAPS_DIR/$map" ]; then
                 echo "Downloading new map: $map"
-                wget -q -O "$MAPS_DIR/$map" "$GITHUB_RAW/maps/$map" || echo "Failed to sync $map"
+                curl -L -o "$MAPS_DIR/$map" "$GITHUB_RAW/maps/$map" || echo "Failed to sync $map"
             fi
         done < assets/maps.txt
     fi
