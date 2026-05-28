@@ -11,8 +11,19 @@ GITHUB_RAW="https://media.githubusercontent.com/media/coolstuffinc/docker-nvd-cs
 # 1. Bootstrapping (If volume is empty)
 if [ ! -f "$CSS_DIR/srcds_run" ]; then
     echo "--- Initial CSS Installation ---"
+    # Fast install: no validate
+    ./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 +quit
+fi
+
+# 2. Base Addons (Metamod/SourceMod)
+# ...
+
+# 4. Optional Full Update
+if [ "$1" == "update" ]; then
+    echo "Running SteamCMD update with validation..."
     ./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 validate +quit
 fi
+
 
 # 2. Base Addons (Metamod/SourceMod)
 if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
