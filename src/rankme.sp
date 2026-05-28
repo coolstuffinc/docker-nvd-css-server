@@ -1,3 +1,4 @@
+#pragma warning disable 237
 #pragma semicolon  1
 #define PLUGIN_VERSION "2.8.3"
 #include <sourcemod> 

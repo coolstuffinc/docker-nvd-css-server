@@ -733,7 +733,7 @@ stock Entity_SetFlags(entity, flags)
  */
 stock Entity_AddFlags(entity, flags)
 {
-	new setFlags = Entity_GetFlags(entity);
+	int setFlags = Entity_GetFlags(entity);
 	setFlags |= flags;
 	Entity_SetFlags(entity, flags);
 }
@@ -747,7 +747,7 @@ stock Entity_AddFlags(entity, flags)
  */
 stock Entity_RemoveFlags(entity, flags)
 {
-	new setFlags = Entity_GetFlags(entity);
+	int setFlags = Entity_GetFlags(entity);
 	setFlags &= ~flags;
 	Entity_SetFlags(entity, setFlags);
 }
@@ -1263,7 +1263,7 @@ stock Entity_GetHealth(entity)
  * @param value			health to set (anything above 511 will overload)
  * @noreturn
  */
-stock Entity_SetHealth(entity, value, ignoreMax=false, kill=true)
+stock bool Entity_SetHealth(int entity, int value, bool ignoreMax=false, bool kill=true)
 {
 	new health = value;
 

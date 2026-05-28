@@ -1,7 +1,3 @@
-#include <sourcemod>
-#include <sdktools>
-#include <clientprefs>
-
 public PlVers:__version =
 {
 	version = 5,
@@ -9,8 +5,8 @@ public PlVers:__version =
 	date = "06/13/2014",
 	time = "04:03:09"
 };
-//new Float:NULL_VECTOR[3];
-//new String:NULL_STRING[4];
+int Float:NULL_VECTOR[3];
+char NULL_STRING[4];
 public Extension:__ext_core =
 {
 	name = "Core",
@@ -18,7 +14,7 @@ public Extension:__ext_core =
 	autoload = 0,
 	required = 0,
 };
-//new MaxClients;
+new MaxClients;
 public Extension:__ext_sdktools =
 {
 	name = "SDKTools",
@@ -41,35 +37,60 @@ public Plugin:myinfo =
 	version = "2.2.1",
 	url = "vintagejailbreak.org"
 };
-new Handle:gH_Cvar_DeadTalk;
-new Handle:gH_Cvar_AllTalk;
-new Handle:gH_Cvar_Announce;
-new Handle:gH_Cvar_MuteTime;
-new Handle:gH_Cvar_RoundEndAllTalk;
-new Handle:gH_Cvar_DeadHearAlive;
-new Handle:gH_Cvar_MuteAtStart;
-new Handle:gH_Cvar_TeamTalk;
-new Handle:gH_UnmuteTimer;
-new Handle:gH_Cvar_TeamToMute;
-new Handle:gH_Cvar_MuteSpectators;
-new Handle:gH_Cvar_BlockUnMuteOnRetry;
-new Handle:gH_Cvar_AdmOvrd_FirstJoin;
-new Handle:gH_Cvar_AdmOvrd_Spec;
-new Handle:gH_Cvar_AdmOvrd_OnDeath;
-new Handle:gH_Muted_Players;
-new Handle:gH_Cookie_VoiceCommMask;
-new Handle:gH_TimedPunishmentLocalArray;
-new bool:g_bMuted[66];
-new bool:g_bHasJoinedOnce[66];
+int Handle:gH_Cvar_DeadTalk;
+int Handle:gH_Cvar_AllTalk;
+int Handle:gH_Cvar_Announce;
+int Handle:gH_Cvar_MuteTime;
+int Handle:gH_Cvar_RoundEndAllTalk;
+int Handle:gH_Cvar_DeadHearAlive;
+int Handle:gH_Cvar_MuteAtStart;
+int Handle:gH_Cvar_TeamTalk;
+int Handle:gH_UnmuteTimer;
+int Handle:gH_Cvar_TeamToMute;
+int Handle:gH_Cvar_MuteSpectators;
+int Handle:gH_Cvar_BlockUnMuteOnRetry;
+int Handle:gH_Cvar_AdmOvrd_FirstJoin;
+int Handle:gH_Cvar_AdmOvrd_Spec;
+int Handle:gH_Cvar_AdmOvrd_OnDeath;
+int Handle:gH_Muted_Players;
+int Handle:gH_Cookie_VoiceCommMask;
+int Handle:gH_TimedPunishmentLocalArray;
+bool g_bMuted[66];
+bool g_bHasJoinedOnce[66];
 new gA_LocalTimeRemaining[66];
-new bool:g_BetweenRounds;
-new bool:g_IsMuteTimeUp;
-new bool:g_bHooked;
+bool g_BetweenRounds;
+bool g_IsMuteTimeUp;
+bool g_bHooked;
+public __ext_core_SetNTVOptional()
+{
+	MarkNativeAsOptional("GetFeatureStatus");
+	MarkNativeAsOptional("RequireFeature");
+	MarkNativeAsOptional("AddCommandListener");
+	MarkNativeAsOptional("RemoveCommandListener");
+	VerifyCoreVersion();
+	return 0;
+}
 
+bool:StrEqual(String:str1[], String:str2[], bool:caseSensitive)
+{
+	return strcmp(str1, str2, caseSensitive) == 0;
+}
 
+PrintToChatAll(String:format[])
+{
+	decl String:buffer[192];
+	new i = 1;
+	while (i <= MaxClients)
+	{
+		if (IsClientInGame(i))
+		{
+			SetGlobalTransTarget(i);
+			VFormat(buffer, 192, format, 2);
+			PrintToChat(i, "%s", buffer);
+		}
 		i++;
 	}
-	//return 0;
+	return 0;
 }
 
 public void OnPluginStart()
@@ -110,20 +131,20 @@ public void OnPluginStart()
 	gH_Muted_Players = CreateArray(23, 0);
 	CreateTimer(60.0, CheckTimedPunishments, any:0, 1);
 	AutoExecConfig(true, "voicecomm", "sourcemod");
-	//return 0;
+	return 0;
 }
 
-public void OnAllPluginsLoaded()
+public OnAllPluginsLoaded()
 {
 	gH_Cvar_DeadTalk = FindConVar("sm_deadtalk");
 	if (gH_Cvar_DeadTalk)
 	{
 		SetConVarBounds(gH_Cvar_DeadTalk, ConVarBounds:1, true, -2.0);
 	}
-	//return 0;
+	return 0;
 }
 
-public void OnConfigsExecuted()
+public OnConfigsExecuted()
 {
 	if (gH_Cvar_DeadTalk)
 	{
@@ -139,7 +160,7 @@ public void OnConfigsExecuted()
 		}
 		HookConVarChange(gH_Cvar_DeadTalk, ConVarChange_DeadTalk);
 	}
-	//return 0;
+	return 0;
 }
 
 public ConVarChange_DeadTalk(Handle:cvar, String:oldVal[], String:newVal[])
@@ -167,13 +188,13 @@ public ConVarChange_DeadTalk(Handle:cvar, String:oldVal[], String:newVal[])
 			g_bHooked = false;
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public ConVarChange_AllTalk(Handle:convar, String:oldValue[], String:newValue[])
 {
 	CreateTimer(0.1, Timer_AllTalk, any:0, 2);
-	//return 0;
+	return 0;
 }
 
 public Action:Timer_AllTalk(Handle:timer)
@@ -256,7 +277,7 @@ public Action:Command_MuteCheck(client, args)
 		}
 		idx++;
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Timer_DelayedTeamVoice(Handle:timer)
@@ -299,6 +320,8 @@ public Action:Timer_DelayedTeamVoice(Handle:timer)
 	}
 	if (GetConVarBool(gH_Cvar_Announce))
 	{
+		PrintToChatAll("[\x03SM\x01] %t", "Mute Time Expired");
+	}
 	gH_UnmuteTimer = MissingTAG:0;
 	return Action:0;
 }
@@ -315,12 +338,16 @@ public Action:RoundStart(Handle:event, String:name[], bool:dontBroadcast)
 	{
 		if (Announce)
 		{
+			PrintToChatAll("[\x03SM\x01] %t", "Start of Round with a Muted Team");
+		}
 		gH_UnmuteTimer = CreateTimer(GetConVarFloat(gH_Cvar_MuteTime), Timer_DelayedTeamVoice, any:0, 2);
 	}
 	else
 	{
 		if (Announce)
 		{
+			PrintToChatAll("[\x03SM\x01] %t", "Start of Round without Muted Team");
+		}
 	}
 	if (GetConVarBool(gH_Cvar_MuteSpectators))
 	{
@@ -455,14 +482,14 @@ public PlayerDeath(Handle:event, String:name[], bool:dontBroadcast)
 	new DeadTalkMode = GetConVarInt(gH_Cvar_DeadTalk);
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	new RoundEndAllTalk = GetConVarBool(gH_Cvar_RoundEndAllTalk);
-	new bool:AdminOverrideDeath = GetConVarBool(gH_Cvar_AdmOvrd_OnDeath);
+	bool AdminOverrideDeath = GetConVarBool(gH_Cvar_AdmOvrd_OnDeath);
 	if (!client)
 	{
-		//return 0;
+		return 0;
 	}
 	if (g_bMuted[client])
 	{
-		//return 0;
+		return 0;
 	}
 	new var2;
 	if (!g_BetweenRounds || (g_BetweenRounds && !RoundEndAllTalk))
@@ -539,7 +566,7 @@ public PlayerDeath(Handle:event, String:name[], bool:dontBroadcast)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
@@ -587,11 +614,15 @@ public Action:RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 		SetConVarBool(gH_Cvar_AllTalk, true, false, false);
 		if (GetConVarInt(gH_Cvar_Announce))
 		{
+			PrintToChatAll("[\x03SM\x01] %t", "Round End - All Talk On");
+		}
 	}
 	else
 	{
 		if (GetConVarInt(gH_Cvar_Announce))
 		{
+			PrintToChatAll("[\x03SM\x01] %t", "Round End - All Talk Off");
+		}
 	}
 	return Action:0;
 }
@@ -599,11 +630,11 @@ public Action:RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
 public Action:Event_PlayerTeamSwitch(Handle:event, String:name[], bool:dontBroadcast)
 {
 	new NewTeam = GetEventInt(event, "team");
-	new Bool:Disconnect = GetEventBool(event, "disconnect");
+	int Bool:Disconnect = GetEventBool(event, "disconnect");
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	if (Disconnect)
 	{
-		return Plugin_Handled;
+		return Action:3;
 	}
 	new DeadTalkMode = GetConVarInt(gH_Cvar_DeadTalk);
 	if (!g_bHasJoinedOnce[client])
@@ -611,7 +642,7 @@ public Action:Event_PlayerTeamSwitch(Handle:event, String:name[], bool:dontBroad
 		g_bHasJoinedOnce[client] = 1;
 		if (DeadTalkMode)
 		{
-			new bool:AdminOverrideJoin = GetConVarBool(gH_Cvar_AdmOvrd_FirstJoin);
+			bool AdminOverrideJoin = GetConVarBool(gH_Cvar_AdmOvrd_FirstJoin);
 			new var1;
 			if (!GetAdminFlag(GetUserAdmin(client), AdminFlag:9, AdmAccessMode:1) || !AdminOverrideJoin)
 			{
@@ -650,7 +681,7 @@ public Action:Event_PlayerTeamSwitch(Handle:event, String:name[], bool:dontBroad
 			idx++;
 		}
 	}
-	return Plugin_Handled;
+	return Action:3;
 }
 
 public Action:Listen_EffectiveMute(client, String:command[], args)
@@ -658,7 +689,7 @@ public Action:Listen_EffectiveMute(client, String:command[], args)
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: %s <target> <optional:time>", command);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	decl String:arg[64];
 	GetCmdArg(1, arg, 64);
@@ -673,7 +704,7 @@ public Action:Listen_EffectiveMute(client, String:command[], args)
 	new i;
 	while (i < target_count)
 	{
-		new VCommType:Punishment = 4;
+		int VCommType:Punishment = 4;
 		if (StrEqual(command, "sm_silence", false))
 		{
 			g_bMuted[target_list[i]] = 1;
@@ -743,7 +774,7 @@ public Action:Listen_EffectiveMute(client, String:command[], args)
 			}
 		}
 		decl String:sSteamID[24];
-		GetClientAuthId(target_list[i], sSteamID, 22);
+		GetClientAuthString(target_list[i], sSteamID, 22);
 		new iFindIndex = FindStringInArray(gH_Muted_Players, sSteamID);
 		if (iFindIndex == -1)
 		{
@@ -760,7 +791,7 @@ public Action:Listen_EffectiveUnMute(client, String:command[], args)
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: %s <target> <optional:'force'>", command);
-		return Plugin_Handled;
+		return Action:3;
 	}
 	decl String:arg[64];
 	GetCmdArg(1, arg, 64);
@@ -792,7 +823,7 @@ public Action:Listen_EffectiveUnMute(client, String:command[], args)
 			}
 		}
 		decl String:sSteamID[24];
-		GetClientAuthId(target_list[i], sSteamID, 22);
+		GetClientAuthString(target_list[i], sSteamID, 22);
 		new arrayIndex = FindStringInArray(gH_Muted_Players, sSteamID);
 		if (arrayIndex != -1)
 		{
@@ -812,10 +843,10 @@ public OnMapEnd()
 		player++;
 	}
 	ClearArray(gH_Muted_Players);
-	//return 0;
+	return 0;
 }
 
-public void OnClientDisconnect(int client)
+public OnClientDisconnect(client)
 {
 	new iFindIdx = FindValueInArray(gH_TimedPunishmentLocalArray, client);
 	if (iFindIdx != -1)
@@ -834,13 +865,13 @@ public void OnClientDisconnect(int client)
 		SetClientCookie(client, gH_Cookie_VoiceCommMask, sCookie);
 		RemoveFromArray(gH_TimedPunishmentLocalArray, iFindIdx);
 	}
-	//return 0;
+	return 0;
 }
 
 public OnClientPostAdminCheck(client)
 {
 	new userid = GetClientUserId(client);
-	new VCommType:PunishmentType = 4;
+	int VCommType:PunishmentType = 4;
 	if (AreClientCookiesCached(client))
 	{
 		decl String:sBitMask[20];
@@ -885,11 +916,11 @@ public OnClientPostAdminCheck(client)
 	if (GetConVarBool(gH_Cvar_BlockUnMuteOnRetry) && PunishmentType == VCommType:4)
 	{
 		decl String:sSteamID[24];
-		GetClientAuthId(client, sSteamID, 22);
+		GetClientAuthString(client, sSteamID, 22);
 		new arrayIndex = FindStringInArray(gH_Muted_Players, sSteamID);
 		if (arrayIndex != -1)
 		{
-			new VCommType:ThePunishment = GetArrayCell(gH_Muted_Players, arrayIndex, 22, false);
+			int VCommType:ThePunishment = GetArrayCell(gH_Muted_Players, arrayIndex, 22, false);
 			switch (ThePunishment)
 			{
 				case 1:
@@ -910,7 +941,7 @@ public OnClientPostAdminCheck(client)
 			}
 		}
 	}
-	//return 0;
+	return 0;
 }
 
 public Action:CheckTimedPunishments(Handle:timer)
@@ -926,9 +957,9 @@ public Action:CheckTimedPunishments(Handle:timer)
 			if (0 >= gA_LocalTimeRemaining[iClientIndex])
 			{
 				decl String:sSteamID[24];
-				GetClientAuthId(iClientIndex, sSteamID, 22);
+				GetClientAuthString(iClientIndex, sSteamID, 22);
 				new iFindIndex = FindStringInArray(gH_Muted_Players, sSteamID);
-				new VCommType:CommPunishment = 4;
+				int VCommType:CommPunishment = 4;
 				if (iFindIndex != -1)
 				{
 					CommPunishment = GetArrayCell(gH_Muted_Players, iFindIndex, 22, false);
@@ -960,4 +991,5 @@ public Action:CheckTimedPunishments(Handle:timer)
 	}
 	return Action:0;
 }
+
 

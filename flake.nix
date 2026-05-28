@@ -15,15 +15,18 @@
           
           # Tools
           bash
-          wget
           curl
+          wget
           unzip
           git
           git-lfs
           binutils
           file
           patchelf
+          openjdk17
+          python3
         ];
+
         
         shellHook = ''
           # Directly construct the loader path from the 32-bit glibc store path

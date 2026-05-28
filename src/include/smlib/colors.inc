@@ -476,7 +476,7 @@ static stock Color_GetChatColorInfo(&index, &subject=CHATCOLOR_NOSUBJECT)
 	}
 
 	new newSubject = CHATCOLOR_NOSUBJECT;
-	new ChatColorSubjectType:type = chatColorInfo[index][ChatColorInfo_SubjectType];
+	new ChatColorSubjectType:type = _:chatColorInfo[index][ChatColorInfo_SubjectType];
 
 	switch (type) {
 

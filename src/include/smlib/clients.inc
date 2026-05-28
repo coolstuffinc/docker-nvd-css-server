@@ -537,7 +537,7 @@ stock Client_GetClones(client, cloneList[])
 	new x=0;
 	decl String:ip_client[16], String:ip_player[16];
 
-	GetClientIP(client, ip_client, sizeof(client));
+	GetClientIP(client, ip_client, 16);
 
 	for (new player=1; player <= MaxClients; player++) {
 

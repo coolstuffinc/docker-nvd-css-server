@@ -2,33 +2,24 @@
 set -e
 
 TOOLS_DIR="$(pwd)/.sourcepawn"
+# Wipe the corrupted tools directory
+rm -rf "$TOOLS_DIR"
 mkdir -p "$TOOLS_DIR"
 
-echo "Setting up SourcePawn environment..."
+echo "Downloading SourceMod 1.12.0..."
+wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz
 
-# Download SourceMod 1.12.0
-if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
-    echo "Downloading SourceMod 1.12.0..."
-    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz
-    tar -C "$TOOLS_DIR" -zxf "$TOOLS_DIR/sourcemod.tar.gz"
-    rm "$TOOLS_DIR/sourcemod.tar.gz"
-fi
+echo "Extracting..."
+tar -C "$TOOLS_DIR" -zxf "$TOOLS_DIR/sourcemod.tar.gz"
+rm "$TOOLS_DIR/sourcemod.tar.gz"
 
-# Locate the compiler
-SPCOMP=$(find "$TOOLS_DIR" -name "spcomp" | head -n 1)
-DEST="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
-mkdir -p "$(dirname "$DEST")"
+SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 if [ -f "$SPCOMP" ]; then
-    echo "Found spcomp at $SPCOMP"
-    # Only move if the source and destination are different files
-    if [ "$SPCOMP" != "$DEST" ]; then
-        mv "$SPCOMP" "$DEST"
-    fi
-    chmod +x "$DEST"
+    chmod +x "$SPCOMP"
+    echo "Compiler extracted successfully."
+    file "$SPCOMP"
 else
-    echo "Error: spcomp not found after extraction!"
+    echo "Error: spcomp extraction failed!"
     exit 1
 fi
-
-echo "SourcePawn environment ready."
