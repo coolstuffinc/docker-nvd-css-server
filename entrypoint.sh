@@ -40,6 +40,19 @@ sync_from_github() {
         done < assets/mods.txt
     fi
 
+    # Sync Maps
+    if [ -f "assets/maps.txt" ]; then
+        echo "Checking for map updates..."
+        mkdir -p "$MAPS_DIR"
+        while read -r map; do
+            [ -z "$map" ] && continue
+            if [ ! -f "$MAPS_DIR/$map" ]; then
+                echo "Downloading new map: $map"
+                curl -L -o "$MAPS_DIR/$map" "$GITHUB_RAW/maps/$map" || echo "Failed to sync $map"
+            fi
+        done < assets/maps.txt
+    fi
+    
     # Sync Configs (Apply defaults if missing)
     if [ -d "/home/steam/cfg_defaults" ]; then
         cp -rn /home/steam/cfg_defaults/* "$CSTRIKE_DIR/cfg/" 2>/dev/null || true
