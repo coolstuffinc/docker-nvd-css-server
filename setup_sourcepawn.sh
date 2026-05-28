@@ -10,8 +10,8 @@ echo "Setting up SourcePawn environment..."
 # Download SourceMod if missing (upgrading to 1.12 to fix compatibility issues)
 if [ ! -f "$TOOLS_DIR/addons/sourcemod/scripting/spcomp" ]; then
     echo "Downloading SourceMod 1.12.0..."
-    # Fetching stable 1.12.0 release
-    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://sm.alliedmods.net/smdrop/1.12/sourcemod-1.12.0-git7236-linux.tar.gz
+    # Fetching stable 1.12.0 release from GitHub Releases (avoiding 403 on alliedmods.net)
+    wget -q -O "$TOOLS_DIR/sourcemod.tar.gz" https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz
     tar -C "$TOOLS_DIR" -zxf "$TOOLS_DIR/sourcemod.tar.gz"
     rm "$TOOLS_DIR/sourcemod.tar.gz"
 fi
