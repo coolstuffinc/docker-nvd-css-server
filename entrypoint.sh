@@ -2,23 +2,39 @@
 set -e
 trap '' TERM INT HUP
 
-MODS_DIR="/home/steam/css/cstrike/addons/sourcemod/plugins"
-MAPS_DIR="/home/steam/css/cstrike/maps"
+CSS_DIR="/home/steam/css"
+CSTRIKE_DIR="$CSS_DIR/cstrike"
+MODS_DIR="$CSTRIKE_DIR/addons/sourcemod/plugins"
+MAPS_DIR="$CSTRIKE_DIR/maps"
 GITHUB_RAW="https://raw.githubusercontent.com/coolstuffinc/docker-nvd-css-server/assets"
 
-# Ensure directories exist
-mkdir -p "$MODS_DIR"
-mkdir -p "$MAPS_DIR"
+# 1. Bootstrapping (If volume is empty)
+if [ ! -f "$CSS_DIR/srcds_run" ]; then
+    echo "--- Initial CSS Installation ---"
+    ./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 validate +quit
+fi
 
-# Incremental Sync Function
+# 2. Base Addons (Metamod/SourceMod)
+if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
+    echo "--- Installing Base Addons ---"
+    mkdir -p /tmp/base_mods
+    wget -q -O /tmp/base_mods/mmsource.tar.gz "$GITHUB_RAW/mods/mmsource-1.10.6-linux.tar.gz"
+    wget -q -O /tmp/base_mods/sourcemod.tar.gz "$GITHUB_RAW/mods/sourcemod-1.7.3-git5275-linux.tar.gz"
+    tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/mmsource.tar.gz
+    tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/sourcemod.tar.gz
+    rm -rf /tmp/base_mods
+fi
+
+# 3. Incremental Sync from GitHub
 sync_from_github() {
     echo "--- Incremental Sync Starting ---"
     
     # Sync Mods
     if [ -f "assets/mods.txt" ]; then
         echo "Checking for mod updates..."
+        mkdir -p "$MODS_DIR"
         while read -r mod; do
-            [ -z "$mod" ] && continue
+            [ -z "$mod" ] || [[ "$mod" == *.zip ]] || [[ "$mod" == *.tar.gz ]] && continue
             echo "Syncing mod: $mod"
             wget -q -O "$MODS_DIR/$mod" "$GITHUB_RAW/mods/$mod" || echo "Failed to sync $mod"
         done < assets/mods.txt
@@ -27,6 +43,7 @@ sync_from_github() {
     # Sync Maps
     if [ -f "assets/maps.txt" ]; then
         echo "Checking for map updates..."
+        mkdir -p "$MAPS_DIR"
         while read -r map; do
             [ -z "$map" ] && continue
             if [ ! -f "$MAPS_DIR/$map" ]; then
@@ -36,28 +53,26 @@ sync_from_github() {
         done < assets/maps.txt
     fi
     
+    # Sync Configs (Apply defaults if missing)
+    if [ -d "/home/steam/cfg_defaults" ]; then
+        cp -rn /home/steam/cfg_defaults/* "$CSTRIKE_DIR/cfg/" 2>/dev/null || true
+    fi
+    
     echo "--- Incremental Sync Finished ---"
 }
 
-# Run sync before anything else
 sync_from_github
 
-# Ensure CSS is up to date only if requested
+# 4. Optional Full Update
 if [ "$1" == "update" ]; then
-	echo "Running SteamCMD full verification (this may take a while)..."
-	./steamcmd.sh +login anonymous +force_install_dir ./css +app_update 232330 validate +quit
+	echo "Running SteamCMD full verification..."
+	./steamcmd.sh +force_install_dir "$CSS_DIR" +login anonymous +app_update 232330 validate +quit
 fi
 
-if [ -d /home/steam/htdocs ]; then
-	echo "Copying htdocs..."
-	mkdir -p /home/steam/htdocs/cstrike
-	cp -fR /home/steam/css/cstrike/maps /home/steam/htdocs/cstrike
-	cp -fR /home/steam/css/cstrike/sound /home/steam/htdocs/cstrike
-fi
+cd "$CSS_DIR"
+# Fix for "undefined symbol: floorf"
+export LD_PRELOAD="/usr/lib32/libm.so.6"
 
-cd css
-# Fix for "undefined symbol: floorf" in older SourceMod on newer Ubuntu
-export LD_PRELOAD="/lib32/libm.so.6"
 ./srcds_run -game cstrike \
             +exec server.cfg \
             +hostname "$CSS_HOSTNAME" \
