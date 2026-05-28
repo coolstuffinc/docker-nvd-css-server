@@ -8,16 +8,13 @@ SPCOMP="$TOOLS_DIR/addons/sourcemod/scripting/spcomp"
 
 mkdir -p "$COMPILED_DIR"
 
-# Ensure permissions
-chmod +x "$SPCOMP"
-
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
         smxname=$(basename "${spfile%.sp}.smx")
         echo "Compiling $spfile..."
         
-        # Native execution in Ubuntu runner
-        "$SPCOMP" "$spfile" \
+        # steam-run is the correct tool for 32-bit binaries on NixOS
+        steam-run "$SPCOMP" "$spfile" \
             -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \
             -i"$INCLUDE_DIR" \
