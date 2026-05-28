@@ -27,7 +27,14 @@ jobs:
 
       - name: Compile Plugins
         id: compile
-        run: nix develop . --command bash scripts/compile_all.sh
+        run: nix develop --command bash scripts/compile_all.sh
+
+      - name: Upload Compiled Plugins
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-mods
+          path: compiled_plugins/*.smx
 
       - name: Update Assets Branch
         if: success()
