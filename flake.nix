@@ -4,25 +4,30 @@
   outputs = { self, nixpkgs }:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
-      # Create an FHS environment for 32-bit SourceMod binaries
-      fhs = pkgs.buildFHSEnv {
-        name = "sp-fhs";
-        targetPkgs = pkgs: with pkgs; [
-          pkgsi686Linux.glibc
-          pkgsi686Linux.stdenv.cc.cc.lib
-          pkgsi686Linux.ncurses
-          bash
-          coreutils
-        ];
-        runScript = "bash";
+      pkgs = import nixpkgs { 
+        inherit system; 
+        config = { allowUnfree = true; };
       };
     in {
       devShells.${system}.default = pkgs.mkShell {
-        packages = [ fhs ];
+        buildInputs = with pkgs; [
+          # Tools
+          gcc
+          pkg-config
+          wget
+          curl
+          unzip
+          git
+          git-lfs
+          bash
+          binutils
+          file
+          # This provides the magic 32-bit environment
+          steam-run
+        ];
+        
         shellHook = ''
-          echo "Entering SourcePawn FHS environment..."
-          exec sp-fhs
+          echo "Environment ready (using steam-run)."
         '';
       };
     };
