@@ -18,7 +18,6 @@ fi
 if [ ! -d "$CSTRIKE_DIR/addons/sourcemod" ]; then
     echo "--- Installing Base Addons ---"
     mkdir -p /tmp/base_mods
-    # Using official AlliedModders SourceMod GitHub releases (v1.12)
     curl -L -o /tmp/base_mods/mmsource.tar.gz "https://github.com/alliedmodders/metamod-source/releases/download/1.10.8-git966/mmsource-1.10.8-git966-linux.tar.gz"
     curl -L -o /tmp/base_mods/sourcemod.tar.gz "https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz"
     tar -C "$CSTRIKE_DIR" -zxf /tmp/base_mods/mmsource.tar.gz
@@ -41,19 +40,6 @@ sync_from_github() {
         done < assets/mods.txt
     fi
 
-    # Sync Maps
-    if [ -f "assets/maps.txt" ]; then
-        echo "Checking for map updates..."
-        mkdir -p "$MAPS_DIR"
-        while read -r map; do
-            [ -z "$map" ] && continue
-            if [ ! -f "$MAPS_DIR/$map" ]; then
-                echo "Downloading new map: $map"
-                curl -L -o "$MAPS_DIR/$map" "$GITHUB_RAW/maps/$map" || echo "Failed to sync $map"
-            fi
-        done < assets/maps.txt
-    fi
-    
     # Sync Configs (Apply defaults if missing)
     if [ -d "/home/steam/cfg_defaults" ]; then
         cp -rn /home/steam/cfg_defaults/* "$CSTRIKE_DIR/cfg/" 2>/dev/null || true
@@ -63,6 +49,7 @@ sync_from_github() {
 }
 
 sync_from_github
+
 
 # 4. Optional Full Update
 if [ "$1" == "update" ]; then
