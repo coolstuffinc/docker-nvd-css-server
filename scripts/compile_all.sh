@@ -13,13 +13,17 @@ if [ -z "$SP_LOADER" ]; then
     exit 1
 fi
 
+# Ensure compiler is patched
+chmod +x "$SPCOMP"
+patchelf --set-interpreter "$SP_LOADER" "$SPCOMP" || true
+
 for spfile in src/*.sp; do
     if [ -s "$spfile" ]; then
         smxname=$(basename "${spfile%.sp}.smx")
         echo "Compiling $spfile..."
         
-        # Invoke directly using the 32-bit loader and the 32-bit libs in LD_LIBRARY_PATH
-        "$SP_LOADER" "$SPCOMP" "$spfile" \
+        # Executed directly using the patched binary
+        "$SPCOMP" "$spfile" \
             -i"$TOOLS_DIR/addons/sourcemod/scripting/include" \
             -i"src" \
             -i"$INCLUDE_DIR" \
