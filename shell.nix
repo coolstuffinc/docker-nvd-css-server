@@ -1,18 +1,9 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> { config = { allowUnfree = true; }; } }:
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    gcc
-    pkg-config
-    wget
-    curl
-    unzip
-    git
-    bash
-    binutils
-    file
-    # This provides the magic 32-bit environment
     steam-run
+    bash
   ];
   
   shellHook = ''

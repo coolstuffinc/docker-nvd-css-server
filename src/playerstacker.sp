@@ -16,8 +16,8 @@ public Plugin:myinfo =
 
 public void OnPluginStart()
 {
-	CreateConVar("playerstacker_version", "1.0", "Player Stacker version", FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	hEnable = CreateConVar("playerstacker_enable", "1", "0 disables plugin, 1 removes stack limit for both teams, 2 removes stack limit for terrorist only, 3 removes stack limit for counter terrorist only", FCVAR_PLUGIN);
+	CreateConVar("playerstacker_version", "1.0", "Player Stacker version", FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	hEnable = CreateConVar("playerstacker_enable", "1", "0 disables plugin, 1 removes stack limit for both teams, 2 removes stack limit for terrorist only, 3 removes stack limit for counter terrorist only", 0);
 	HookConVarChange(hEnable, ConVarChange);
 	EnableTeam = GetConVarInt(hEnable);
 	for (new client = 1; client <= MaxClients; client++)
@@ -29,7 +29,7 @@ public void OnPluginStart()
 	}
 }
 
-public ConVarChange(Handle:cvar, const String:oldVal[], const String:newVal[])
+public void ConVarChange(ConVar cvar, const char[] oldVal, const char[] newVal)
 {
 	if (hEnable == cvar)
 	{
