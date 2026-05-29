@@ -51,6 +51,13 @@ if [ -f "/home/steam/assets/mods.txt" ]; then
     done < /home/steam/assets/mods.txt
 fi
 
+# Cleanup obsolete legacy binaries that might have been unzipped BEFORE we apply our CI compiled ones
+rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/Cash.smx"
+rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/bot2player.smx"
+rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/bot2player_public.smx"
+rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/dropbomb.smx"
+rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/botdropbomb.smx.old"
+
 echo "--- Applying CI Compiled Plugins ---"
 if ls /home/steam/ci_mods/*.smx 1> /dev/null 2>&1; then
     cp -v /home/steam/ci_mods/*.smx "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/"
@@ -62,12 +69,5 @@ cp -rn /home/steam/cfg_defaults/* "$CSTRIKE_BUNDLED/cfg/" 2>/dev/null || true
 # Ensure maplist.txt exists for mixmod
 touch "$CSTRIKE_BUNDLED/maplist.txt"
 touch "$CSTRIKE_BUNDLED/cfg/maplist.txt"
-
-# Cleanup obsolete legacy binaries that might have been unzipped
-rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/Cash.smx"
-rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/bot2player.smx"
-rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/bot2player_public.smx"
-rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/dropbomb.smx"
-rm -f "$CSTRIKE_BUNDLED/addons/sourcemod/plugins/botdropbomb.smx.old"
 
 echo "--- Server Bundling Complete! ---"
