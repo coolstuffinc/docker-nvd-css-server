@@ -122,7 +122,7 @@ void GetMapList(char[] buffer, int size)
 
 public void OnOllamaResponse(HTTPResponse response, any userid)
 {
-    int client = (userid == 0) ? 0 : GetClientOfUserId(userid);
+    // Removido 'int client' não utilizado
     
     if (response.Status != HTTPStatus_OK || response.Data == null)
     {
@@ -130,13 +130,12 @@ public void OnOllamaResponse(HTTPResponse response, any userid)
         return;
     }
 
-    // DEBUG: Logar a resposta bruta para ver o que está acontecendo
-    char fullResponse[2048];
-    // Se response.Data for Handle (JSONObject), precisamos converter para string
-    // Comoripext nem sempre tem uma função de conversão direta fácil, vamos logar o status
     LogMessage("Ollama raw response received.");
 
-	JSONObject json = view_as<JSONObject>(response.Data);
+    JSONObject json = view_as<JSONObject>(response.Data);
+    
+    // ... restante ...
+
 	
 	if (json.HasKey("error")) {
 		char errorMsg[256];
