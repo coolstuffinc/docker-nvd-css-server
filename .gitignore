@@ -1,9 +1,2 @@
 .vagrant/machines/
 test/
-/maps/
-/mods/
-.sourcepawn/
-spcomp-nix
-src/mixmod.sp
-src/mods/
-/bot2player.zip

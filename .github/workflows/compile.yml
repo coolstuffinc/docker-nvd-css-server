@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Build and Push Docker Image
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-docker:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,19 +35,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v25
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      - name: Compile Plugins
-        run: |
-          # Download and setup the compiler
-          chmod +x setup_sourcepawn.sh
-          ./setup_sourcepawn.sh
-          
-          # Compile the plugins using the nix environment
-          nix develop --command bash -c "./batch_compile.sh"
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:

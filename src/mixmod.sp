@@ -1,0 +1,57 @@
+#include <sourcemod>
+#include <sdktools>
+#include <cstrike>
+
+#pragma semicolon 1
+#pragma newdecls required
+
+new Float:NULL_VECTOR[3];
+new String:NULL_STRING[4];
+new MaxClients;
+new g_nCTScore;
+new g_nTScore;
+new g_nCTScore2;
+new g_nTScore2;
+new g_nCTScoreH1;
+new g_nTScoreH1;
+new bool:hasMixStarted;
+new bool:didLiveStarted;
+new bool:g_SwapNow;
+new bool:isKo3Running;
+new bool:isPauseBeingUsed;
+new bool:isRandomPasswordWasLastPw;
+new bool:isBuyZoneDisabled;
+new bool:isRandomBeingUsed;
+new g_ArrPause[66][10];
+new bool:ENABLE_PLUGIN_CHECKING;
+new bool:isMapListGenerated;
+new Handle:g_MapListMenu;
+new bool:isMixMenuGenerated;
+new Handle:g_MixMenu;
+new Handle:g_AdminMenu;
+new Handle:g_WinTeamPanel;
+new Handle:g_HelpPanel;
+new Handle:g_CvarEnabled;
+new Handle:g_CvarShowMoneyAndWeapons;
+new Handle:g_CvarShowScores;
+new Handle:g_CvarEnableRRCommand;
+new Handle:g_CvarPlayTeamSwapedSound;
+new Handle:g_CvarCusomNameTeamCT;
+new Handle:g_CvarCusomNameTeamT;
+new Handle:g_CvarRestartTimeInLiveCommand;
+new Handle:g_CvarUseZBMatchCommand;
+new Handle:g_CvarMr3Enabled;
+new Handle:g_CvarStopCustomCfg;
+new Handle:g_CvarShowSwitchInPanel;
+new Handle:g_CvarShowCashInPanel;
+new Handle:g_CvarHalfAutoLiveStart;
+new Handle:g_CvarCustomLiveCfg;
+new Handle:g_CvarCustomPracCfg;
+new Handle:g_CvarCustomMr3Cfg;
+new Handle:g_CvarKickAdmins;
+new Handle:g_CvarDisableSayCommand;
+new Handle:g_CvarMapListFrom;
+new Handle:g_CvarEnableKnifeRound;
+new Handle:g_CvarUseKo3Command;
+new Handle:g_CvarInformWinnerInPanel;
+new Handle:g_CvarRpwShowPass;
