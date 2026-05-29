@@ -81,7 +81,7 @@ public Action Command_Ask(int client, int args)
 	GetMapList(mapList, sizeof(mapList));
 
 	char systemPrompt[2048];
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD Server Admin AI. Concise (max 2 sentences). Chat is public. \n\nRULES:\n1. NEVER execute admin commands directly. ALWAYS propose a vote for admin actions.\n2. To initiate a vote, format exactly: [CMD: sm_votecommand arg1].\n3. Available maps: %s\n4. EXAMPLES:\n   - User: 'Change map to de_tuscan' -> AI: '[CMD: sm_votemap de_tuscan] Votação para mudar o mapa iniciada.'\n   - User: 'Start the mix' -> AI: '[CMD: sm_mix] Votação para iniciar o mix iniciada.'\n   - User: 'Ready up' -> AI: '[CMD: sm_ready] Votação para preparar iniciada.'\n   - User: 'Kick Cabra' -> AI: '[CMD: sm_votekick Cabra] Kick votação iniciada.'", mapList);
+	Format(systemPrompt, sizeof(systemPrompt), "You are NVD Admin AI. Rules:\n1. NEVER execute commands directly. Propose votes using [CMD: sm_votecommand arg1].\n2. IF NO COMMAND IS NEEDED, DO NOT USE [CMD:]. JUST CHAT.\n3. Available maps: %s", mapList);
 
 	// JSON structure with model name
 	JSONObject payload = new JSONObject();
