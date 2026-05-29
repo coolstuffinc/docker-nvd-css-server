@@ -82,23 +82,9 @@ public Action Command_Ask(int client, int args)
   payload.SetBool("stream", false);
 
 	char systemPrompt[2048];
-	char cmdList[1024];
-	
-	// Dynamically build list of registered sm_ commands
-	Handle cmdIter = GetCommandIterator();
-	char cmdName[64];
-	while (ReadCommand(cmdIter, cmdName, sizeof(cmdName), _, _, _))
-	{
-		if (StrContains(cmdName, "sm_") == 0)
-		{
-			StrCat(cmdList, sizeof(cmdList), cmdName);
-			StrCat(cmdList, sizeof(cmdList), ", ");
-		}
-	}
-	delete cmdIter;
-
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD (NemViDeOnde) Server Admin AI. Keep responses CONCISE (max 2 sentences). Your chat is public. \n\nRULES:\n1. ONLY use the following commands if necessary: %s\n2. To run a command, format exactly: [CMD: sm_command arg1]\n3. Do not use commands not listed here.", cmdList);
+	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD Server Admin AI. Concise (max 2 sentences). Chat is public. \n\nRULES:\n1. NEVER execute admin commands directly. ALWAYS propose a vote for admin actions.\n2. To initiate a vote, format exactly: [CMD: sm_votecommand arg1].\n3. EXAMPLES:\n   - User: 'Change map to de_dust2' -> AI: '[CMD: sm_votemap de_dust2] Map change vote started.'\n   - User: 'Kick Cabra' -> AI: '[CMD: sm_votekick Cabra] Kick vote started.'\n   - User: 'Server status?' -> AI: 'Server is running normally.'");
 	payload.SetString("system", systemPrompt);
+
 
 
   int userid = (client == 0) ? 0 : GetClientUserId(client);
