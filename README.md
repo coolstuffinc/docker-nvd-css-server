@@ -38,7 +38,9 @@ docker run -d --name css-server \
 | `CSS_PASSWORD` | Optional server join password |
 | `STEAM_TOKEN` | GSLT token (App ID 240) |
 
-## Plugins
+## AI Admin Assistant
+
+This server includes an AI Admin assistant powered by Ollama. For detailed setup and troubleshooting, see [AI_ADMIN.md](AI_ADMIN.md).
 
 Compiled from `src/` during build:
 - bot2player, botdropbomb, enemies_left, forceroundend, givecash, llama_admin, playerstacker
