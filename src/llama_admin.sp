@@ -81,18 +81,42 @@ public Action Command_Ask(int client, int args)
   payload.SetString("prompt", prompt);
   payload.SetBool("stream", false);
 
+	// Add map list dynamically
+	char mapList[1024];
+	GetMapList(mapList, sizeof(mapList));
+
 	char systemPrompt[2048];
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD Server Admin AI. Concise (max 2 sentences). Chat is public. \n\nRULES:\n1. NEVER execute admin commands directly. ALWAYS propose a vote for admin actions.\n2. To initiate a vote, format exactly: [CMD: sm_votecommand arg1].\n3. EXAMPLES:\n   - User: 'Change map to de_dust2' -> AI: '[CMD: sm_votemap de_dust2] Map change vote started.'\n   - User: 'Kick Cabra' -> AI: '[CMD: sm_votekick Cabra] Kick vote started.'\n   - User: 'Server status?' -> AI: 'Server is running normally.'");
+	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD Server Admin AI. Concise (max 2 sentences). Chat is public. \n\nRULES:\n1. NEVER execute admin commands directly. ALWAYS propose a vote for admin actions.\n2. To initiate a vote, format exactly: [CMD: sm_votecommand arg1].\n3. Available maps: %s\n4. EXAMPLES:\n   - User: 'Change map to de_tuscan' -> AI: '[CMD: sm_votemap de_tuscan] Votação para mudar o mapa iniciada.'\n   - User: 'Start the mix' -> AI: '[CMD: sm_mix] Votação para iniciar o mix iniciada.'\n   - User: 'Ready up' -> AI: '[CMD: sm_ready] Votação para preparar iniciada.'\n   - User: 'Kick Cabra' -> AI: '[CMD: sm_votekick Cabra] Kick votação iniciada.'", mapList);
 	payload.SetString("system", systemPrompt);
 
+	int userid = (client == 0) ? 0 : GetClientUserId(client);
+	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
+	delete payload;
 
-
-  int userid = (client == 0) ? 0 : GetClientUserId(client);
-  g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
-  delete payload;
-
-  return Plugin_Handled;
+	return Plugin_Handled;
 }
+
+void GetMapList(char[] buffer, int size)
+{
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "configs/maplist.txt");
+	File file = OpenFile(path, "r");
+	if (file != null)
+	{
+		char line[64];
+		while (file.ReadLine(line, sizeof(line)))
+		{
+			TrimString(line);
+			if (strlen(line) > 0)
+			{
+				StrCat(buffer, size, line);
+				StrCat(buffer, size, ", ");
+			}
+		}
+		delete file;
+	}
+}
+
 
 public void OnOllamaResponse(HTTPResponse response, any userid)
 {
@@ -154,11 +178,9 @@ public void OnOllamaResponse(HTTPResponse response, any userid)
       reply[199] = '\0';
     }
 
-    // Print to appropriate destination
-    if (client > 0 && IsClientConnected(client))
-      PrintToChat(client, "[Llama] %s", reply);  // Private to client
-    else
-      PrintToServer("[Llama] %s", reply);         // Console only
+		// Print to all players
+		PrintToChatAll("\x04[Llama Admin]\x01 %s", reply);
+
   }
   // ✅ Function ends cleanly here - no stray prints or braces
 }
