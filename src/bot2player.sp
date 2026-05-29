@@ -120,10 +120,10 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 				PrintCenterText(i, "Since you took over a BOT this last round, you get teleported")
 				TeleportWarning[i] = 1
 				new Float:iTargetOrigin[3]
-				iTargetOrigin[0] = 0.0
-				iTargetOrigin[1] = 0.0
-				iTargetOrigin[2] = 0.0
-				NormalizeVector(iTargetOrigin, iTargetOrigin)
+				// Teleport far out of bounds, spaced apart by player ID so they don't collide
+				iTargetOrigin[0] = 10000.0 + (i * 100.0)
+				iTargetOrigin[1] = 10000.0 + (i * 100.0)
+				iTargetOrigin[2] = -10000.0
 				TeleportEntity(i, iTargetOrigin, NULL_VECTOR, NULL_VECTOR)
 			}
 			CreateTimer(Weapon_Strip_Delay, StripWeapons, GetClientUserId(i))
@@ -483,22 +483,7 @@ public Action:Timer_TeleportPlayer(Handle:timer, any:pack)
 		iTargetAngles[1] = ReadPackFloat(pack);
 		iTargetAngles[2] = ReadPackFloat(pack);
 		
-		// Teleport the player taking over to the bot's location
 		TeleportEntity(iClient, iTargetOrigin, iTargetAngles, NULL_VECTOR);
-		
-		// Move the bot far away so they don't collide
-		float hideOrigin[3];
-		hideOrigin[0] = 0.0;
-		hideOrigin[1] = 0.0;
-		hideOrigin[2] = -10000.0; // Deep underground
-		
-		int botClient = GetClientOfUserId(iBot);
-		if (botClient > 0 && IsClientInGame(botClient) && IsPlayerAlive(botClient))
-		{
-			TeleportEntity(botClient, hideOrigin, NULL_VECTOR, NULL_VECTOR);
-			// We can also just force them to die cleanly
-			ForcePlayerSuicide(botClient);
-		}
 	}
 }
 
