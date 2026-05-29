@@ -76,22 +76,28 @@ public Action Command_Ask(int client, int args)
   char model[64];
   g_cvOllamaModel.GetString(model, sizeof(model));
 
-  JSONObject payload = new JSONObject();
-  payload.SetString("model", model);
-  payload.SetString("prompt", prompt);
-  payload.SetBool("stream", false);
-
-	// Add map list dynamically
-	char mapList[1024];
-	GetMapList(mapList, sizeof(mapList));
-
-	char systemPrompt[2048];
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD Server Admin AI. Concise (max 2 sentences). Chat is public. \n\nRULES:\n1. NEVER execute admin commands directly. ALWAYS propose a vote for admin actions.\n2. To initiate a vote, format exactly: [CMD: sm_votecommand arg1].\n3. Available maps: %s\n4. EXAMPLES:\n   - User: 'Change map to de_tuscan' -> AI: '[CMD: sm_votemap de_tuscan] Votação para mudar o mapa iniciada.'\n   - User: 'Start the mix' -> AI: '[CMD: sm_mix] Votação para iniciar o mix iniciada.'\n   - User: 'Ready up' -> AI: '[CMD: sm_ready] Votação para preparar iniciada.'\n   - User: 'Kick Cabra' -> AI: '[CMD: sm_votekick Cabra] Kick votação iniciada.'", mapList);
-	payload.SetString("system", systemPrompt);
+	// Ollama chat API structure
+	JSONObject payload = new JSONObject();
+	payload.SetString("model", model);
+	payload.SetBool("stream", false);
+	
+	JSONArray messages = new JSONArray();
+	JSONObject msg = new JSONObject();
+	msg.SetString("role", "system");
+	msg.SetString("content", systemPrompt);
+	messages.Push(msg);
+	
+	JSONObject userMsg = new JSONObject();
+	userMsg.SetString("role", "user");
+	userMsg.SetString("content", prompt);
+	messages.Push(userMsg);
+	
+	payload.Set("messages", messages);
 
 	int userid = (client == 0) ? 0 : GetClientUserId(client);
-	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
+	g_HttpClient.Post("api/chat", payload, OnOllamaResponse, userid);
 	delete payload;
+
 
 	return Plugin_Handled;
 }
@@ -136,9 +142,11 @@ public void OnOllamaResponse(HTTPResponse response, any userid)
     return;
   }
 
-  JSONObject json = view_as<JSONObject>(response.Data);
-  char reply[1024];
-  json.GetString("response", reply, sizeof(reply));
+	JSONObject json = view_as<JSONObject>(response.Data);
+	JSONObject message = view_as<JSONObject>(json.Get("message"));
+	char reply[1024];
+	message.GetString("content", reply, sizeof(reply));
+
 
   if (g_cvDebug.BoolValue)
     LogMessage("AI Response: %s", reply);
