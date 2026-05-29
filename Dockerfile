@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 # Only install system build-deps once.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wget curl lib32gcc-s1 lib32stdc++6 libtinfo5 unzip nginx \
+    apt-get install -y --no-install-recommends ca-certificates wget curl lib32gcc-s1 lib32stdc++6 libtinfo5 unzip \
     g++-multilib libc6-dev-i386 patchelf make && \
     rm -rf /var/lib/apt/lists/*
 
