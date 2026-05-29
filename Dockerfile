@@ -93,10 +93,11 @@ COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/gamedata/
 COPY --chown=steam:steam translations/ /tmp/translations/
 COPY --chown=steam:steam entrypoint.sh /home/steam/entrypoint.sh
 
-RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//' > /home/steam/css/cstrike/maplist.txt && \
-    cp /home/steam/css/cstrike/maplist.txt /home/steam/css/cstrike/cfg/maplist.txt && \
+RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//' > /home/steam/css/maplist.txt && \
+    cp /home/steam/css/maplist.txt /home/steam/css/cstrike/maplist.txt && \
+    cp /home/steam/css/maplist.txt /home/steam/css/cstrike/cfg/maplist.txt && \
     mkdir -p /home/steam/css/cstrike/addons/sourcemod/configs && \
-    cp /home/steam/css/cstrike/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt && \
+    cp /home/steam/css/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt && \
     cp -rn /tmp/translations/* /home/steam/css/cstrike/addons/sourcemod/translations/ 2>/dev/null || true && \
     rm -rf /tmp/translations
 
