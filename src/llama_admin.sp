@@ -35,18 +35,19 @@ public void OnPluginStart()
 
 public void OnConfigsExecuted()
 {
-  char baseUrl[256];
-  char ip[64], port[16];
-
-  g_cvOllamaIp.GetString(ip, sizeof(ip));
-  g_cvOllamaPort.GetString(port, sizeof(port));
-
-  Format(baseUrl, sizeof(baseUrl), "http://%s:%s", ip, port);
-  g_HttpClient = new HTTPClient(baseUrl);
-  g_HttpClient.SetHeader("Content-Type", "application/json");
-
-  LogMessage("Llama Admin initialized at %s", baseUrl);
+	char baseUrl[256];
+	char ip[64], port[16];
+	
+	g_cvOllamaIp.GetString(ip, sizeof(ip));
+	g_cvOllamaPort.GetString(port, sizeof(port));
+	
+	Format(baseUrl, sizeof(baseUrl), "http://%s:%s", ip, port);
+	g_HttpClient = new HTTPClient(baseUrl);
+	g_HttpClient.SetHeader("Content-Type", "application/json");
+	
+	LogMessage("Llama Admin initializing. Base URL: %s", baseUrl);
 }
+
 
 public Action Command_Ask(int client, int args)
 {
@@ -82,7 +83,7 @@ public Action Command_Ask(int client, int args)
 	char systemPrompt[2048];
 	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD Server Admin AI. Concise (max 2 sentences). Chat is public. \n\nRULES:\n1. NEVER execute admin commands directly. ALWAYS propose a vote for admin actions.\n2. To initiate a vote, format exactly: [CMD: sm_votecommand arg1].\n3. Available maps: %s\n4. EXAMPLES:\n   - User: 'Change map to de_tuscan' -> AI: '[CMD: sm_votemap de_tuscan] Votação para mudar o mapa iniciada.'\n   - User: 'Start the mix' -> AI: '[CMD: sm_mix] Votação para iniciar o mix iniciada.'\n   - User: 'Ready up' -> AI: '[CMD: sm_ready] Votação para preparar iniciada.'\n   - User: 'Kick Cabra' -> AI: '[CMD: sm_votekick Cabra] Kick votação iniciada.'", mapList);
 
-	// Ollama chat API structure
+	// JSON structure with model name
 	JSONObject payload = new JSONObject();
 	payload.SetString("model", model);
 	payload.SetBool("stream", false);
@@ -101,7 +102,7 @@ public Action Command_Ask(int client, int args)
 	payload.Set("messages", messages);
 
 	int userid = (client == 0) ? 0 : GetClientUserId(client);
-	g_HttpClient.Post("api/chat", payload, OnOllamaResponse, userid);
+	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
 	delete payload;
 
 
