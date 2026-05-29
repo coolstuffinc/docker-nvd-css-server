@@ -10,6 +10,7 @@ new Handle:cvar_b2p_enabled = INVALID_HANDLE
 new Handle:cvar_Round_Restart_Delay  = INVALID_HANDLE
 new Handle:cvar_BotTakeOverStartingCost = INVALID_HANDLE
 new Handle:cvar_BotTakeOverCostIncrement = INVALID_HANDLE
+new Handle:cvar_BotTakeOverPenalty = INVALID_HANDLE
 
 //These are default values, actually set from bot2player_public.cfg file
 new BotTakeOverStartingCost = 1000
@@ -26,6 +27,7 @@ new Nades[MAXPLAYERS + 1][3]
 new Float:Round_Restart_Delay = 0.0
 new Float:Weapon_Strip_Delay = 0.0
 new bool:b2pEnabled
+new bool:bBotTakeOverPenalty
 new iTargetActiveWeapon
 new g_offObserverTarget
 new iTargetWeapon[5]
@@ -63,6 +65,7 @@ public OnPluginStart()
 	cvar_b2p_enabled = CreateConVar("bot2player_enabled", "1", "Enable the plugin?", 0, true, 0.0, true, 1.0)
 	cvar_BotTakeOverStartingCost = CreateConVar("bot2player_price", "1000", "Starting cost to take over a BOT (resets each map)", 0)
 	cvar_BotTakeOverCostIncrement = CreateConVar("bot2player_increase", "250", "Amount to raise price each time a player takes over a BOT", 0)
+	cvar_BotTakeOverPenalty = CreateConVar("bot2player_penalty", "1", "Enable round-end penalty (teleport and strip weapons) for taking over a bot?", 0, true, 0.0, true, 1.0)
 	if (cvar_b2p_enabled == INVALID_HANDLE) 
 	{
 		new String:FailReason[256]
@@ -86,10 +89,12 @@ public OnConfigsExecuted()
 	b2pEnabled = GetConVarBool(cvar_b2p_enabled)
 	BotTakeOverStartingCost = GetConVarInt(cvar_BotTakeOverStartingCost)
 	BotTakeOverCostIncrement = GetConVarInt(cvar_BotTakeOverCostIncrement)
+	bBotTakeOverPenalty = GetConVarBool(cvar_BotTakeOverPenalty)
 	HookConVarChange(cvar_b2p_enabled, cvar_b2p_enabledChange)
 	HookConVarChange(cvar_Round_Restart_Delay, cvar_b2p_enabledChange)
 	HookConVarChange(cvar_BotTakeOverStartingCost, CvarStartCostChange)
 	HookConVarChange(cvar_BotTakeOverCostIncrement, CvarCostIncreaseChange)
+	HookConVarChange(cvar_BotTakeOverPenalty, CvarPenaltyChange)
 }
 public OnMapStart()
 {
@@ -115,18 +120,21 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 		ClientSpecClient[i] = 0
 		if (IsClientConnected(i) && IsClientInGame(i) && !IsClientObserver(i) && ClientTookover[i])
 		{
-			if (IsClientConnected(i))
+			if (bBotTakeOverPenalty)
 			{
-				PrintCenterText(i, "Since you took over a BOT this last round, you get teleported")
-				TeleportWarning[i] = 1
-				new Float:iTargetOrigin[3]
-				// Teleport far out of bounds, spaced apart by player ID so they don't collide
-				iTargetOrigin[0] = 10000.0 + (i * 100.0)
-				iTargetOrigin[1] = 10000.0 + (i * 100.0)
-				iTargetOrigin[2] = -10000.0
-				TeleportEntity(i, iTargetOrigin, NULL_VECTOR, NULL_VECTOR)
+				if (IsClientConnected(i))
+				{
+					PrintCenterText(i, "Since you took over a BOT this last round, you get teleported")
+					TeleportWarning[i] = 1
+					new Float:iTargetOrigin[3]
+					// Teleport far out of bounds, spaced apart by player ID so they don't collide
+					iTargetOrigin[0] = 10000.0 + (i * 100.0)
+					iTargetOrigin[1] = 10000.0 + (i * 100.0)
+					iTargetOrigin[2] = -10000.0
+					TeleportEntity(i, iTargetOrigin, NULL_VECTOR, NULL_VECTOR)
+				}
+				CreateTimer(Weapon_Strip_Delay, StripWeapons, GetClientUserId(i))
 			}
-			CreateTimer(Weapon_Strip_Delay, StripWeapons, GetClientUserId(i))
 		}
 		ClientTookover[i] = 0
 		WrongTeamWarning[i] = 0
@@ -413,6 +421,10 @@ public CvarStartCostChange(Handle:convar, const String:oldValue[], const String:
 public CvarCostIncreaseChange(Handle:convar, const String:oldValue[], const String:newValue[])
 {	
 	BotTakeOverCostIncrement = GetConVarInt(cvar_BotTakeOverCostIncrement)
+}
+public CvarPenaltyChange(Handle:convar, const String:oldValue[], const String:newValue[])
+{	
+	bBotTakeOverPenalty = GetConVarBool(cvar_BotTakeOverPenalty)
 }
 stock FindRagdollClosestToEntity(iEntity, Float:fLimit)
 {
