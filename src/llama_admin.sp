@@ -137,8 +137,19 @@ public void OnOllamaResponse(HTTPResponse response, any userid)
     LogMessage("Ollama raw response received.");
 
 	JSONObject json = view_as<JSONObject>(response.Data);
+	
+	if (json.HasKey("error")) {
+		char errorMsg[256];
+		json.GetString("error", errorMsg, sizeof(errorMsg));
+		LogError("Ollama API Error: %s", errorMsg);
+		return;
+	}
+
 	char reply[1024];
-	json.GetString("response", reply, sizeof(reply));
+	if (!json.GetString("response", reply, sizeof(reply))) {
+		LogError("Failed to parse 'response' field.");
+		return;
+	}
     // ... resto do código ...
 
 
