@@ -1,3 +1,38 @@
 "Phrases"
 {
+	"Blind"
+	{
+		"#format"	"{1:s}"
+		"en"		"I'm blind! I can't see!!!"
+		"es"		"Me han cegado! No puedo ver!!!"
+		"pt"		"Tomei flash! Não consigo ver!!!"
+	}
+	"Count0"
+	{
+		"#format"	"{1:s}"
+		"en"		"That was the last one :)"
+		"es"		"Ese fue el último :)"
+		"pt"		"Era o último! :)"
+	}
+	"Count1"
+	{
+		"#format"	"{1:s}"
+		"en"		"One guy left!!!"
+		"es"		"Sólo queda uno!!!"
+		"pt"		"Só falta um!!!"
+	}
+	"Count2"
+	{
+		"#format"	"{1:s}"
+		"en"		"2 to go"
+		"es"		"Faltan 2 para terminar"
+		"pt"		"Faltam 2"
+	}
+	"CountMany"
+	{
+		"#format"	"{1:i}"
+		"en"		"{1} enemies left"
+		"es"		"Quedan {1} enemigos"
+		"pt"		"Faltam {1} inimigos"
+	}
 }
