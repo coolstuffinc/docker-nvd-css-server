@@ -88,12 +88,17 @@ RUN rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/Cash.smx && \
     rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/botdropbomb.smx.old
 
 COPY --from=builder --chown=steam:steam /output/*.smx /home/steam/css/cstrike/addons/sourcemod/plugins/
-COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/gamedata/
 COPY --chown=steam:steam cfg/ /home/steam/css/cstrike/cfg/
+COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/gamedata/
+COPY --chown=steam:steam translations/ /tmp/translations/
 COPY --chown=steam:steam entrypoint.sh /home/steam/entrypoint.sh
 
-RUN touch /home/steam/css/cstrike/maplist.txt && \
-    touch /home/steam/css/cstrike/cfg/maplist.txt
+RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//' > /home/steam/css/cstrike/maplist.txt && \
+    cp /home/steam/css/cstrike/maplist.txt /home/steam/css/cstrike/cfg/maplist.txt && \
+    mkdir -p /home/steam/css/cstrike/addons/sourcemod/configs && \
+    cp /home/steam/css/cstrike/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt && \
+    cp -rn /tmp/translations/* /home/steam/css/cstrike/addons/sourcemod/translations/ 2>/dev/null || true && \
+    rm -rf /tmp/translations
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp

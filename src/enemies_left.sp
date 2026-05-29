@@ -32,11 +32,17 @@ public OnPluginStart()
  
 public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {    
-	new victimId = GetEventInt(event, "userid");
-	new victimClient = GetClientOfUserId(victimId);
-	new victimTeam = GetClientTeam(victimClient);
 	new attackerId = GetEventInt(event, "attacker");
 	new attackerClient = GetClientOfUserId(attackerId);
+	
+	if (victimClient < 1 || victimClient > MaxClients || !IsClientInGame(victimClient))
+		return;
+		
+	new victimTeam = GetClientTeam(victimClient);
+	
+	if (attackerClient < 1 || attackerClient > MaxClients || !IsClientInGame(attackerClient))
+		return;
+		
 	new attackerTeam = GetClientTeam(attackerClient);
 	
 	if ( victimTeam != attackerTeam )
