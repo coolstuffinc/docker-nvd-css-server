@@ -2,138 +2,87 @@
 #include <sourcemod>
 #include <cstrike>
 #include <sdktools>
-#pragma semicolon 1
-#define PLUGIN_VERSION	"1.0.0.4"
-#define TEAM_T					2
-#define TEAM_CT					3
 
-public Plugin:myinfo = {
+#pragma semicolon 1
+#pragma newdecls required
+
+public Plugin myinfo = {
 	name = "Enemies left",
 	author = "Axel Juan Nieves",
 	description = "Says in chat enemies left to go",
 	version = VERSION
-}
+};
 
-new Handle:g_CvarChat = INVALID_HANDLE;
-new Handle:g_CvarRadio = INVALID_HANDLE;
-new Handle:g_CvarBlind = INVALID_HANDLE;
+ConVar g_CvarChat;
+ConVar g_CvarRadio;
+ConVar g_CvarBlind;
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	LoadTranslations("enemies_left.phrases");
-	g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Automatically says on chat how many enemies are left. 1=Enabled | 0=Disabled");
-	g_CvarRadio = CreateConVar("sm_eleft_radio", "0", "Executes 'enemy down' radio command automatically. 1=Enabled | 0=Disabled");
-	g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you. 1=Enabled | 0=Disabled");
+	g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Automatically says on chat how many enemies are left.");
+	g_CvarRadio = CreateConVar("sm_eleft_radio", "0", "Executes 'enemy down' radio command.");
+	g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you.");
 	CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
-	AutoExecConfig(true, "enemies_left");
+	
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_blind", OnPlayerBlind);
 }
  
-public Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
+public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {    
-	new attackerId = GetEventInt(event, "attacker");
-	new attackerClient = GetClientOfUserId(attackerId);
+	int victimClient = GetClientOfUserId(event.GetInt("userid"));
+	int attackerClient = GetClientOfUserId(event.GetInt("attacker"));
 	
 	if (victimClient < 1 || victimClient > MaxClients || !IsClientInGame(victimClient))
 		return;
-		
-	new victimTeam = GetClientTeam(victimClient);
-	
 	if (attackerClient < 1 || attackerClient > MaxClients || !IsClientInGame(attackerClient))
 		return;
 		
-	new attackerTeam = GetClientTeam(attackerClient);
+	int victimTeam = GetClientTeam(victimClient);
+	int attackerTeam = GetClientTeam(attackerClient);
 	
-	if ( victimTeam != attackerTeam )
+	if (victimTeam != attackerTeam)
 	{
-		new iAliveEnemies = 0;
-		new i = 0;
-		new iMaxClients = MaxClients;
-		for (i = 1; i <= iMaxClients; i++)
+		int iAliveEnemies = 0;
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsClientConnected (i) && IsClientInGame (i) && !IsClientObserver (i))
+			if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == victimTeam)
 			{
-				new iTeam = GetClientTeam (i);
-				if (iTeam == victimTeam)
-				{
-					if ( IsPlayerAlive(i) )
-					{
-						iAliveEnemies++;
-					} 
-				}
+				iAliveEnemies++;
 			}
 		}
-		if ( iAliveEnemies>2 )
+
+		if (g_CvarRadio.BoolValue)
+			FakeClientCommand(attackerClient, "enemydown");
+
+		if (g_CvarChat.BoolValue)
 		{
-			if ( GetConVarBool(g_CvarRadio) )
-			{
-				FakeClientCommand(attackerClient, "enemydown");
-			}
-			if ( GetConVarBool(g_CvarChat) )
-			{
-				decl String:buffer[512];
+			char buffer[256];
+			if (iAliveEnemies > 2)
 				Format(buffer, sizeof(buffer), "say_team %t", "CountMany", iAliveEnemies);
-				FakeClientCommand(attackerClient, buffer);
-			}
-		
-		}
-		else if ( iAliveEnemies==2 )
-		{
-			if ( GetConVarBool(g_CvarRadio) )
-			{
-				FakeClientCommand(attackerClient, "enemydown");
-			}
-			if ( GetConVarBool(g_CvarChat) )
-			{
-				decl String:buffer[512];
+			else if (iAliveEnemies == 2)
 				Format(buffer, sizeof(buffer), "say_team %t", "Count2", iAliveEnemies);
-				FakeClientCommand(attackerClient, buffer);
-			}
-		
-		}
-		else if ( iAliveEnemies==1 )
-		{
-			if ( GetConVarBool(g_CvarRadio) )
-			{
-				FakeClientCommand(attackerClient, "enemydown");
-			}
-			if ( GetConVarBool(g_CvarChat) )
-			{
-				decl String:buffer[512];
+			else if (iAliveEnemies == 1)
 				Format(buffer, sizeof(buffer), "say_team %t", "Count1", iAliveEnemies);
-				FakeClientCommand(attackerClient, buffer);
-			}
-			
-		}
-		else if ( iAliveEnemies==0 )
-		{
-			if ( GetConVarBool(g_CvarRadio) )
-			{
-				FakeClientCommand(attackerClient, "enemydown");
-			}
-			if ( GetConVarBool(g_CvarChat) )
-			{
-				decl String:buffer[512];
+			else
 				Format(buffer, sizeof(buffer), "say_team %t", "Count0", iAliveEnemies);
-				FakeClientCommand(attackerClient, buffer);
-			}
-			
+				
+			FakeClientCommand(attackerClient, buffer);
 		}
 	}	
 }
 
-public OnPlayerBlind(Handle:event, const String:name[], bool:dontBroadcast)
+public void OnPlayerBlind(Event event, const char[] name, bool dontBroadcast)
 {
-	new client = GetClientOfUserId(GetEventInt(event,"userid"));
-	if ( GetConVarBool(g_CvarChat) && GetConVarBool(g_CvarBlind))
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client > 0 && IsClientInGame(client) && g_CvarChat.BoolValue && g_CvarBlind.BoolValue)
 	{
-		if ( GetConVarBool(g_CvarRadio) )
-		{
+		if (g_CvarRadio.BoolValue)
 			FakeClientCommand(client, "fallback");
-		}
-		decl String:buffer[512];
-		Format(buffer, sizeof(buffer), "say_team %t", "Blind", 1);
+			
+		char buffer[256];
+		Format(buffer, sizeof(buffer), "say_team %t", "Blind");
 		FakeClientCommand(client, buffer);
 	}
 }

@@ -14,297 +14,149 @@ HTTPClient g_HttpClient;
 
 public Plugin myinfo =
 {
-	name = "Llama Admin",
-	author = "OpenCode",
-	description = "AI Admin powered by Ollama",
-	version = "1.2.0",
-	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
+  name = "Llama Admin",
+  author = "OpenCode",
+  description = "AI Admin powered by Ollama",
+  version = "1.2.1",
+  url = "https://github.com/coolstuffinc/docker-nvd-css-server"
 };
 
 public void OnPluginStart()
 {
-	g_cvOllamaIp = CreateConVar("llama_admin_ip", "172.17.0.1", "IP address of the Ollama server");
-	g_cvOllamaPort = CreateConVar("llama_admin_port", "11433", "Port of the Ollama server");
-	g_cvOllamaModel = CreateConVar("llama_admin_model", "llama3.2:1b", "The Ollama model to use");
-	g_cvDebug = CreateConVar("llama_admin_debug", "1", "Enable verbose logging for Llama Admin (1=Enabled)");
+  g_cvOllamaIp = CreateConVar("llama_admin_ip", "172.17.0.1", "IP address of the Ollama server");
+  g_cvOllamaPort = CreateConVar("llama_admin_port", "11433", "Port of the Ollama server");
+  g_cvOllamaModel = CreateConVar("llama_admin_model", "llama3.2:1b", "The Ollama model to use");
+  g_cvDebug = CreateConVar("llama_admin_debug", "1", "Enable verbose logging for Llama Admin (1=Enabled)");
 
-	RegConsoleCmd("sm_ask", Command_Ask, "Ask the Llama Admin a question");
-	
-	AutoExecConfig(true, "llama_admin");
+  RegConsoleCmd("sm_ask", Command_Ask, "Ask the Llama Admin a question");
+
+  AutoExecConfig(true, "llama_admin");
 }
 
 public void OnConfigsExecuted()
 {
-	char baseUrl[256];
-	char ip[64], port[16];
-	
-	g_cvOllamaIp.GetString(ip, sizeof(ip));
-	g_cvOllamaPort.GetString(port, sizeof(port));
-	
-	Format(baseUrl, sizeof(baseUrl), "http://%s:%s", ip, port);
-	g_HttpClient = new HTTPClient(baseUrl);
-	g_HttpClient.SetHeader("Content-Type", "application/json");
-	
-	LogMessage("Llama Admin initialized at %s", baseUrl);
+  char baseUrl[256];
+  char ip[64], port[16];
+
+  g_cvOllamaIp.GetString(ip, sizeof(ip));
+  g_cvOllamaPort.GetString(port, sizeof(port));
+
+  Format(baseUrl, sizeof(baseUrl), "http://%s:%s", ip, port);
+  g_HttpClient = new HTTPClient(baseUrl);
+  g_HttpClient.SetHeader("Content-Type", "application/json");
+
+  LogMessage("Llama Admin initialized at %s", baseUrl);
 }
 
 public Action Command_Ask(int client, int args)
 {
-	if (args < 1)
-	{
-		ReplyToCommand(client, "[Llama] Usage: !ask <your question>");
-		return Plugin_Handled;
-	}
+  if (args < 1)
+  {
+    ReplyToCommand(client, "[Llama] Usage: !ask <your question>");
+    return Plugin_Handled;
+  }
 
-	char question[256];
-	GetCmdArgString(question, sizeof(question));
+  char question[256];
+  GetCmdArgString(question, sizeof(question));
 
-	char name[MAX_NAME_LENGTH];
-	if (client == 0)
-		strcopy(name, sizeof(name), "Console");
-	else
-		GetClientName(client, name, sizeof(name));
+  char name[MAX_NAME_LENGTH];
+  if (client == 0)
+    strcopy(name, sizeof(name), "Console");
+  else
+    GetClientName(client, name, sizeof(name));
 
-	PrintToChatAll("[Llama] %s is consulting the AI...", name);
-	
-	if (g_cvDebug.BoolValue)
-		LogMessage("Query from %s: %s", name, question);
-	
-	char prompt[512];
-	Format(prompt, sizeof(prompt), "Player '%s' asks: %s", name, question);
-	
-	char model[64];
-	g_cvOllamaModel.GetString(model, sizeof(model));
+  PrintToChatAll("[Llama] %s is consulting the AI...", name);
 
-	JSONObject payload = new JSONObject();
-	payload.SetString("model", model);
-	payload.SetString("prompt", prompt);
-	payload.SetBool("stream", false);
-	
-	char systemPrompt[1024];
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD (NemViDeOnde) Server Admin AI. Keep responses CONCISE (max 2 sentences). To run an RCON command, format like: [CMD: sm_command arg1]. Your chat is public.");
-	payload.SetString("system", systemPrompt);
+  if (g_cvDebug.BoolValue)
+    LogMessage("Query from %s: %s", name, question);
 
-	int userid = (client == 0) ? 0 : GetClientUserId(client);
-	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
-	delete payload;
+  char prompt[512];
+  Format(prompt, sizeof(prompt), "Player '%s' asks: %s", name, question);
 
-	return Plugin_Handled;
+  char model[64];
+  g_cvOllamaModel.GetString(model, sizeof(model));
+
+  JSONObject payload = new JSONObject();
+  payload.SetString("model", model);
+  payload.SetString("prompt", prompt);
+  payload.SetBool("stream", false);
+
+  char systemPrompt[1024];
+  Format(systemPrompt, sizeof(systemPrompt), "You are the NVD (NemViDeOnde) Server Admin AI. Keep responses CONCISE (max 2 sentences). To run an RCON command, format like: [CMD: sm_command arg1]. Your chat is public.");
+  payload.SetString("system", systemPrompt);
+
+  int userid = (client == 0) ? 0 : GetClientUserId(client);
+  g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
+  delete payload;
+
+  return Plugin_Handled;
 }
 
 public void OnOllamaResponse(HTTPResponse response, any userid)
 {
-	int client = GetClientOfUserId(userid);
-	
-	if (response.Status != HTTPStatus_OK)
-	{
-		LogError("Ollama Error: Unreachable or returned status %d.", response.Status);
-		if (client)
-			PrintToChat(client, "[Llama] Error: AI server unreachable.");
-		return;
-	}
+  int client = (userid == 0) ? 0 : GetClientOfUserId(userid);
 
-	if (response.Data == null)
-	{
-		LogError("Ollama Error: Received empty data.");
-		return;
-	}
+  if (response.Status != HTTPStatus_OK)
+  {
+    LogError("Ollama Error: Unreachable or returned status %d.", response.Status);
+    if (client)
+      PrintToChat(client, "[Llama] Error: AI server unreachable.");
+    return;
+  }
 
-	JSONObject json = view_as<JSONObject>(response.Data);
-	char reply[1024];
-	json.GetString("response", reply, sizeof(reply));
-	
-	if (g_cvDebug.BoolValue)
-		LogMessage("AI Response: %s", reply);
-	
-	// Check for commands
-	int cmdStart = StrContains(reply, "[CMD:");
-	if (cmdStart != -1)
-	{
-		int cmdEnd = StrContains(reply[cmdStart], "]");
-		if (cmdEnd != -1)
-		{
-			char cmd[128];
-			strcopy(cmd, cmdEnd, reply[cmdStart + 5]);
-			TrimString(cmd);
-			
-			// Log administrative action
-			LogAction(0, -1, "[Llama] Executing AI-generated command: %s", cmd);
-			
-			ServerCommand("%s", cmd);
-			ReplaceString(reply, sizeof(reply), reply[cmdStart], reply[cmdStart + cmdEnd + 1]);
-		}
-	}
-	
-	TrimString(reply);
-	if (strlen(reply) > 0)
-	{
-		if (strlen(reply) > 200)
-		{
-			reply[196] = '.';
-			reply[197] = '.';
-			reply[198] = '.';
-			reply[199] = '\0';
-		}
-		PrintToChatAll("[Llama] %s", reply);
-	}
-}
+  if (response.Data == null)
+  {
+    LogError("Ollama Error: Received empty data.");
+    return;
+  }
 
+  JSONObject json = view_as<JSONObject>(response.Data);
+  char reply[1024];
+  json.GetString("response", reply, sizeof(reply));
 
-public void OnConfigsExecuted()
-{
-	char baseUrl[256];
-	char ip[64], port[16];
-	
-	g_cvOllamaIp.GetString(ip, sizeof(ip));
-	g_cvOllamaPort.GetString(port, sizeof(port));
-	
-	Format(baseUrl, sizeof(baseUrl), "http://%s:%s", ip, port);
-	g_HttpClient = new HTTPClient(baseUrl);
-	g_HttpClient.SetHeader("Content-Type", "application/json");
-}
+  if (g_cvDebug.BoolValue)
+    LogMessage("AI Response: %s", reply);
 
-public Action Command_Ask(int client, int args)
-{
-	if (args < 1)
-	{
-		ReplyToCommand(client, "[Llama] Usage: !ask <your question>");
-		return Plugin_Handled;
-	}
+  // Check for commands
+  int cmdStart = StrContains(reply, "[CMD:");
+  if (cmdStart != -1)
+  {
+    int cmdEnd = StrContains(reply[cmdStart], "]");
+    if (cmdEnd != -1)
+    {
+      char cmd[128];
+      // Extract command: skip "[CMD: " (5 chars), copy up to ']'
+      strcopy(cmd, cmdEnd - 4, reply[cmdStart + 5]);
+      TrimString(cmd);
 
-	char question[256];
-	GetCmdArgString(question, sizeof(question));
+      LogAction(0, -1, "[Llama] Executing AI-generated command: %s", cmd);
+      ServerCommand("%s", cmd);
 
-	char name[MAX_NAME_LENGTH];
-	if (client == 0)
-		strcopy(name, sizeof(name), "Console");
-	else
-		GetClientName(client, name, sizeof(name));
+      // Remove the [CMD: ...] block from reply
+      char block[130];
+      strcopy(block, cmdEnd + 2, reply[cmdStart]);
+      ReplaceString(reply, sizeof(reply), block, "");
+    }
+  }
 
-	PrintToChatAll("[Llama] %s is consulting the AI...", name);
-	
-	char prompt[512];
-	Format(prompt, sizeof(prompt), "Player '%s' asks: %s", name, question);
-	
-	char model[64];
-	g_cvOllamaModel.GetString(model, sizeof(model));
+  TrimString(reply);
 
-	JSONObject payload = new JSONObject();
-	payload.SetString("model", model);
-	payload.SetString("prompt", prompt);
-	payload.SetBool("stream", false);
-	
-	char systemPrompt[1024];
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD (NemViDeOnde) Server Admin AI. Keep responses CONCISE (max 2 sentences). To run an RCON command, format like: [CMD: sm_command arg1]. Your chat is public.");
-	payload.SetString("system", systemPrompt);
+  if (strlen(reply) > 0)
+  {
+    // Truncate long messages with ellipsis
+    if (strlen(reply) > 200)
+    {
+      reply[196] = '.';
+      reply[197] = '.';
+      reply[198] = '.';
+      reply[199] = '\0';
+    }
 
-	int userid = (client == 0) ? 0 : GetClientUserId(client);
-	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
-	delete payload;
-
-	return Plugin_Handled;
-}
-
-
-public Action Command_Ask(int client, int args)
-{
-	if (args < 1)
-	{
-		ReplyToCommand(client, "[Llama] Usage: !ask <your question>");
-		return Plugin_Handled;
-	}
-
-	char question[256];
-	GetCmdArgString(question, sizeof(question));
-
-	char name[MAX_NAME_LENGTH];
-	GetClientName(client, name, sizeof(name));
-
-	PrintToChatAll("[Llama] %s is consulting the AI...", name);
-	
-	char prompt[512];
-	Format(prompt, sizeof(prompt), "Player '%s' asks: %s", name, question);
-	
-	char model[64];
-	g_cvOllamaModel.GetString(model, sizeof(model));
-
-	JSONObject payload = new JSONObject();
-	payload.SetString("model", model);
-	payload.SetString("prompt", prompt);
-	payload.SetBool("stream", false);
-	
-	// Add the persona instructions as the system prompt to enforce rules
-	char systemPrompt[1024];
-	Format(systemPrompt, sizeof(systemPrompt), "You are the NVD (NemViDeOnde) Server Admin AI. Keep responses CONCISE (max 2 sentences). To run an RCON command, format like: [CMD: sm_kick playername]. Your chat is public.");
-	payload.SetString("system", systemPrompt);
-
-	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, GetClientUserId(client));
-	delete payload;
-
-	return Plugin_Handled;
-}
-
-public void OnOllamaResponse(HTTPResponse response, any userid)
-{
-	int client = GetClientOfUserId(userid);
-	
-	if (response.Status != HTTPStatus_OK)
-	{
-		if (client)
-		{
-			PrintToChat(client, "[Llama] Error: AI server unreachable or returned status %d.", response.Status);
-		}
-		return;
-	}
-
-	if (response.Data == null)
-	{
-		if (client)
-		{
-			PrintToChat(client, "[Llama] Error: Received empty data from AI.");
-		}
-		return;
-	}
-
-	JSONObject json = view_as<JSONObject>(response.Data);
-	
-	char reply[1024];
-	json.GetString("response", reply, sizeof(reply));
-	
-	// Check for commands
-	int cmdStart = StrContains(reply, "[CMD:");
-	if (cmdStart != -1)
-	{
-		int cmdEnd = StrContains(reply[cmdStart], "]");
-		if (cmdEnd != -1)
-		{
-			// Extract the command
-			char cmd[128];
-			strcopy(cmd, cmdEnd, reply[cmdStart + 5]); // +5 to skip "[CMD: "
-			TrimString(cmd);
-			
-			// Execute the command locally
-			ServerCommand("%s", cmd);
-			PrintToServer("[Llama] Executing AI commanded: %s", cmd);
-			
-			// Remove the command block from the chat reply
-			ReplaceString(reply, sizeof(reply), reply[cmdStart], reply[cmdStart + cmdEnd + 1]);
-		}
-	}
-	
-	TrimString(reply);
-	
-	if (strlen(reply) > 0)
-	{
-		// Need to handle large messages by splitting them or just truncating
-		if (strlen(reply) > 200)
-		{
-			reply[196] = '.';
-			reply[197] = '.';
-			reply[198] = '.';
-			reply[199] = '\0';
-		}
-		
-		PrintToChatAll("[Llama] %s", reply);
-	}
+    // Print to appropriate destination
+    if (client > 0 && IsClientConnected(client))
+      PrintToChat(client, "[Llama] %s", reply);  // Private to client
+    else
+      PrintToServer("[Llama] %s", reply);         // Console only
+  }
+  // ✅ Function ends cleanly here - no stray prints or braces
 }
