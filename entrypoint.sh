@@ -34,6 +34,19 @@ sync_from_github() {
 if [ -f "assets/mods.txt" ]; then
     echo "Checking for mod updates..."
     mkdir -p "$MODS_DIR"
+    # Cleanup old legacy binaries that are now compiled from source or obsolete
+    echo "Cleaning up obsolete plugins and files..."
+    rm -f "$MODS_DIR/Cash.smx"
+    rm -f "$MODS_DIR/bot2player.smx"
+    rm -f "$MODS_DIR/bot2player_public.smx"
+    rm -f "$MODS_DIR/dropbomb.smx"
+    rm -f "$MODS_DIR/botdropbomb.smx.old"
+    rm -f "$MODS_DIR/mmsource-1.10.6-linux.tar.gz"
+    rm -f "$MODS_DIR/sourcemod-1.7.3-git5275-linux.tar.gz"
+    rm -f "$MODS_DIR/bot2player.zip"
+    rm -f "$MODS_DIR/dropbomb1.1.zip"
+    rm -f "$MODS_DIR/enemies_left.zip"
+    
     # Search for our plugins in the container, they might be in /home/steam/ci_mods instead
     CI_MODS_DIR="/home/steam/ci_mods"
     if [ -d "$CI_MODS_DIR" ]; then
