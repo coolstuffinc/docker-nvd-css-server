@@ -20,9 +20,15 @@ RUN wget -O /tmp/steamcmd_linux.tar.gz https://steamcdn-a.akamaihd.net/client/in
 COPY --chown=steam:steam entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
+COPY --chown=steam:steam scripts/build_server.sh build_server.sh
+RUN chmod +x build_server.sh
+
 COPY --chown=steam:steam assets /home/steam/assets
 COPY --chown=steam:steam cfg /home/steam/cfg_defaults
 COPY --chown=steam:steam compiled_plugins /home/steam/ci_mods
+
+# Build the bundled server
+RUN ./build_server.sh
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp
