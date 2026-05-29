@@ -9,12 +9,15 @@ echo "--- Installing Counter-Strike: Source (AppID 232330) ---"
 mkdir -p "$CSS_BUNDLED"
 /home/steam/steamcmd.sh +force_install_dir "$CSS_BUNDLED" +login anonymous +app_update 232330 validate +quit
 
-echo "--- Installing Metamod & SourceMod ---"
+echo "--- Installing Metamod & SourceMod & Extensions ---"
 mkdir -p /tmp/base_mods
 curl -L -o /tmp/base_mods/mmsource.tar.gz "https://github.com/alliedmodders/metamod-source/releases/download/1.12.0.1224/mmsource-1.12.0-git1224-linux.tar.gz"
 curl -L -o /tmp/base_mods/sourcemod.tar.gz "https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz"
+curl -L -o /tmp/base_mods/ripext.zip "https://github.com/ErikMinekus/sm-ripext/releases/download/1.3.2/sm-ripext-1.3.2-linux.zip"
+
 tar -C "$CSTRIKE_BUNDLED" -zxf /tmp/base_mods/mmsource.tar.gz
 tar -C "$CSTRIKE_BUNDLED" -zxf /tmp/base_mods/sourcemod.tar.gz
+unzip -o /tmp/base_mods/ripext.zip -d "$CSTRIKE_BUNDLED"
 rm -rf /tmp/base_mods
 
 echo "--- Downloading Maps ---"
