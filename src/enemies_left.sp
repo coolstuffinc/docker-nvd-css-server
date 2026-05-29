@@ -58,18 +58,17 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
 		if (g_CvarChat.BoolValue)
 		{
-			char buffer[256];
 			if (iAliveEnemies > 2)
-				Format(buffer, sizeof(buffer), "say_team %t", "CountMany", iAliveEnemies);
+				PrintToChatAll("\x01%t", "CountMany", iAliveEnemies);
 			else if (iAliveEnemies == 2)
-				Format(buffer, sizeof(buffer), "say_team %t", "Count2", iAliveEnemies);
+				PrintToChatAll("\x01%t", "Count2");
 			else if (iAliveEnemies == 1)
-				Format(buffer, sizeof(buffer), "say_team %t", "Count1", iAliveEnemies);
+				PrintToChatAll("\x01%t", "Count1");
 			else
-				Format(buffer, sizeof(buffer), "say_team %t", "Count0", iAliveEnemies);
-				
-			FakeClientCommand(attackerClient, buffer);
+				PrintToChatAll("\x01%t", "Count0");
 		}
+
+
 	}	
 }
 
@@ -81,8 +80,10 @@ public void OnPlayerBlind(Event event, const char[] name, bool dontBroadcast)
 		if (g_CvarRadio.BoolValue)
 			FakeClientCommand(client, "fallback");
 			
-		char buffer[256];
-		Format(buffer, sizeof(buffer), "say_team %t", "Blind");
-		FakeClientCommand(client, buffer);
+		char nameBuffer[MAX_NAME_LENGTH];
+		GetClientName(client, nameBuffer, sizeof(nameBuffer));
+		PrintToChatAll("\x01%t", "Blind", nameBuffer);
 	}
+}
+
 }
