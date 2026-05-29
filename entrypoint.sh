@@ -37,8 +37,13 @@ if [ -f "assets/mods.txt" ]; then
     # Search for our plugins in the container, they might be in /home/steam/ci_mods instead
     CI_MODS_DIR="/home/steam/ci_mods"
     if [ -d "$CI_MODS_DIR" ]; then
-        echo "Applying CI-compiled plugins from $CI_MODS_DIR..."
-        cp -v "$CI_MODS_DIR"/*.smx "$MODS_DIR/"
+        # Check if there are actually any .smx files before trying to copy
+        if ls "$CI_MODS_DIR"/*.smx 1> /dev/null 2>&1; then
+            echo "Applying CI-compiled plugins from $CI_MODS_DIR..."
+            cp -v "$CI_MODS_DIR"/*.smx "$MODS_DIR/"
+        else
+            echo "CI_MODS_DIR exists but contains no .smx files."
+        fi
     else
         echo "CI_MODS_DIR $CI_MODS_DIR not found, skipping."
     fi
