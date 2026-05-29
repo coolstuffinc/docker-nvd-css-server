@@ -51,7 +51,7 @@ RUN curl -L -o /tmp/mmsource.tar.gz https://github.com/alliedmodders/metamod-sou
     curl -L -o /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases/download/1.3.2/sm-ripext-1.3.2-linux.zip && \
     unzip -o /tmp/ripext.zip -d /home/steam/css/cstrike && rm /tmp/ripext.zip
 
-COPY assets/maps.txt /tmp/maps.txt
+COPY --chown=steam:steam assets/maps.txt /tmp/maps.txt
 RUN mkdir -p /home/steam/css/cstrike/maps && \
     while read -r map; do \
         [ -z "$map" ] && continue; \
@@ -68,7 +68,7 @@ RUN for zip in bot2player.zip dropbomb1.1.zip enemies_left.zip rankme.zip save_s
         fi; \
     done && rm -f /tmp/*.zip
 
-COPY assets/mods.txt /tmp/mods.txt
+COPY --chown=steam:steam assets/mods.txt /tmp/mods.txt
 RUN while read -r mod; do \
         [ -z "$mod" ] && continue; \
         [[ "$mod" == *.zip ]] || [[ "$mod" == *.tar.gz ]] && continue; \
