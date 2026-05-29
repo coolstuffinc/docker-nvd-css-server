@@ -42,8 +42,11 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Compile Plugins
         run: |
-          ls -F
-          pwd
+          # Download and setup the compiler
+          chmod +x setup_sourcepawn.sh
+          ./setup_sourcepawn.sh
+          
+          # Compile the plugins using the nix environment
           nix develop --command bash -c "./batch_compile.sh"
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
