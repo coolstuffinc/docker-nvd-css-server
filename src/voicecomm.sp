@@ -1,995 +1,839 @@
-public PlVers:__version =
-{
-	version = 5,
-	filevers = "1.3.9-dev",
-	date = "06/13/2014",
-	time = "04:03:09"
-};
-int Float:NULL_VECTOR[3];
-char NULL_STRING[4];
-public Extension:__ext_core =
-{
-	name = "Core",
-	file = "core",
-	autoload = 0,
-	required = 0,
-};
-new MaxClients;
-public Extension:__ext_sdktools =
-{
-	name = "SDKTools",
-	file = "sdktools.ext",
-	autoload = 1,
-	required = 1,
-};
-public Extension:__ext_cprefs =
-{
-	name = "Client Preferences",
-	file = "clientprefs.ext",
-	autoload = 1,
-	required = 1,
-};
-public Plugin:myinfo =
-{
-	name = "Voice Comm",
-	description = "Provides additional methods of controlling voice communication.",
-	author = "databomb",
-	version = "2.2.1",
-	url = "vintagejailbreak.org"
-};
-int Handle:gH_Cvar_DeadTalk;
-int Handle:gH_Cvar_AllTalk;
-int Handle:gH_Cvar_Announce;
-int Handle:gH_Cvar_MuteTime;
-int Handle:gH_Cvar_RoundEndAllTalk;
-int Handle:gH_Cvar_DeadHearAlive;
-int Handle:gH_Cvar_MuteAtStart;
-int Handle:gH_Cvar_TeamTalk;
-int Handle:gH_UnmuteTimer;
-int Handle:gH_Cvar_TeamToMute;
-int Handle:gH_Cvar_MuteSpectators;
-int Handle:gH_Cvar_BlockUnMuteOnRetry;
-int Handle:gH_Cvar_AdmOvrd_FirstJoin;
-int Handle:gH_Cvar_AdmOvrd_Spec;
-int Handle:gH_Cvar_AdmOvrd_OnDeath;
-int Handle:gH_Muted_Players;
-int Handle:gH_Cookie_VoiceCommMask;
-int Handle:gH_TimedPunishmentLocalArray;
-bool g_bMuted[66];
-bool g_bHasJoinedOnce[66];
-new gA_LocalTimeRemaining[66];
-bool g_BetweenRounds;
-bool g_IsMuteTimeUp;
-bool g_bHooked;
-public __ext_core_SetNTVOptional()
-{
-	MarkNativeAsOptional("GetFeatureStatus");
-	MarkNativeAsOptional("RequireFeature");
-	MarkNativeAsOptional("AddCommandListener");
-	MarkNativeAsOptional("RemoveCommandListener");
-	VerifyCoreVersion();
-	return 0;
-}
+#include <sourcemod>
+#include <sdktools>
+#include <clientprefs>
 
-bool:StrEqual(String:str1[], String:str2[], bool:caseSensitive)
-{
-	return strcmp(str1, str2, caseSensitive) == 0;
-}
+#pragma semicolon 1
+#pragma newdecls required
 
-PrintToChatAll(String:format[])
+// Plugin Info
+public Plugin myinfo =
 {
-	decl String:buffer[192];
-	new i = 1;
-	while (i <= MaxClients)
-	{
-		if (IsClientInGame(i))
-		{
-			SetGlobalTransTarget(i);
-			VFormat(buffer, 192, format, 2);
-			PrintToChat(i, "%s", buffer);
-		}
-		i++;
-	}
-	return 0;
-}
+    name = "Voice Comm",
+    description = "Provides additional methods of controlling voice communication.",
+    author = "databomb (modernized)",
+    version = "2.3.0",
+    url = "https://vintagejailbreak.org"
+};
 
+// ConVar Handles
+ConVar g_cvDeadTalk;
+ConVar g_cvAllTalk;
+ConVar g_cvAnnounce;
+ConVar g_cvMuteTime;
+ConVar g_cvRoundEndAllTalk;
+ConVar g_cvDeadHearAlive;
+ConVar g_cvMuteAtStart;
+ConVar g_cvTeamTalk;
+ConVar g_cvTeamToMute;
+ConVar g_cvMuteSpectators;
+ConVar g_cvBlockUnmuteOnRetry;
+ConVar g_cvAdmOvrd_FirstJoin;
+ConVar g_cvAdmOvrd_Spec;
+ConVar g_cvAdmOvrd_OnDeath;
+
+// Other Handles
+Handle g_hUnmuteTimer;
+Handle g_hMutedPlayers;           // ArrayList of SteamIDs
+ArrayList g_hTimedPunishments;    // ArrayList of client indices
+Cookie g_hVoiceCommCookie;
+
+// Global State
+bool g_bMuted[MAXPLAYERS+1];
+bool g_bHasJoinedOnce[MAXPLAYERS+1];
+int g_iTimeRemaining[MAXPLAYERS+1];
+bool g_bBetweenRounds;
+bool g_bIsMuteTimeUp;
+bool g_bHooksActive;
+
+// ============================================================================
+// PLUGIN STARTUP
+// ============================================================================
 public void OnPluginStart()
 {
-	LoadTranslations("voicecomm.phrases");
-	LoadTranslations("common.phrases");
-	CreateConVar("sm_voicecomm_version", "2.2.1", "Version of VoiceComm Plugin", 139584, false, 0.0, false, 0.0);
-	gH_Cvar_Announce = CreateConVar("sm_voicecomm_announce", "1", "Enable or disable the messages: 0 - disabled, 1 - enabled", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_TeamTalk = CreateConVar("sm_voicecomm_teamtalk", "0", "Controls talking when alive if deadtalk is set to -2. 0 - Players talk to both teams when alive, 1 - Players talk to only their teammates when alive", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_MuteTime = CreateConVar("sm_voicecomm_mutetime", "29.0", "Controls the length of time terrorists are muted starting from the beginning of the round.", 262144, true, 2.5, false, 0.0);
-	gH_Cvar_DeadHearAlive = CreateConVar("sm_voicecomm_deadhearalive", "1", "Controls hearing after death. 0 - Dead players do not hear alive players. 1 - Dead hear alive.", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_MuteAtStart = CreateConVar("sm_voicecomm_startmuted", "1", "Controls whether a team starts the round muted.", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_TeamToMute = CreateConVar("sm_voicecomm_mutedteam", "2", "Defines the team to mute if startmuted is enabled. In CS:S, 2=Terrorists, 3=CTs", 262144, true, 1.0, true, 3.0);
-	gH_Cvar_RoundEndAllTalk = CreateConVar("sm_voicecomm_roundendalltalk", "1", "Controls whether all talk is turned on between the time between rounds", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_MuteSpectators = CreateConVar("sm_voicecomm_spectatormute", "1", "Controls whether spectators are automatically muted. (Admins are exempt).", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_BlockUnMuteOnRetry = CreateConVar("sm_voicecomm_blockunmuteonreconnect", "1", "Controls whether players will automatically be unmuted when rejoining or if previous mutes are enforced.", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_AdmOvrd_FirstJoin = CreateConVar("sm_voicecomm_admovrd_firstjoin", "1", "If enabled admins who first join will be allowed to talk.", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_AdmOvrd_OnDeath = CreateConVar("sm_voicecomm_admovrd_death", "1", "If enabled admins who die are allowed to talk with everyone.", 262144, true, 0.0, true, 1.0);
-	gH_Cvar_AdmOvrd_Spec = CreateConVar("sm_voicecomm_admovrd_spectate", "1", "If enabled admins speak with everyone on round start if they are a spectator.", 262144, true, 0.0, true, 1.0);
-	gH_Cookie_VoiceCommMask = RegClientCookie("VoiceComm_Status", "Bit-mask for VoiceComm status", CookieAccess:2);
-	gH_TimedPunishmentLocalArray = CreateArray(1, 0);
-	new idx = 1;
-	while (idx <= MaxClients)
-	{
-		gA_LocalTimeRemaining[idx] = 0;
-		idx++;
-	}
-	gH_Cvar_AllTalk = FindConVar("sv_alltalk");
-	SetConVarFlags(gH_Cvar_AllTalk, GetConVarFlags(gH_Cvar_AllTalk) & -257);
-	AddCommandListener(Listen_EffectiveMute, "sm_mute");
-	AddCommandListener(Listen_EffectiveMute, "sm_gag");
-	AddCommandListener(Listen_EffectiveMute, "sm_silence");
-	AddCommandListener(Listen_EffectiveUnMute, "sm_unmute");
-	AddCommandListener(Listen_EffectiveUnMute, "sm_ungag");
-	AddCommandListener(Listen_EffectiveUnMute, "sm_unsilence");
-	RegAdminCmd("sm_listmutes", Command_MuteCheck, 512, "sm_listmutes - Lists all player names who are currently muted.", "", 0);
-	HookConVarChange(gH_Cvar_AllTalk, ConVarChange_AllTalk);
-	gH_Muted_Players = CreateArray(23, 0);
-	CreateTimer(60.0, CheckTimedPunishments, any:0, 1);
-	AutoExecConfig(true, "voicecomm", "sourcemod");
-	return 0;
+    LoadTranslations("voicecomm.phrases");
+    LoadTranslations("common.phrases");
+    
+    CreateConVar("sm_voicecomm_version", "2.3.0", "Version of VoiceComm Plugin", FCVAR_NOTIFY|FCVAR_DONTRECORD);
+    
+    g_cvAnnounce = CreateConVar("sm_voicecomm_announce", "1", "Enable or disable announcement messages: 0=disabled, 1=enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvTeamTalk = CreateConVar("sm_voicecomm_teamtalk", "0", "When deadtalk=-2: 0=alive players talk to both teams, 1=alive players talk only to teammates", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvMuteTime = CreateConVar("sm_voicecomm_mutetime", "29.0", "Seconds that the muted team stays muted at round start", FCVAR_NOTIFY, true, 2.5);
+    g_cvDeadHearAlive = CreateConVar("sm_voicecomm_deadhearalive", "1", "0=dead players cannot hear alive, 1=dead can hear alive", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvMuteAtStart = CreateConVar("sm_voicecomm_startmuted", "1", "Mute a team at round start", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvTeamToMute = CreateConVar("sm_voicecomm_mutedteam", "2", "Team to mute at start (CS:S: 2=T, 3=CT)", FCVAR_NOTIFY, true, 1.0, true, 3.0);
+    g_cvRoundEndAllTalk = CreateConVar("sm_voicecomm_roundendalltalk", "1", "Enable alltalk between rounds", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvMuteSpectators = CreateConVar("sm_voicecomm_spectatormute", "1", "Auto-mute spectators (admins exempt)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvBlockUnmuteOnRetry = CreateConVar("sm_voicecomm_blockunmuteonreconnect", "1", "Enforce previous mutes on reconnect", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvAdmOvrd_FirstJoin = CreateConVar("sm_voicecomm_admovrd_firstjoin", "1", "Admins bypass mute on first join", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvAdmOvrd_OnDeath = CreateConVar("sm_voicecomm_admovrd_death", "1", "Admins bypass death mute", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_cvAdmOvrd_Spec = CreateConVar("sm_voicecomm_admovrd_spectate", "1", "Admin spectators bypass mute rules", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    
+    g_hVoiceCommCookie = new Cookie("VoiceComm_Status", "Bit-mask for VoiceComm status", CookieAccess_Private);
+    
+    g_hMutedPlayers = new ArrayList(ByteCountToCells(24));  // SteamID storage
+    g_hTimedPunishments = new ArrayList();                   // Client indices
+    
+    // Unblock sv_alltalk from being read-only
+    g_cvAllTalk = FindConVar("sv_alltalk");
+    if (g_cvAllTalk)
+    {
+        int flags = g_cvAllTalk.Flags;
+        g_cvAllTalk.Flags = flags & ~FCVAR_SPONLY;
+    }
+    
+    // Hook admin mute commands to integrate with our system
+    AddCommandListener(OnAdminMuteCommand, "sm_mute");
+    AddCommandListener(OnAdminMuteCommand, "sm_gag");
+    AddCommandListener(OnAdminMuteCommand, "sm_silence");
+    AddCommandListener(OnAdminUnmuteCommand, "sm_unmute");
+    AddCommandListener(OnAdminUnmuteCommand, "sm_ungag");
+    AddCommandListener(OnAdminUnmuteCommand, "sm_unsilence");
+    
+    RegAdminCmd("sm_listmutes", Command_ListMutes, ADMFLAG_BAN, "Lists currently muted players");
+    
+    CreateTimer(60.0, Timer_CheckTimedPunishments, _, TIMER_REPEAT);
+    
+    AutoExecConfig(true, "voicecomm", "sourcemod");
 }
 
-public OnAllPluginsLoaded()
+public void OnAllPluginsLoaded()
 {
-	gH_Cvar_DeadTalk = FindConVar("sm_deadtalk");
-	if (gH_Cvar_DeadTalk)
-	{
-		SetConVarBounds(gH_Cvar_DeadTalk, ConVarBounds:1, true, -2.0);
-	}
-	return 0;
+    g_cvDeadTalk = FindConVar("sm_deadtalk");
+    if (g_cvDeadTalk)
+    {
+        g_cvDeadTalk.SetBounds(ConVarBound_Lower, true, -2.0);
+    }
 }
 
-public OnConfigsExecuted()
+public void OnConfigsExecuted()
 {
-	if (gH_Cvar_DeadTalk)
-	{
-		new var1;
-		if (GetConVarInt(gH_Cvar_DeadTalk) < 0 && !g_bHooked)
-		{
-			HookEvent("player_death", PlayerDeath, EventHookMode:1);
-			HookEvent("player_spawn", PlayerSpawn, EventHookMode:1);
-			HookEvent("round_start", RoundStart, EventHookMode:1);
-			HookEvent("round_end", RoundEnd, EventHookMode:1);
-			HookEvent("player_team", Event_PlayerTeamSwitch, EventHookMode:1);
-			g_bHooked = true;
-		}
-		HookConVarChange(gH_Cvar_DeadTalk, ConVarChange_DeadTalk);
-	}
-	return 0;
+    if (g_cvDeadTalk && g_cvDeadTalk.IntValue < 0 && !g_bHooksActive)
+    {
+        HookEvent("player_death", Event_PlayerDeath);
+        HookEvent("player_spawn", Event_PlayerSpawn);
+        HookEvent("round_start", Event_RoundStart);
+        HookEvent("round_end", Event_RoundEnd);
+        HookEvent("player_team", Event_PlayerTeam);
+        g_bHooksActive = true;
+    }
+    
+    if (g_cvDeadTalk)
+    {
+        g_cvDeadTalk.AddChangeHook(OnDeadTalkChanged);
+    }
+    if (g_cvAllTalk)
+    {
+        g_cvAllTalk.AddChangeHook(OnAllTalkChanged);
+    }
 }
 
-public ConVarChange_DeadTalk(Handle:cvar, String:oldVal[], String:newVal[])
+// ============================================================================
+// CONVAR CHANGE HOOKS
+// ============================================================================
+public void OnDeadTalkChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	new var1;
-	if (GetConVarInt(gH_Cvar_DeadTalk) < 0 && !g_bHooked)
-	{
-		HookEvent("player_death", PlayerDeath, EventHookMode:1);
-		HookEvent("player_spawn", PlayerSpawn, EventHookMode:1);
-		HookEvent("round_start", RoundStart, EventHookMode:1);
-		HookEvent("round_end", RoundEnd, EventHookMode:1);
-		HookEvent("player_team", Event_PlayerTeamSwitch, EventHookMode:1);
-		g_bHooked = true;
-	}
-	else
-	{
-		new var2;
-		if (g_bHooked && GetConVarInt(gH_Cvar_DeadTalk) >= 0)
-		{
-			UnhookEvent("player_death", PlayerDeath, EventHookMode:1);
-			UnhookEvent("player_spawn", PlayerSpawn, EventHookMode:1);
-			UnhookEvent("round_start", RoundStart, EventHookMode:1);
-			UnhookEvent("round_end", RoundEnd, EventHookMode:1);
-			UnhookEvent("player_team", Event_PlayerTeamSwitch, EventHookMode:1);
-			g_bHooked = false;
-		}
-	}
-	return 0;
+    if (convar.IntValue < 0 && !g_bHooksActive)
+    {
+        HookEvent("player_death", Event_PlayerDeath);
+        HookEvent("player_spawn", Event_PlayerSpawn);
+        HookEvent("round_start", Event_RoundStart);
+        HookEvent("round_end", Event_RoundEnd);
+        HookEvent("player_team", Event_PlayerTeam);
+        g_bHooksActive = true;
+    }
+    else if (g_bHooksActive && convar.IntValue >= 0)
+    {
+        UnhookEvent("player_death", Event_PlayerDeath);
+        UnhookEvent("player_spawn", Event_PlayerSpawn);
+        UnhookEvent("round_start", Event_RoundStart);
+        UnhookEvent("round_end", Event_RoundEnd);
+        UnhookEvent("player_team", Event_PlayerTeam);
+        g_bHooksActive = false;
+    }
 }
 
-public ConVarChange_AllTalk(Handle:convar, String:oldValue[], String:newValue[])
+public void OnAllTalkChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	CreateTimer(0.1, Timer_AllTalk, any:0, 2);
-	return 0;
+    CreateTimer(0.1, Timer_UpdateListening);
 }
 
-public Action:Timer_AllTalk(Handle:timer)
+// ============================================================================
+// CLIENT EVENTS
+// ============================================================================
+public void OnClientConnected(int client)
 {
-	new mode = GetConVarInt(gH_Cvar_DeadTalk);
-	new i = 1;
-	while (i <= MaxClients)
-	{
-		if (IsClientInGame(i))
-		{
-			if (!g_bMuted[i])
-			{
-				new var1;
-				if (mode == -1 && !IsPlayerAlive(i))
-				{
-					SetClientListeningFlags(i, 1);
-				}
-				else
-				{
-					new var2;
-					if (mode == -2 && !IsPlayerAlive(i))
-					{
-						SetClientListeningFlags(i, 0);
-						new DoesUserHaveAdmin = GetAdminFlag(GetUserAdmin(i), AdminFlag:9, AdmAccessMode:1);
-						new idx = 1;
-						while (idx <= MaxClients)
-						{
-							new var3;
-							if (i != idx && IsClientInGame(idx))
-							{
-								new indexTeam = GetClientTeam(idx);
-								if (!IsPlayerAlive(idx))
-								{
-									new var4;
-									if (indexTeam > 1 && !DoesUserHaveAdmin)
-									{
-										SetListenOverride(idx, i, ListenOverride:2);
-									}
-									SetListenOverride(i, idx, ListenOverride:2);
-								}
-								else
-								{
-									new var5;
-									if (IsPlayerAlive(idx) && !DoesUserHaveAdmin)
-									{
-										SetListenOverride(idx, i, ListenOverride:1);
-										if (!GetConVarBool(gH_Cvar_DeadHearAlive))
-										{
-											SetListenOverride(i, idx, ListenOverride:1);
-										}
-									}
-								}
-							}
-							idx++;
-						}
-					}
-				}
-			}
-		}
-		i++;
-	}
-	return Action:4;
+    g_bMuted[client] = false;
+    g_bHasJoinedOnce[client] = false;
+    g_iTimeRemaining[client] = 0;
 }
 
-public bool:OnClientConnect(client, String:rejectmsg[], maxlen)
+public void OnClientDisconnect(int client)
 {
-	g_bMuted[client] = 0;
-	g_bHasJoinedOnce[client] = 0;
-	return true;
+    // Save timed punishment state to cookie before disconnect
+    int idx = g_hTimedPunishments.FindValue(client);
+    if (idx != -1)
+    {
+        char cookie[20];
+        g_hVoiceCommCookie.Get(client, cookie, sizeof(cookie));
+        int mask = StringToInt(cookie);
+        
+        // Preserve lower 3 bits (punishment type), update time in upper bits
+        mask &= 0x07;
+        if (g_iTimeRemaining[client] > 0 && g_iTimeRemaining[client] < 0x10000)
+        {
+            mask |= (g_iTimeRemaining[client] << 3);
+        }
+        
+        g_iTimeRemaining[client] = 0;
+        IntToString(mask, cookie, sizeof(cookie));
+        g_hVoiceCommCookie.Set(client, cookie);
+        g_hTimedPunishments.Erase(idx);
+    }
 }
 
-public Action:Command_MuteCheck(client, args)
+public void OnClientPostAdminCheck(int client)
 {
-	new idx = 1;
-	while (idx <= MaxClients)
-	{
-		if (g_bMuted[idx])
-		{
-			ReplyToCommand(client, "[\x03SM\x01] %t", "List Mute Name", idx);
-		}
-		idx++;
-	}
-	return Action:3;
+    int userid = GetClientUserId(client);
+    int punishmentType = 4;  // 4 = none/default
+    
+    if (AreClientCookiesCached(client))
+    {
+        char cookie[20];
+        g_hVoiceCommCookie.Get(client, cookie, sizeof(cookie));
+        int mask = StringToInt(cookie);
+        
+        if (mask != 0)
+        {
+            int timeRemaining = (mask >> 3) & 0xFFFF;
+            
+            // If not marked as permanent (bit 2), and has time remaining, schedule it
+            if (!(mask & 0x04) && timeRemaining > 0)
+            {
+                g_hTimedPunishments.Push(client);
+                g_iTimeRemaining[client] = timeRemaining;
+            }
+            
+            // Apply punishment type from lower 2 bits
+            switch (mask & 0x03)
+            {
+                case 1: ServerCommand("sm_mute #%d", userid); punishmentType = 1;
+                case 2: ServerCommand("sm_gag #%d", userid); punishmentType = 2;
+                case 3: ServerCommand("sm_silence #%d", userid); punishmentType = 3;
+            }
+        }
+    }
+    
+    // Re-apply session-based mutes if block-on-reconnect is enabled
+    if (g_cvBlockUnmuteOnRetry.BoolValue && punishmentType == 4)
+    {
+        char steamid[24];
+        GetClientAuthString(client, steamid, sizeof(steamid));
+        int idx = g_hMutedPlayers.FindString(steamid);
+        if (idx != -1)
+        {
+            int storedPunishment = g_hMutedPlayers.Get(idx);
+            switch (storedPunishment)
+            {
+                case 1: ServerCommand("sm_mute #%d", userid);
+                case 2: ServerCommand("sm_gag #%d", userid);
+                case 3: ServerCommand("sm_silence #%d", userid);
+            }
+        }
+    }
 }
 
-public Action:Timer_DelayedTeamVoice(Handle:timer)
+public void OnMapEnd()
 {
-	g_IsMuteTimeUp = true;
-	new mutedTeam = GetConVarInt(gH_Cvar_TeamToMute);
-	new AllTalk = GetConVarInt(gH_Cvar_AllTalk);
-	new TeamTalk = GetConVarBool(gH_Cvar_TeamTalk);
-	new idx = 1;
-	while (idx <= MaxClients)
-	{
-		if (IsClientInGame(idx))
-		{
-			new clientTeam = GetClientTeam(idx);
-			new var1;
-			if (mutedTeam == clientTeam && IsPlayerAlive(idx))
-			{
-				SetClientListeningFlags(idx, 0);
-				new var2;
-				if (!AllTalk && !TeamTalk)
-				{
-					new Tidx = 1;
-					while (Tidx <= MaxClients)
-					{
-						if (IsClientInGame(Tidx))
-						{
-							new TidxTeam = GetClientTeam(Tidx);
-							new var3;
-							if (idx != Tidx && clientTeam != TidxTeam)
-							{
-								SetListenOverride(Tidx, idx, ListenOverride:2);
-							}
-						}
-						Tidx++;
-					}
-				}
-			}
-		}
-		idx++;
-	}
-	if (GetConVarBool(gH_Cvar_Announce))
-	{
-		PrintToChatAll("[\x03SM\x01] %t", "Mute Time Expired");
-	}
-	gH_UnmuteTimer = MissingTAG:0;
-	return Action:0;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_bMuted[i] = false;
+    }
+    g_hMutedPlayers.Clear();
 }
 
-public Action:RoundStart(Handle:event, String:name[], bool:dontBroadcast)
+// ============================================================================
+// GAME EVENTS
+// ============================================================================
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	g_BetweenRounds = false;
-	new Announce = GetConVarBool(gH_Cvar_Announce);
-	if (GetConVarBool(gH_Cvar_RoundEndAllTalk))
-	{
-		SetConVarBool(gH_Cvar_AllTalk, false, false, false);
-	}
-	if (GetConVarBool(gH_Cvar_MuteAtStart))
-	{
-		if (Announce)
-		{
-			PrintToChatAll("[\x03SM\x01] %t", "Start of Round with a Muted Team");
-		}
-		gH_UnmuteTimer = CreateTimer(GetConVarFloat(gH_Cvar_MuteTime), Timer_DelayedTeamVoice, any:0, 2);
-	}
-	else
-	{
-		if (Announce)
-		{
-			PrintToChatAll("[\x03SM\x01] %t", "Start of Round without Muted Team");
-		}
-	}
-	if (GetConVarBool(gH_Cvar_MuteSpectators))
-	{
-		new AdmIdx = 1;
-		while (AdmIdx <= MaxClients)
-		{
-			if (IsClientInGame(AdmIdx))
-			{
-				if (GetClientTeam(AdmIdx) == 1)
-				{
-					new var1;
-					if (GetAdminFlag(GetUserAdmin(AdmIdx), AdminFlag:9, AdmAccessMode:1) && GetConVarBool(gH_Cvar_AdmOvrd_Spec))
-					{
-						if (Announce)
-						{
-							PrintToChat(AdmIdx, "[\x03SM\x01] %t", "Spectator - Admin");
-						}
-						new PIdx = 1;
-						while (PIdx <= MaxClients)
-						{
-							new var2;
-							if (IsClientInGame(PIdx) && AdmIdx != PIdx)
-							{
-								SetListenOverride(PIdx, AdmIdx, ListenOverride:2);
-							}
-							PIdx++;
-						}
-					}
-					if (Announce)
-					{
-						PrintToChat(AdmIdx, "[\x03SM\x01] %t", "Spectator - Not Admin");
-					}
-					new idx = 1;
-					while (idx <= MaxClients)
-					{
-						new var3;
-						if (IsClientInGame(idx) && AdmIdx != idx)
-						{
-							SetListenOverride(idx, AdmIdx, ListenOverride:1);
-						}
-						idx++;
-					}
-				}
-			}
-			AdmIdx++;
-		}
-	}
-	return Action:0;
+    g_bBetweenRounds = false;
+    bool announce = g_cvAnnounce.BoolValue;
+    
+    // Disable alltalk between rounds if configured
+    if (g_cvRoundEndAllTalk.BoolValue)
+    {
+        g_cvAllTalk.BoolValue = false;
+    }
+    
+    // Handle start-of-round muting
+    if (g_cvMuteAtStart.BoolValue)
+    {
+        if (announce)
+        {
+            VoiceComm_PrintToChatAll("%t", "Start of Round with a Muted Team");
+        }
+        if (g_hUnmuteTimer)
+        {
+            delete g_hUnmuteTimer;
+        }
+        g_hUnmuteTimer = CreateTimer(g_cvMuteTime.FloatValue, Timer_UnmuteTeam);
+    }
+    else if (announce)
+    {
+        VoiceComm_PrintToChatAll("%t", "Start of Round without Muted Team");
+    }
+    
+    // Handle spectator muting
+    if (g_cvMuteSpectators.BoolValue)
+    {
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (!IsClientInGame(i) || GetClientTeam(i) != 1) continue;  // Skip non-spectators
+            
+            bool isAdmin = CheckCommandAccess(i, "", ADMFLAG_ROOT, true);
+            
+            if (isAdmin && g_cvAdmOvrd_Spec.BoolValue)
+            {
+                if (announce) PrintToChat(i, "[\x03SM\x01] %t", "Spectator - Admin");
+                // Admin spectators hear everyone, but no one hears them unless we allow
+                for (int j = 1; j <= MaxClients; j++)
+                {
+                    if (i != j && IsClientInGame(j))
+                    {
+                        SetListenOverride(j, i, ListenOverride_Mute);
+                    }
+                }
+            }
+            else
+            {
+                if (announce) PrintToChat(i, "[\x03SM\x01] %t", "Spectator - Not Admin");
+                // Normal spectators: mute them from being heard
+                for (int j = 1; j <= MaxClients; j++)
+                {
+                    if (i != j && IsClientInGame(j))
+                    {
+                        SetListenOverride(j, i, ListenOverride_Mute);
+                    }
+                }
+            }
+        }
+    }
 }
 
-public Action:PlayerSpawn(Handle:event, String:name[], bool:dontBroadcast)
+public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-	new DeadTalkMode = GetConVarInt(gH_Cvar_DeadTalk);
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (!client)
-	{
-		return Action:0;
-	}
-	new var1;
-	if (GetConVarBool(gH_Cvar_MuteAtStart) && !g_IsMuteTimeUp && GetConVarInt(gH_Cvar_TeamToMute) == GetClientTeam(client))
-	{
-		CreateTimer(0.1, Timer_DoMute, client, 2);
-	}
-	else
-	{
-		if (g_bMuted[client] == true)
-		{
-			SetClientListeningFlags(client, 1);
-			if (GetConVarInt(gH_Cvar_Announce))
-			{
-				PrintToChat(client, "[\x03SM\x01] %t", "Enforce Existing Mute");
-			}
-		}
-		if (!(DeadTalkMode == -1))
-		{
-			if (DeadTalkMode == -2)
-			{
-				if (!GetConVarBool(gH_Cvar_TeamTalk))
-				{
-					new idx = 1;
-					while (idx <= MaxClients)
-					{
-						if (IsClientInGame(idx))
-						{
-							if (client != idx)
-							{
-								SetListenOverride(idx, client, ListenOverride:2);
-								if (IsPlayerAlive(idx))
-								{
-									SetListenOverride(client, idx, ListenOverride:2);
-								}
-							}
-						}
-						idx++;
-					}
-					if (GetConVarInt(gH_Cvar_Announce))
-					{
-						PrintToChat(client, "[\x03SM\x01] %t", "DeadAllTalk - Spawn - TeamTalk Off");
-					}
-				}
-				CreateTimer(0.1, Timer_DoTeam, client, 2);
-			}
-		}
-	}
-	return Action:0;
+    g_bBetweenRounds = true;
+    g_bIsMuteTimeUp = false;
+    
+    // Cancel any pending unmute timer
+    if (g_hUnmuteTimer)
+    {
+        delete g_hUnmuteTimer;
+        g_hUnmuteTimer = null;
+        
+        // Restore listening for non-muted players
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (IsClientInGame(i) && !g_bMuted[i])
+            {
+                SetClientListeningFlags(i, VOICE_LISTENALL);
+            }
+        }
+    }
+    
+    // Reset listen overrides if using deadtalk=-2 mode
+    if (g_cvDeadTalk && g_cvDeadTalk.IntValue == -2)
+    {
+        for (int recv = 1; recv <= MaxClients; recv++)
+        {
+            if (!IsClientInGame(recv)) continue;
+            for (int send = 1; send <= MaxClients; send++)
+            {
+                if (recv != send && IsClientInGame(send))
+                {
+                    SetListenOverride(recv, send, ListenOverride_Default);
+                }
+            }
+        }
+    }
+    
+    // Enable alltalk between rounds if configured
+    if (g_cvRoundEndAllTalk.BoolValue)
+    {
+        g_cvAllTalk.BoolValue = true;
+        if (g_cvAnnounce.BoolValue)
+        {
+            VoiceComm_PrintToChatAll("%t", "Round End - All Talk On");
+        }
+    }
+    else if (g_cvAnnounce.BoolValue)
+    {
+        VoiceComm_PrintToChatAll("%t", "Round End - All Talk Off");
+    }
 }
 
-public Action:Timer_DoTeam(Handle:timer, any:client)
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
-	if (IsClientInGame(client))
-	{
-		SetClientListeningFlags(client, 8);
-		if (GetConVarBool(gH_Cvar_Announce))
-		{
-			PrintToChat(client, "[\x03SM\x01] %t", "DeadAllTalk - Spawn - TeamTalk On");
-		}
-	}
-	return Action:4;
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (!client || !IsClientInGame(client)) return;
+    
+    int deadTalkMode = g_cvDeadTalk ? g_cvDeadTalk.IntValue : 0;
+    
+    // Apply start-of-round mute if still active
+    if (g_cvMuteAtStart.BoolValue && !g_bIsMuteTimeUp && g_cvTeamToMute.IntValue == GetClientTeam(client))
+    {
+        CreateTimer(0.1, Timer_ApplyMute, GetClientUserId(client));
+        return;
+    }
+    
+    // Re-apply session mute if needed
+    if (g_bMuted[client])
+    {
+        SetClientListeningFlags(client, VOICE_LISTENTEAM);
+        if (g_cvAnnounce.BoolValue)
+        {
+            PrintToChat(client, "[\x03SM\x01] %t", "Enforce Existing Mute");
+        }
+    }
+    
+    // Handle deadtalk=-2 (team-only when dead)
+    if (deadTalkMode == -2 && !g_cvAllTalk.BoolValue)
+    {
+        if (!g_cvTeamTalk.BoolValue)
+        {
+            // Mute cross-team when dead
+            for (int i = 1; i <= MaxClients; i++)
+            {
+                if (!IsClientInGame(i) || i == client) continue;
+                SetListenOverride(i, client, ListenOverride_Mute);
+                if (IsPlayerAlive(i))
+                {
+                    SetListenOverride(client, i, ListenOverride_Mute);
+                }
+            }
+            if (g_cvAnnounce.BoolValue)
+            {
+                PrintToChat(client, "[\x03SM\x01] %t", "DeadAllTalk - Spawn - TeamTalk Off");
+            }
+        }
+        CreateTimer(0.1, Timer_SetTeamVoice, GetClientUserId(client));
+    }
 }
 
-public Action:Timer_DoMute(Handle:timer, any:client)
+public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	if (IsClientInGame(client))
-	{
-		SetClientListeningFlags(client, 1);
-	}
-	return Action:4;
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (!client || !IsClientInGame(client)) return;
+    if (g_bMuted[client]) return;  // Already muted, skip
+    
+    int deadTalkMode = g_cvDeadTalk ? g_cvDeadTalk.IntValue : 0;
+    bool adminOverride = g_cvAdmOvrd_OnDeath.BoolValue;
+    bool isAdmin = CheckCommandAccess(client, "", ADMFLAG_ROOT, true);
+    
+    // deadtalk=-1: mute on death (unless admin override)
+    if (deadTalkMode == -1)
+    {
+        if (!isAdmin || !adminOverride)
+        {
+            SetClientListeningFlags(client, VOICE_LISTENTEAM);
+            if (g_cvAnnounce.BoolValue)
+            {
+                PrintToChat(client, "[\x03SM\x01] %t", "Muted On Death - Not Admin");
+            }
+        }
+        else if (g_cvAnnounce.BoolValue)
+        {
+            PrintToChat(client, "[\x03SM\x01] %t", "Muted On Death - Admin");
+        }
+    }
+    
+    // deadtalk=-2: dead players hear only dead + teammates (unless admin)
+    else if (deadTalkMode == -2 && !g_cvAllTalk.BoolValue)
+    {
+        SetClientListeningFlags(client, VOICE_LISTENALL);
+        
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (!IsClientInGame(i) || i == client) continue;
+            
+            bool targetAlive = IsPlayerAlive(i);
+            int targetTeam = GetClientTeam(i);
+            
+            if (!targetAlive)
+            {
+                // Dead players: mute if different team and not admin
+                if (targetTeam > 1 && (!isAdmin || !adminOverride))
+                {
+                    SetListenOverride(i, client, ListenOverride_Mute);
+                }
+                SetListenOverride(client, i, ListenOverride_Mute);
+            }
+            else
+            {
+                // Alive players: mute if not admin
+                if (!isAdmin || !adminOverride)
+                {
+                    SetListenOverride(i, client, ListenOverride_Mute);
+                    if (!g_cvDeadHearAlive.BoolValue)
+                    {
+                        SetListenOverride(client, i, ListenOverride_Mute);
+                    }
+                }
+            }
+        }
+        
+        if (g_cvAnnounce.BoolValue)
+        {
+            PrintToChat(client, "[\x03SM\x01] %t", isAdmin ? "DeadAllTalk - Death - Admin" : "DeadAllTalk - Death - Not Admin");
+        }
+    }
 }
 
-public PlayerDeath(Handle:event, String:name[], bool:dontBroadcast)
+public void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
 {
-	new DeadTalkMode = GetConVarInt(gH_Cvar_DeadTalk);
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	new RoundEndAllTalk = GetConVarBool(gH_Cvar_RoundEndAllTalk);
-	bool AdminOverrideDeath = GetConVarBool(gH_Cvar_AdmOvrd_OnDeath);
-	if (!client)
-	{
-		return 0;
-	}
-	if (g_bMuted[client])
-	{
-		return 0;
-	}
-	new var2;
-	if (!g_BetweenRounds || (g_BetweenRounds && !RoundEndAllTalk))
-	{
-		if (DeadTalkMode == -1)
-		{
-			new var3;
-			if (!GetAdminFlag(GetUserAdmin(client), AdminFlag:9, AdmAccessMode:1) || !AdminOverrideDeath)
-			{
-				SetClientListeningFlags(client, 1);
-				if (GetConVarBool(gH_Cvar_Announce) == 1)
-				{
-					PrintToChat(client, "[\x03SM\x01] %t", "Muted On Death - Not Admin");
-				}
-			}
-			else
-			{
-				if (AdminOverrideDeath)
-				{
-					if (GetConVarBool(gH_Cvar_Announce) == 1)
-					{
-						PrintToChat(client, "[\x03SM\x01] %t", "Muted On Death - Admin");
-					}
-				}
-			}
-		}
-		new var4;
-		if (DeadTalkMode == -2 && !GetConVarBool(gH_Cvar_AllTalk))
-		{
-			SetClientListeningFlags(client, 0);
-			new DoesUserHaveAdmin;
-			if (AdminOverrideDeath)
-			{
-				DoesUserHaveAdmin = GetAdminFlag(GetUserAdmin(client), AdminFlag:9, AdmAccessMode:1);
-			}
-			new idx = 1;
-			while (idx <= MaxClients)
-			{
-				new var5;
-				if (client != idx && IsClientInGame(idx))
-				{
-					new indexTeam = GetClientTeam(idx);
-					if (!IsPlayerAlive(idx))
-					{
-						new var6;
-						if (indexTeam != 1 && !DoesUserHaveAdmin)
-						{
-							SetListenOverride(idx, client, ListenOverride:2);
-						}
-						SetListenOverride(client, idx, ListenOverride:2);
-					}
-					else
-					{
-						new var7;
-						if (IsPlayerAlive(idx) && !DoesUserHaveAdmin)
-						{
-							SetListenOverride(idx, client, ListenOverride:1);
-							if (!GetConVarBool(gH_Cvar_DeadHearAlive))
-							{
-								SetListenOverride(client, idx, ListenOverride:1);
-							}
-						}
-					}
-				}
-				idx++;
-			}
-			if (GetConVarInt(gH_Cvar_Announce))
-			{
-				if (DoesUserHaveAdmin)
-				{
-					PrintToChat(client, "[\x03SM\x01] %t", "DeadAllTalk - Death - Admin");
-				}
-				PrintToChat(client, "[\x03SM\x01] %t", "DeadAllTalk - Death - Not Admin");
-			}
-		}
-	}
-	return 0;
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (!client || event.GetBool("disconnect")) return;
+    
+    int newTeam = event.GetInt("team");
+    int deadTalkMode = g_cvDeadTalk ? g_cvDeadTalk.IntValue : 0;
+    
+    // First-join mute logic
+    if (!g_bHasJoinedOnce[client])
+    {
+        g_bHasJoinedOnce[client] = true;
+        
+        if (deadTalkMode != 0)
+        {
+            bool adminOverride = g_cvAdmOvrd_FirstJoin.BoolValue;
+            bool isAdmin = CheckCommandAccess(client, "", ADMFLAG_ROOT, true);
+            
+            if (!isAdmin || !adminOverride)
+            {
+                SetClientListeningFlags(client, VOICE_LISTENTEAM);
+                if (g_cvAnnounce.BoolValue)
+                {
+                    PrintToChat(client, "[\x03SM\x01] %t", "Mute On Join");
+                }
+            }
+            else if (g_cvAnnounce.BoolValue)
+            {
+                PrintToChat(client, "[\x03SM\x01] %t", "Admin On Join");
+            }
+        }
+    }
+    
+    // Apply team-based listen overrides if teamtalk is disabled
+    if (!g_cvTeamTalk.BoolValue)
+    {
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (!IsClientInGame(i)) continue;
+            int otherTeam = GetClientTeam(i);
+            if (otherTeam > 1 && newTeam != otherTeam)
+            {
+                SetListenOverride(client, i, ListenOverride_Mute);
+            }
+        }
+    }
 }
 
-public Action:RoundEnd(Handle:event, String:name[], bool:dontBroadcast)
+// ============================================================================
+// TIMERS
+// ============================================================================
+public Action Timer_UnmuteTeam(Handle timer)
 {
-	g_BetweenRounds = true;
-	g_IsMuteTimeUp = false;
-	if (gH_UnmuteTimer)
-	{
-		CloseHandle(gH_UnmuteTimer);
-		gH_UnmuteTimer = MissingTAG:0;
-		new idx = 1;
-		while (idx <= MaxClients)
-		{
-			if (IsClientInGame(idx))
-			{
-				if (!g_bMuted[idx])
-				{
-					SetClientListeningFlags(idx, 0);
-				}
-			}
-			idx++;
-		}
-	}
-	new DeadTalkMode = GetConVarInt(gH_Cvar_DeadTalk);
-	if (DeadTalkMode == -2)
-	{
-		new RcvIdx = 1;
-		while (RcvIdx <= MaxClients)
-		{
-			new SndIdx = 1;
-			while (SndIdx <= MaxClients)
-			{
-				new var1;
-				if (IsClientInGame(RcvIdx) && IsClientInGame(SndIdx) && RcvIdx != SndIdx)
-				{
-					SetListenOverride(RcvIdx, SndIdx, ListenOverride:0);
-				}
-				SndIdx++;
-			}
-			RcvIdx++;
-		}
-	}
-	if (GetConVarBool(gH_Cvar_RoundEndAllTalk))
-	{
-		SetConVarBool(gH_Cvar_AllTalk, true, false, false);
-		if (GetConVarInt(gH_Cvar_Announce))
-		{
-			PrintToChatAll("[\x03SM\x01] %t", "Round End - All Talk On");
-		}
-	}
-	else
-	{
-		if (GetConVarInt(gH_Cvar_Announce))
-		{
-			PrintToChatAll("[\x03SM\x01] %t", "Round End - All Talk Off");
-		}
-	}
-	return Action:0;
+    g_bIsMuteTimeUp = true;
+    g_hUnmuteTimer = null;
+    
+    int mutedTeam = g_cvTeamToMute.IntValue;
+    bool allTalk = g_cvAllTalk.BoolValue;
+    bool teamTalk = g_cvTeamTalk.BoolValue;
+    
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (!IsClientInGame(client) || !IsPlayerAlive(client)) continue;
+        if (GetClientTeam(client) != mutedTeam) continue;
+        
+        SetClientListeningFlags(client, VOICE_LISTENALL);
+        
+        if (!allTalk && !teamTalk)
+        {
+            // Mute cross-team communication
+            for (int other = 1; other <= MaxClients; other++)
+            {
+                if (client != other && IsClientInGame(other) && GetClientTeam(other) != mutedTeam)
+                {
+                    SetListenOverride(other, client, ListenOverride_Mute);
+                }
+            }
+        }
+    }
+    
+    if (g_cvAnnounce.BoolValue)
+    {
+        VoiceComm_PrintToChatAll("%t", "Mute Time Expired");
+    }
+    
+    return Plugin_Stop;
 }
 
-public Action:Event_PlayerTeamSwitch(Handle:event, String:name[], bool:dontBroadcast)
+public Action Timer_ApplyMute(Handle timer, int userid)
 {
-	new NewTeam = GetEventInt(event, "team");
-	int Bool:Disconnect = GetEventBool(event, "disconnect");
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (Disconnect)
-	{
-		return Action:3;
-	}
-	new DeadTalkMode = GetConVarInt(gH_Cvar_DeadTalk);
-	if (!g_bHasJoinedOnce[client])
-	{
-		g_bHasJoinedOnce[client] = 1;
-		if (DeadTalkMode)
-		{
-			bool AdminOverrideJoin = GetConVarBool(gH_Cvar_AdmOvrd_FirstJoin);
-			new var1;
-			if (!GetAdminFlag(GetUserAdmin(client), AdminFlag:9, AdmAccessMode:1) || !AdminOverrideJoin)
-			{
-				SetClientListeningFlags(client, 1);
-				if (GetConVarBool(gH_Cvar_Announce))
-				{
-					PrintToChat(client, "[\x03SM\x01] %t", "Mute On Join");
-				}
-			}
-			else
-			{
-				if (AdminOverrideJoin)
-				{
-					if (GetConVarBool(gH_Cvar_Announce))
-					{
-						PrintToChat(client, "[\x03SM\x01] %t", "Admin On Join");
-					}
-				}
-			}
-		}
-	}
-	if (!GetConVarBool(gH_Cvar_TeamTalk))
-	{
-		new idx = 1;
-		while (idx <= MaxClients)
-		{
-			if (IsClientInGame(idx))
-			{
-				new idxTeam = GetClientTeam(idx);
-				new var2;
-				if (idxTeam > 1 && NewTeam != idxTeam)
-				{
-					SetListenOverride(client, idx, ListenOverride:2);
-				}
-			}
-			idx++;
-		}
-	}
-	return Action:3;
+    int client = GetClientOfUserId(userid);
+    if (client && IsClientInGame(client))
+    {
+        SetClientListeningFlags(client, VOICE_LISTENTEAM);
+    }
+    return Plugin_Stop;
 }
 
-public Action:Listen_EffectiveMute(client, String:command[], args)
+public Action Timer_SetTeamVoice(Handle timer, int userid)
 {
-	if (args < 1)
-	{
-		ReplyToCommand(client, "[SM] Usage: %s <target> <optional:time>", command);
-		return Action:3;
-	}
-	decl String:arg[64];
-	GetCmdArg(1, arg, 64);
-	decl String:target_name[64];
-	decl target_list[65];
-	decl target_count;
-	decl bool:tn_is_ml;
-	if (0 >= (target_count = ProcessTargetString(arg, client, target_list, 65, 0, target_name, 64, tn_is_ml)))
-	{
-		return Action:0;
-	}
-	new i;
-	while (i < target_count)
-	{
-		int VCommType:Punishment = 4;
-		if (StrEqual(command, "sm_silence", false))
-		{
-			g_bMuted[target_list[i]] = 1;
-			Punishment = MissingTAG:3;
-		}
-		else
-		{
-			if (StrEqual(command, "sm_mute", false))
-			{
-				g_bMuted[target_list[i]] = 1;
-				Punishment = MissingTAG:1;
-			}
-			if (StrEqual(command, "sm_gag", false))
-			{
-				Punishment = MissingTAG:2;
-			}
-		}
-		if (GetCmdArgs() > 1)
-		{
-			decl String:sTime[20];
-			GetCmdArg(2, sTime, 20);
-			new iTime = StringToInt(sTime, 10);
-			iTime &= 65535;
-			decl String:sBitMask[20];
-			GetClientCookie(target_list[i], gH_Cookie_VoiceCommMask, sBitMask, 19);
-			new iBitMask = StringToInt(sBitMask, 10);
-			switch (Punishment)
-			{
-				case 1:
-				{
-					iBitMask |= 1;
-				}
-				case 2:
-				{
-					iBitMask |= 2;
-				}
-				case 3:
-				{
-					iBitMask |= 3;
-				}
-				default:
-				{
-				}
-			}
-			if (0 < iTime)
-			{
-				iBitMask &= 7;
-				iBitMask = iTime << 3 | iBitMask;
-				IntToString(iBitMask, sBitMask, 19);
-				SetClientCookie(target_list[i], gH_Cookie_VoiceCommMask, sBitMask);
-				new iFindIdx = FindValueInArray(gH_TimedPunishmentLocalArray, target_list[i]);
-				if (iFindIdx == -1)
-				{
-					PushArrayCell(gH_TimedPunishmentLocalArray, target_list[i]);
-				}
-				gA_LocalTimeRemaining[target_list[i]] = iTime;
-			}
-			else
-			{
-				if (!iTime)
-				{
-					iBitMask |= 4;
-					iBitMask &= 7;
-					IntToString(iBitMask, sBitMask, 19);
-					SetClientCookie(target_list[i], gH_Cookie_VoiceCommMask, sBitMask);
-				}
-			}
-		}
-		decl String:sSteamID[24];
-		GetClientAuthString(target_list[i], sSteamID, 22);
-		new iFindIndex = FindStringInArray(gH_Muted_Players, sSteamID);
-		if (iFindIndex == -1)
-		{
-			new iPushedIndex = PushArrayString(gH_Muted_Players, sSteamID);
-			SetArrayCell(gH_Muted_Players, iPushedIndex, Punishment, 22, false);
-		}
-		i++;
-	}
-	return Action:0;
+    int client = GetClientOfUserId(userid);
+    if (client && IsClientInGame(client))
+    {
+        SetClientListeningFlags(client, VOICE_LISTENGAME);
+        if (g_cvAnnounce.BoolValue)
+        {
+            PrintToChat(client, "[\x03SM\x01] %t", "DeadAllTalk - Spawn - TeamTalk On");
+        }
+    }
+    return Plugin_Stop;
 }
 
-public Action:Listen_EffectiveUnMute(client, String:command[], args)
+public Action Timer_UpdateListening(Handle timer)
 {
-	if (args < 1)
-	{
-		ReplyToCommand(client, "[SM] Usage: %s <target> <optional:'force'>", command);
-		return Action:3;
-	}
-	decl String:arg[64];
-	GetCmdArg(1, arg, 64);
-	decl String:target_name[64];
-	decl target_list[65];
-	decl target_count;
-	decl bool:tn_is_ml;
-	if (0 >= (target_count = ProcessTargetString(arg, client, target_list, 65, 0, target_name, 64, tn_is_ml)))
-	{
-		return Action:0;
-	}
-	new i;
-	while (i < target_count)
-	{
-		g_bMuted[target_list[i]] = 0;
-		if (GetCmdArgs() > 1)
-		{
-			decl String:sOption[20];
-			GetCmdArg(2, sOption, 20);
-			if (StrEqual(sOption, "force", false))
-			{
-				new iFindIdx = FindValueInArray(gH_TimedPunishmentLocalArray, target_list[i]);
-				if (iFindIdx != -1)
-				{
-					RemoveFromArray(gH_TimedPunishmentLocalArray, iFindIdx);
-				}
-				SetClientCookie(target_list[i], gH_Cookie_VoiceCommMask, "0");
-				ReplyToCommand(client, "[\x03SM\x01] %t", "Removed Stateful Mute", target_list[i]);
-			}
-		}
-		decl String:sSteamID[24];
-		GetClientAuthString(target_list[i], sSteamID, 22);
-		new arrayIndex = FindStringInArray(gH_Muted_Players, sSteamID);
-		if (arrayIndex != -1)
-		{
-			RemoveFromArray(gH_Muted_Players, arrayIndex);
-		}
-		i++;
-	}
-	return Action:0;
+    int mode = g_cvDeadTalk ? g_cvDeadTalk.IntValue : 0;
+    
+    for (int client = 1; client <= MaxClients; client++)
+    {
+        if (!IsClientInGame(client) || g_bMuted[client]) continue;
+        
+        if (mode == -1 && !IsPlayerAlive(client))
+        {
+            SetClientListeningFlags(client, VOICE_LISTENTEAM);
+        }
+        else if (mode == -2 && !IsPlayerAlive(client))
+        {
+            SetClientListeningFlags(client, VOICE_LISTENALL);
+            bool isAdmin = CheckCommandAccess(client, "", ADMFLAG_ROOT, true);
+            
+            for (int other = 1; other <= MaxClients; other++)
+            {
+                if (client == other || !IsClientInGame(other)) continue;
+                
+                bool otherAlive = IsPlayerAlive(other);
+                int otherTeam = GetClientTeam(other);
+                
+                if (!otherAlive)
+                {
+                    if (otherTeam > 1 && !isAdmin)
+                    {
+                        SetListenOverride(other, client, ListenOverride_Mute);
+                    }
+                    SetListenOverride(client, other, ListenOverride_Mute);
+                }
+                else
+                {
+                    if (!isAdmin)
+                    {
+                        SetListenOverride(other, client, ListenOverride_Mute);
+                        if (!g_cvDeadHearAlive.BoolValue)
+                        {
+                            SetListenOverride(client, other, ListenOverride_Mute);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return Plugin_Stop;
 }
 
-public OnMapEnd()
+public Action Timer_CheckTimedPunishments(Handle timer)
 {
-	new player = 1;
-	while (player <= MaxClients)
-	{
-		g_bMuted[player] = 0;
-		player++;
-	}
-	ClearArray(gH_Muted_Players);
-	return 0;
+    for (int i = 0; i < g_hTimedPunishments.Length; i++)
+    {
+        int client = g_hTimedPunishments.Get(i);
+        if (!IsClientInGame(client)) continue;
+        
+        g_iTimeRemaining[client]--;
+        
+        if (g_iTimeRemaining[client] <= 0)
+        {
+            char steamid[24];
+            GetClientAuthString(client, steamid, sizeof(steamid));
+            int idx = g_hMutedPlayers.FindString(steamid);
+            
+            int punishment = (idx != -1) ? g_hMutedPlayers.Get(idx) : 4;
+            
+            g_hTimedPunishments.Erase(i);
+            g_hVoiceCommCookie.Set(client, "0");
+            g_iTimeRemaining[client] = 0;
+            
+            int userid = GetClientUserId(client);
+            switch (punishment)
+            {
+                case 1: ServerCommand("sm_unmute #%d force", userid);
+                case 2: ServerCommand("sm_ungag #%d force", userid);
+                case 3: ServerCommand("sm_unsilence #%d force", userid);
+            }
+            i--;  // Adjust index after erase
+        }
+    }
+    return Plugin_Continue;
 }
 
-public OnClientDisconnect(client)
+// ============================================================================
+// COMMAND LISTENERS (Admin Mute/Unmute Integration)
+// ============================================================================
+public Action OnAdminMuteCommand(int client, const char[] command, int args)
 {
-	new iFindIdx = FindValueInArray(gH_TimedPunishmentLocalArray, client);
-	if (iFindIdx != -1)
-	{
-		decl String:sCookie[20];
-		GetClientCookie(client, gH_Cookie_VoiceCommMask, sCookie, 19);
-		new iCookie = StringToInt(sCookie, 10);
-		iCookie &= 7;
-		new var1;
-		if (gA_LocalTimeRemaining[client] > 0 && gA_LocalTimeRemaining[client] < 65536)
-		{
-			iCookie = gA_LocalTimeRemaining[client] << 3 | iCookie;
-		}
-		gA_LocalTimeRemaining[client] = 0;
-		IntToString(iCookie, sCookie, 19);
-		SetClientCookie(client, gH_Cookie_VoiceCommMask, sCookie);
-		RemoveFromArray(gH_TimedPunishmentLocalArray, iFindIdx);
-	}
-	return 0;
+    if (args < 1)
+    {
+        ReplyToCommand(client, "[SM] Usage: %s <target> [time]", command);
+        return Plugin_Handled;
+    }
+    
+    char arg[64], targetName[64];
+    GetCmdArg(1, arg, sizeof(arg));
+    
+    int[] targets = new int[MaxClients];
+    int count = ProcessTargetString(arg, client, targets, MaxClients, 0, targetName, sizeof(targetName));
+    if (count <= 0)
+    {
+        ReplyToTargetError(client, count);
+        return Plugin_Handled;
+    }
+    
+    int punishmentType = 4;  // default = none
+    if (StrEqual(command, "sm_silence", false)) punishmentType = 3;
+    else if (StrEqual(command, "sm_mute", false)) punishmentType = 1;
+    else if (StrEqual(command, "sm_gag", false)) punishmentType = 2;
+    
+    char timeStr[20];
+    int timeMinutes = 0;
+    if (GetCmdArg(2, timeStr, sizeof(timeStr)) > 0)
+    {
+        timeMinutes = StringToInt(timeStr) & 0xFFFF;
+    }
+    
+    for (int i = 0; i < count; i++)
+    {
+        int target = targets[i];
+        if (punishmentType == 3 || punishmentType == 1)  // silence or mute
+        {
+            g_bMuted[target] = true;
+        }
+        
+        // Handle timed punishment via cookie
+        if (timeMinutes > 0)
+        {
+            char cookie[20];
+            g_hVoiceCommCookie.Get(target, cookie, sizeof(cookie));
+            int mask = StringToInt(cookie) & 0x07;  // preserve type bits
+            
+            mask |= (timeMinutes << 3);  // store time in upper bits
+            IntToString(mask, cookie, sizeof(cookie));
+            g_hVoiceCommCookie.Set(target, cookie);
+            
+            if (g_hTimedPunishments.FindValue(target) == -1)
+            {
+                g_hTimedPunishments.Push(target);
+            }
+            g_iTimeRemaining[target] = timeMinutes;
+        }
+        
+        // Store in session array for reconnect enforcement
+        char steamid[24];
+        GetClientAuthString(target, steamid, sizeof(steamid));
+        if (g_hMutedPlayers.FindString(steamid) == -1)
+        {
+            g_hMutedPlayers.PushString(steamid);
+            g_hMutedPlayers.Set(g_hMutedPlayers.Length - 1, punishmentType);
+        }
+    }
+    
+    return Plugin_Handled;
 }
 
-public OnClientPostAdminCheck(client)
+public Action OnAdminUnmuteCommand(int client, const char[] command, int args)
 {
-	new userid = GetClientUserId(client);
-	int VCommType:PunishmentType = 4;
-	if (AreClientCookiesCached(client))
-	{
-		decl String:sBitMask[20];
-		GetClientCookie(client, gH_Cookie_VoiceCommMask, sBitMask, 18);
-		new iBitMask = StringToInt(sBitMask, 10);
-		if (iBitMask)
-		{
-			new iTimeRemaining = iBitMask >>> 3;
-			iTimeRemaining &= 65535;
-			if (!(iBitMask & 4))
-			{
-				if (0 < iTimeRemaining)
-				{
-					PushArrayCell(gH_TimedPunishmentLocalArray, client);
-					gA_LocalTimeRemaining[client] = iTimeRemaining;
-				}
-			}
-			switch (iBitMask & 2 | 1)
-			{
-				case 1:
-				{
-					PunishmentType = MissingTAG:1;
-					ServerCommand("sm_mute #%d", userid);
-				}
-				case 2:
-				{
-					PunishmentType = MissingTAG:2;
-					ServerCommand("sm_gag #%d", userid);
-				}
-				case 3:
-				{
-					PunishmentType = MissingTAG:3;
-					ServerCommand("sm_silence #%d", userid);
-				}
-				default:
-				{
-				}
-			}
-		}
-	}
-	new var1;
-	if (GetConVarBool(gH_Cvar_BlockUnMuteOnRetry) && PunishmentType == VCommType:4)
-	{
-		decl String:sSteamID[24];
-		GetClientAuthString(client, sSteamID, 22);
-		new arrayIndex = FindStringInArray(gH_Muted_Players, sSteamID);
-		if (arrayIndex != -1)
-		{
-			int VCommType:ThePunishment = GetArrayCell(gH_Muted_Players, arrayIndex, 22, false);
-			switch (ThePunishment)
-			{
-				case 1:
-				{
-					ServerCommand("sm_mute #%d", userid);
-				}
-				case 2:
-				{
-					ServerCommand("sm_gag #%d", userid);
-				}
-				case 3:
-				{
-					ServerCommand("sm_silence #%d", userid);
-				}
-				default:
-				{
-				}
-			}
-		}
-	}
-	return 0;
+    if (args < 1)
+    {
+        ReplyToCommand(client, "[SM] Usage: %s <target> [force]", command);
+        return Plugin_Handled;
+    }
+    
+    char arg[64], targetName[64];
+    GetCmdArg(1, arg, sizeof(arg));
+    
+    int[] targets = new int[MaxClients];
+    int count = ProcessTargetString(arg, client, targets, MaxClients, 0, targetName, sizeof(targetName));
+    if (count <= 0)
+    {
+        ReplyToTargetError(client, count);
+        return Plugin_Handled;
+    }
+    
+    bool force = (GetCmdArg(2, arg, sizeof(arg)) > 0 && StrEqual(arg, "force", false));
+    
+    for (int i = 0; i < count; i++)
+    {
+        int target = targets[i];
+        g_bMuted[target] = false;
+        
+        if (force)
+        {
+            int idx = g_hTimedPunishments.FindValue(target);
+            if (idx != -1) g_hTimedPunishments.Erase(idx);
+            g_hVoiceCommCookie.Set(target, "0");
+            g_iTimeRemaining[target] = 0;
+            ReplyToCommand(client, "[\x03SM\x01] %t", "Removed Stateful Mute", target);
+        }
+        
+        // Remove from session array
+        char steamid[24];
+        GetClientAuthString(target, steamid, sizeof(steamid));
+        idx = g_hMutedPlayers.FindString(steamid);
+        if (idx != -1) g_hMutedPlayers.Erase(idx);
+    }
+    
+    return Plugin_Handled;
 }
 
-public Action:CheckTimedPunishments(Handle:timer)
+public Action Command_ListMutes(int client, int args)
 {
-	new iTimeArraySize = GetArraySize(gH_TimedPunishmentLocalArray);
-	new idx;
-	while (idx < iTimeArraySize)
-	{
-		new iClientIndex = GetArrayCell(gH_TimedPunishmentLocalArray, idx, 0, false);
-		if (IsClientInGame(iClientIndex))
-		{
-			gA_LocalTimeRemaining[iClientIndex]--;
-			if (0 >= gA_LocalTimeRemaining[iClientIndex])
-			{
-				decl String:sSteamID[24];
-				GetClientAuthString(iClientIndex, sSteamID, 22);
-				new iFindIndex = FindStringInArray(gH_Muted_Players, sSteamID);
-				int VCommType:CommPunishment = 4;
-				if (iFindIndex != -1)
-				{
-					CommPunishment = GetArrayCell(gH_Muted_Players, iFindIndex, 22, false);
-				}
-				RemoveFromArray(gH_TimedPunishmentLocalArray, idx);
-				SetClientCookie(iClientIndex, gH_Cookie_VoiceCommMask, "0");
-				new userid = GetClientUserId(iClientIndex);
-				switch (CommPunishment)
-				{
-					case 1:
-					{
-						ServerCommand("sm_unmute #%d force", userid);
-					}
-					case 2:
-					{
-						ServerCommand("sm_ungag #%d force", userid);
-					}
-					case 3:
-					{
-						ServerCommand("sm_unsilence #%d force", userid);
-					}
-					default:
-					{
-					}
-				}
-			}
-		}
-		idx++;
-	}
-	return Action:0;
+    bool found = false;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (g_bMuted[i] && IsClientInGame(i))
+        {
+            ReplyToCommand(client, "[\x03SM\x01] %t", "List Mute Name", i);
+            found = true;
+        }
+    }
+    if (!found)
+    {
+        ReplyToCommand(client, "[\x03SM\x01] %t", "No Muted Players");
+    }
+    return Plugin_Handled;
 }
 
-
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+// Renamed to avoid overriding the native - prevents conflicts with other plugins
+void VoiceComm_PrintToChatAll(const char[] format, any ...)
+{
+    char buffer[192];
+    VFormat(buffer, sizeof(buffer), format, 3);
+    
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i))
+        {
+            PrintToChat(i, "%s", buffer);
+        }
+    }
+}
