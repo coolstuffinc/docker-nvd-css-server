@@ -56,17 +56,18 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     if (g_CvarRadio.BoolValue)
       FakeClientCommand(attackerClient, "enemydown");
 
-    if (g_CvarChat.BoolValue)
-    {
-      if (iAliveEnemies > 2)
-        PrintToChatAll("\x01%t", "CountMany", iAliveEnemies);
-      else if (iAliveEnemies == 2)
-        PrintToChatAll("\x01%t", "Count2");
-      else if (iAliveEnemies == 1)
-        PrintToChatAll("\x01%t", "Count1");
-      else
-        PrintToChatAll("\x01%t", "Count0");
-    }
+		if (g_CvarChat.BoolValue)
+		{
+			if (iAliveEnemies > 2)
+				PrintToChatAll("\x04[NVD]\x01 %d enemies left", iAliveEnemies);
+			else if (iAliveEnemies == 2)
+				PrintToChatAll("\x04[NVD]\x01 2 enemies left");
+			else if (iAliveEnemies == 1)
+				PrintToChatAll("\x04[NVD]\x01 1 enemy left");
+			else
+				PrintToChatAll("\x04[NVD]\x01 Last one!");
+		}
+
 
 
   }	

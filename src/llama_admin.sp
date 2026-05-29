@@ -83,23 +83,12 @@ public Action Command_Ask(int client, int args)
 	char systemPrompt[2048];
 	Format(systemPrompt, sizeof(systemPrompt), "You are NVD Admin AI. Rules:\n1. NEVER execute commands directly. Propose votes using [CMD: sm_votecommand arg1].\n2. IF NO COMMAND IS NEEDED, DO NOT USE [CMD:]. JUST CHAT.\n3. Available maps: %s", mapList);
 
-	// JSON structure with model name
+	// Ollama generate API structure
 	JSONObject payload = new JSONObject();
 	payload.SetString("model", model);
+	payload.SetString("prompt", prompt);
 	payload.SetBool("stream", false);
-	
-	JSONArray messages = new JSONArray();
-	JSONObject msg = new JSONObject();
-	msg.SetString("role", "system");
-	msg.SetString("content", systemPrompt);
-	messages.Push(msg);
-	
-	JSONObject userMsg = new JSONObject();
-	userMsg.SetString("role", "user");
-	userMsg.SetString("content", prompt);
-	messages.Push(userMsg);
-	
-	payload.Set("messages", messages);
+	payload.SetString("system", systemPrompt);
 
 	int userid = (client == 0) ? 0 : GetClientUserId(client);
 	g_HttpClient.Post("api/generate", payload, OnOllamaResponse, userid);
@@ -133,26 +122,28 @@ void GetMapList(char[] buffer, int size)
 
 public void OnOllamaResponse(HTTPResponse response, any userid)
 {
-  int client = (userid == 0) ? 0 : GetClientOfUserId(userid);
+    int client = (userid == 0) ? 0 : GetClientOfUserId(userid);
+    
+    if (response.Status != HTTPStatus_OK || response.Data == null)
+    {
+        LogError("Ollama Error: Status %d, Data valid: %d", response.Status, response.Data != null);
+        return;
+    }
 
-  if (response.Status != HTTPStatus_OK)
-  {
-    LogError("Ollama Error: Unreachable or returned status %d.", response.Status);
-    if (client)
-      PrintToChat(client, "[Llama] Error: AI server unreachable.");
-    return;
-  }
-
-  if (response.Data == null)
-  {
-    LogError("Ollama Error: Received empty data.");
-    return;
-  }
+    // DEBUG: Logar a resposta bruta para ver o que está acontecendo
+    char fullResponse[2048];
+    // Se response.Data for Handle (JSONObject), precisamos converter para string
+    // Comoripext nem sempre tem uma função de conversão direta fácil, vamos logar o status
+    LogMessage("Ollama raw response received.");
 
 	JSONObject json = view_as<JSONObject>(response.Data);
-	JSONObject message = view_as<JSONObject>(json.Get("message"));
 	char reply[1024];
-	message.GetString("content", reply, sizeof(reply));
+	json.GetString("response", reply, sizeof(reply));
+
+    delete message;
+    
+    // ... resto do código ...
+
 
 
   if (g_cvDebug.BoolValue)
