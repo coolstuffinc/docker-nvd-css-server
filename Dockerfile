@@ -42,7 +42,11 @@ RUN wget -q -O /tmp/steamcmd.tar.gz https://steamcdn-a.akamaihd.net/client/insta
     ./steamcmd.sh +quit
 
 RUN mkdir -p /home/steam/css && \
-    ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit
+    for i in 1 2 3; do \
+        ./steamcmd.sh +force_install_dir /home/steam/css +login anonymous +app_update 232330 validate +quit && \
+        exit_code=0 && break || \
+        exit_code=$? && echo "Attempt $i failed (code $exit_code), retrying in 10s..." && sleep 10; \
+    done && exit $exit_code
 
 RUN curl -L -o /tmp/mmsource.tar.gz https://github.com/alliedmodders/metamod-source/releases/download/1.12.0.1224/mmsource-1.12.0-git1224-linux.tar.gz && \
     tar -C /home/steam/css/cstrike -zxf /tmp/mmsource.tar.gz && rm /tmp/mmsource.tar.gz && \
