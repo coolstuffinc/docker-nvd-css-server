@@ -127,10 +127,10 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 					PrintCenterText(i, "Since you took over a BOT this last round, you get teleported")
 					TeleportWarning[i] = 1
 					new Float:iTargetOrigin[3]
-					// Teleport far out of bounds, spaced apart by player ID so they don't collide
-					iTargetOrigin[0] = 10000.0 + (i * 100.0)
-					iTargetOrigin[1] = 10000.0 + (i * 100.0)
-					iTargetOrigin[2] = -10000.0
+// Teleport far out of bounds, spaced apart by player ID so they don't collide
+				iTargetOrigin[0] = 10000.0 + (i * 500.0)
+				iTargetOrigin[1] = 10000.0 + (i * 500.0)
+				iTargetOrigin[2] = -10000.0
 					TeleportEntity(i, iTargetOrigin, NULL_VECTOR, NULL_VECTOR)
 				}
 				CreateTimer(Weapon_Strip_Delay, StripWeapons, GetClientUserId(i))
