@@ -29,19 +29,47 @@ fi
 
 # Start Nginx in background to serve maps locally
 echo "--- Starting Nginx for FastDL ---"
-mkdir -p /var/log/nginx
-echo "server {
-    listen 80;
-    location /maps/ {
-        alias /home/steam/css/cstrike/maps/;
-        autoindex on;
-    }
-}" > /etc/nginx/conf.d/default.conf
-nginx
+# Since the container runs as 'steam', we cannot write to /etc/nginx/conf.d directly.
+# However, nginx in the ubuntu image typically can be run if configured correctly,
+# but we need to write the config to a location 'steam' has access to.
 
-# Inject dynamic Server IP for FastDL
+mkdir -p /home/steam/nginx_logs
+cat << 'EOF' > /home/steam/nginx.conf
+worker_processes 1;
+daemon on;
+error_log /home/steam/nginx_logs/error.log;
+pid /home/steam/nginx.pid;
+events {
+    worker_connections 1024;
+}
+http {
+    access_log /home/steam/nginx_logs/access.log;
+    client_body_temp_path /home/steam/nginx_logs/client_body;
+    fastcgi_temp_path /home/steam/nginx_logs/fastcgi_temp;
+    proxy_temp_path /home/steam/nginx_logs/proxy_temp;
+    scgi_temp_path /home/steam/nginx_logs/scgi_temp;
+    uwsgi_temp_path /home/steam/nginx_logs/uwsgi_temp;
+    server {
+        listen 8080;
+        location /maps/ {
+            alias /home/steam/css/cstrike/maps/;
+            autoindex on;
+        }
+    }
+}
+EOF
+
+nginx -c /home/steam/nginx.conf
+
+# Inject dynamic Server IP for FastDL. Note that we mapped 80 to 8080 or need to tell clients port 80.
+# Wait, standard port 80 requires root. If we are running as steam, we must use a high port inside,
+# and map it in docker-compose (e.g. 80:8080).
+# I'll configure it to listen on 8080 inside the container.
 SERVER_IP=$(hostname -i | awk '{print $1}')
-sed -i "s|sv_downloadurl \".*\"|sv_downloadurl \"http://$SERVER_IP/maps/\"|g" "$CSTRIKE_DIR/cfg/server.cfg"
+# Nginx is listening on 8080 inside, but external clients will connect on whatever docker maps it to.
+# Assuming standard 80 external mapping, we point sv_downloadurl to the external port. If 80 is used:
+sed -i "s|sv_downloadurl \".*\"|sv_downloadurl \"http://$SERVER_IP:8080/maps/\"|g" "$CSTRIKE_DIR/cfg/server.cfg"
+
 
 echo "--- Starting CSS Server ---"
 cd "$CSS_DIR"
