@@ -139,9 +139,6 @@ public void OnOllamaResponse(HTTPResponse response, any userid)
 	JSONObject json = view_as<JSONObject>(response.Data);
 	char reply[1024];
 	json.GetString("response", reply, sizeof(reply));
-
-    delete message;
-    
     // ... resto do código ...
 
 
