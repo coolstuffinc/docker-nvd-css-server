@@ -16,13 +16,12 @@ RUN wget -O /tmp/steamcmd_linux.tar.gz https://steamcdn-a.akamaihd.net/client/in
     rm /tmp/steamcmd_linux.tar.gz && \
     ./steamcmd.sh +quit
 
-# Entrypoint will handle game files and mod syncing at runtime
+# Copy required assets and scripts into the image
 COPY --chown=steam:steam entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
-# Entrypoint will handle game files and mod syncing at runtime
-COPY --chown=steam:steam entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh
-# Copy compiled plugins into the image
+
+COPY --chown=steam:steam assets /home/steam/assets
+COPY --chown=steam:steam cfg /home/steam/cfg_defaults
 COPY --chown=steam:steam compiled_plugins /home/steam/ci_mods
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
