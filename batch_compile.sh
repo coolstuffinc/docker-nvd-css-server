@@ -7,6 +7,7 @@ for spfile in src/*.sp; do
     [ -e "$spfile" ] || continue
     smxname=$(basename "${spfile%.sp}.smx")
     echo "Compiling $spfile..."
-    $COMPILER $INCLUDES "$spfile" -o"compiled_plugins/$smxname"
+    # Don't fail the entire build just because one broken legacy plugin fails to compile
+    $COMPILER $INCLUDES "$spfile" -o"compiled_plugins/$smxname" || echo "Warning: Failed to compile $spfile, skipping..."
 done
 echo "Done!"
