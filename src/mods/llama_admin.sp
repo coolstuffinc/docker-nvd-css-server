@@ -42,11 +42,39 @@ public Action Command_Ask(int client, int args)
 	Format(prompt, sizeof(prompt), "Player '%s' asks: %s", name, question);
 	
 	char systemPrompt[2048];
-	Format(systemPrompt, sizeof(systemPrompt), "You are NVD Admin AI. Concise. RULES: 1. Propose votes using [CMD: sm_votecommand arg1]. 2. IF NO COMMAND, JUST CHAT.");
+	Format(systemPrompt, sizeof(systemPrompt), "You are NVD Admin AI. Concise. RULES: 1. You CANNOT execute direct actions. You can ONLY propose votes for the server to decide (e.g. sm_votekick, sm_votemap, sm_voteban). 2. Propose votes using exactly [CMD: sm_votecommand arg1]. 3. IF NO ACTION REQUESTED, JUST CHAT.");
 
 	NVD_AskAI(prompt, systemPrompt, OnAIResponse, client);
+}
 
-	return Plugin_Handled;
+public void OnAIResponse(const char[] response, any data)
+{
+	char reply[1024];
+	strcopy(reply, sizeof(reply), response);
+	
+	// Parse [CMD: ...] block if it exists
+	if (StrContains(reply, "[CMD:") == 0)
+	{
+		int endBracket = StrContains(reply, "]");
+		if (endBracket != -1)
+		{
+			char cmd[128];
+			strcopy(cmd, endBracket - 4, reply[5]); // Copy text between [CMD: and ]
+			
+			// Execute the parsed command on the server
+			TrimString(cmd);
+			ServerCommand("%s", cmd);
+
+			// Remove the [CMD: ...] block from the reply text
+			strcopy(reply, sizeof(reply), reply[endBracket + 1]);
+			TrimString(reply);
+		}
+	}
+
+	if (strlen(reply) > 0)
+	{
+		PrintToChatAll("\x04[Llama Admin]\x01 %s", reply);
+	}
 }
 
 public void OnAIResponse(const char[] response, any data)
