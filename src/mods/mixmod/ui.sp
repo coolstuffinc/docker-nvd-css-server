@@ -298,6 +298,8 @@ public int Mix_HandlePasswordMenu(Handle menu, MenuAction action, int param1, in
             PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Password Set By", name);
             g_szPasswordMenuValue[param1][0] = '\0';
         } else {
+            Mix_ShowPasswordMenu(param1);
+        }
     } else if (action == MenuAction_Cancel) {
         if (param1 >= 1 && param1 <= MaxClients) {
             g_szPasswordMenuValue[param1][0] = '\0';
