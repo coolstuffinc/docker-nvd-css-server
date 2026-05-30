@@ -1,6 +1,6 @@
 #include <sourcemod>
 #include <cstrike>
-#include <smlib>
+#include <nvd_utils>
 
 new const String:PLUGIN_NAME[]= "CS:S Bot2Player (public)"
 new const String: PLUGIN_AUTHOR[]= "Bittersweet"

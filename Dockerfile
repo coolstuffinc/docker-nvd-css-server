@@ -13,8 +13,7 @@ RUN wget -q -O /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases
 
 COPY src/ /src/
 RUN mkdir /output && \
-    for spfile in /src/*.sp; do \
-        [ -e "$spfile" ] || continue; \
+    find /src/mods/ -name "*.sp" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
         /tmp/addons/sourcemod/scripting/spcomp \
