@@ -121,7 +121,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 public void OnPlayerBlind(Event event, const char[] name, bool dontBroadcast)
 {
   int client = GetClientOfUserId(event.GetInt("userid"));
-  if (client > 0 && IsClientInGame(client) && g_CvarChat.BoolValue && g_CvarBlind.BoolValue)
+  if (client > 0 && IsClientInGame(client) && IsPlayerAlive(client) && g_CvarChat.BoolValue && g_CvarBlind.BoolValue)
   {
     if (g_CvarRadio.BoolValue)
       FakeClientCommand(client, "fallback");
