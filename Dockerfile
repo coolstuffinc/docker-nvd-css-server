@@ -101,6 +101,8 @@ RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//'
     cp -rn /tmp/translations/* /home/steam/css/cstrike/addons/sourcemod/translations/ 2>/dev/null || true && \
     rm -rf /tmp/translations
 
+COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
+
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp
 
