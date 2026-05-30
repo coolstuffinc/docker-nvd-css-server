@@ -237,44 +237,49 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     }
 
     // Trata erro HTTP
+    // Trata erro HTTP
     if (response.Status != HTTPStatus_OK)
     {
-        // Log detalhado para debug (sempre, ou só com debug ativo)
-        LogError("NVD Core: HTTP %d - %s", response.Status, response.StatusLine);
+        LogError("NVD Core: HTTP %d", response.Status);
         
-        // Log headers (útil para redirects - ver Location header)
-        if (g_DebugCvar.BoolValue && response.Headers != null)
+        // Tenta logar header Location (útil para redirects 307)
+        char location[256];
+        if (response.GetHeader("Location", location, sizeof(location)))
         {
-            char headers[1024];
-            response.Headers.ExportToString(headers, sizeof(headers));
-            LogMessage("NVD Core: Response Headers:\n%s", headers);
+            LogError("NVD Core: Redirect Location: %s", location);
         }
         
-        // Tenta extrair e logar o body, mesmo em erro
+        // Tenta extrair mensagem de erro do JSON da resposta
         if (response.Data != null)
         {
             JSONObject json = view_as<JSONObject>(response.Data);
-            char errorBody[2048];
+            char errorMsg[512];
             
-            // Tenta pegar campo "error" comum em APIs
-            if (json.GetString("error", errorBody, sizeof(errorBody)))
+            // Tenta campo "error" (comum em APIs)
+            if (json.GetString("error", errorMsg, sizeof(errorMsg)))
             {
-                LogError("NVD Core: API Error: %s", errorBody);
+                LogError("NVD Core: API Error: %s", errorMsg);
             }
+            // Tenta campo "message" (alternativa comum)
+            else if (json.GetString("message", errorMsg, sizeof(errorMsg)))
+            {
+                LogError("NVD Core: API Message: %s", errorMsg);
+            }
+            // Fallback: tenta serializar o JSON para log
             else
             {
-                // Fallback: exporta JSON completo para log
-                json.ExportToString(errorBody, sizeof(errorBody));
-                LogError("NVD Core: Raw Response Body: %s", errorBody);
+                char rawJson[1024];
+                json.ToString(rawJson, sizeof(rawJson));
+                LogError("NVD Core: Raw JSON Response: %.500s", rawJson);
             }
-            delete json;
+            // NÃO delete json aqui — response.Data é gerenciado pelo ripext
         }
         else
         {
-            LogError("NVD Core: Empty response body (null data)");
+            LogError("NVD Core: No JSON data in response (check Content-Type header)");
         }
         
-        // Callback do plugin chamador (mantém comportamento original)
+        // Mantém callback do plugin chamador para não travar
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
             Call_StartFunction(callerPlugin, callback);
