@@ -77,14 +77,3 @@ public void OnAIResponse(const char[] response, any data)
 		PrintToChatAll("\x04[Llama Admin]\x01 %s", reply);
 	}
 }
-
-public void OnAIResponse(const char[] response, any data)
-{
-	char reply[1024];
-	strcopy(reply, sizeof(reply), response);
-	
-	if (strlen(reply) > 0)
-	{
-		PrintToChatAll("\x04[Llama Admin]\x01 %s", reply);
-	}
-}
