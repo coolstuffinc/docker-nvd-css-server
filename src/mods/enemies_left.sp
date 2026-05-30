@@ -21,7 +21,7 @@ public void OnPluginStart()
 {
   LoadTranslations("enemies_left.phrases");
   g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Automatically says on chat how many enemies are left.");
-  g_CvarRadio = CreateConVar("sm_eleft_radio", "0", "Executes 'enemy down' radio command.");
+  g_CvarRadio = CreateConVar("sm_eleft_radio", "1", "Executes radio command on kill (contextual by remaining enemies).");
   g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you.");
   CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 
@@ -54,7 +54,14 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     }
 
     if (g_CvarRadio.BoolValue)
-      FakeClientCommand(attackerClient, "enemydown");
+		{
+			if (iAliveEnemies <= 1)
+				FakeClientCommand(attackerClient, "sectorclear");
+			else if (iAliveEnemies == 2)
+				FakeClientCommand(attackerClient, "enemydown");
+			else
+				FakeClientCommand(attackerClient, "needbackup");
+		}
 
 		if (g_CvarChat.BoolValue)
 		{
