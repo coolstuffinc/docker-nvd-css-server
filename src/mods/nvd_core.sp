@@ -169,7 +169,7 @@ public int Native_AskAI(Handle plugin, int numParams)
 		messages.Push(systemMsg);
 		messages.Push(userMsg);
 
-		payload.SetObject("messages", messages);
+		payload.Set("messages", messages);
 		payload.SetBool("stream", false);
 
 		delete systemMsg;
@@ -220,8 +220,8 @@ public void OnOllamaResponse(HTTPResponse response, any data)
 
 	if (!json.GetString("response", reply, sizeof(reply)))
 	{
-		JSONObject msg;
-		if (json.GetObject("message", msg))
+		JSONObject msg = view_as<JSONObject>(json.Get("message"));
+		if (msg != null)
 		{
 			msg.GetString("content", reply, sizeof(reply));
 			delete msg;
