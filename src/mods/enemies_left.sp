@@ -44,39 +44,65 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
   if (victimTeam != attackerTeam)
   {
-    int iAliveEnemies = 0;
+    int iAttackerSideAlive = 0;
+    int iVictimSideAlive = 0;
     for (int i = 1; i <= MaxClients; i++)
     {
-      if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == victimTeam)
-      {
-        iAliveEnemies++;
-      }
+      if (!IsClientInGame(i) || !IsPlayerAlive(i))
+        continue;
+      int team = GetClientTeam(i);
+      if (team == attackerTeam)
+        iAttackerSideAlive++;
+      else if (team == victimTeam)
+        iVictimSideAlive++;
     }
+    // iVictimSideAlive = how many enemies the attacker's team still faces
+    // iAttackerSideAlive = how many enemies the victim's team still faces
 
     if (g_CvarRadio.BoolValue)
-		{
-			if (iAliveEnemies <= 1)
-				FakeClientCommand(attackerClient, "sectorclear");
-			else if (iAliveEnemies == 2)
-				FakeClientCommand(attackerClient, "enemydown");
-			else
-				FakeClientCommand(attackerClient, "needbackup");
-		}
+    {
+      int enemiesForAttacker = iVictimSideAlive;
+      if (enemiesForAttacker <= 1)
+        FakeClientCommand(attackerClient, "sectorclear");
+      else if (enemiesForAttacker == 2)
+        FakeClientCommand(attackerClient, "enemydown");
+      else
+        FakeClientCommand(attackerClient, "needbackup");
+    }
 
-		if (g_CvarChat.BoolValue)
-		{
-			if (iAliveEnemies > 2)
-				PrintToChatAll("\x04[NVD]\x01 %d enemies left", iAliveEnemies);
-			else if (iAliveEnemies == 2)
-				PrintToChatAll("\x04[NVD]\x01 2 enemies left");
-			else if (iAliveEnemies == 1)
-				PrintToChatAll("\x04[NVD]\x01 1 enemy left");
-			else
-				PrintToChatAll("\x04[NVD]\x01 Last one!");
-		}
-
-
-
+    if (g_CvarChat.BoolValue)
+    {
+      for (int i = 1; i <= MaxClients; i++)
+      {
+        if (!IsClientInGame(i) || IsFakeClient(i))
+          continue;
+        int team = GetClientTeam(i);
+        if (team == attackerTeam)
+        {
+          int n = iVictimSideAlive;
+          if (n > 2)
+            PrintToChat(i, "\x04[NVD]\x01 %d enemies left", n);
+          else if (n == 2)
+            PrintToChat(i, "\x04[NVD]\x01 2 enemies left");
+          else if (n == 1)
+            PrintToChat(i, "\x04[NVD]\x01 1 enemy left");
+          else
+            PrintToChat(i, "\x04[NVD]\x01 Last one!");
+        }
+        else if (team == victimTeam)
+        {
+          int n = iAttackerSideAlive;
+          if (n > 2)
+            PrintToChat(i, "\x04[NVD]\x01 %d teammates left", n);
+          else if (n == 2)
+            PrintToChat(i, "\x04[NVD]\x01 2 teammates left");
+          else if (n == 1)
+            PrintToChat(i, "\x04[NVD]\x01 1 teammate left");
+          else
+            PrintToChat(i, "\x04[NVD]\x01 No teammates left!");
+        }
+      }
+    }
   }	
 }
 
