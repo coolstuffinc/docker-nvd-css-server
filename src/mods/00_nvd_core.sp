@@ -45,7 +45,7 @@ public void OnConfigsExecuted()
 	char ip[64], port[16];
 	g_IpCvar.GetString(ip, sizeof(ip));
 	g_PortCvar.GetString(port, sizeof(port));
-	Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s", ip, port); // Removida a barra extra aqui
+	Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s/", ip, port); // Adicionei a barra de volta
 
 	g_HttpClient = new HTTPClient(g_BaseUrl);
 	g_HttpClient.SetHeader("Content-Type", "application/json");
