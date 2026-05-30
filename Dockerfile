@@ -2,7 +2,7 @@
 FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget unzip ca-certificates lib32gcc-s1 lib32stdc++6 && \
+    wget curl unzip ca-certificates lib32gcc-s1 lib32stdc++6 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
@@ -12,12 +12,12 @@ RUN wget -q -O /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases
     unzip -q -o /tmp/ripext.zip -d /tmp && rm /tmp/ripext.zip
 
 COPY src/ /src/
-RUN curl -sL -o /src/mods/mixmod.sp "https://raw.githubusercontent.com/ZxYdzero/CS-S-Mixmod/new_syntax/addons/sourcemod/scripting/mixmod.sp" && \
-    mkdir -p /src/mods/mixmod && \
-    for f in api.sp commands.sp constants.sp core.sp events.sp globals.sp maps.sp ready.sp scoring.sp stats.sp teams.sp ui.sp util.sp; do \
-        curl -sL -o "/src/mods/mixmod/$f" "https://raw.githubusercontent.com/ZxYdzero/CS-S-Mixmod/new_syntax/addons/sourcemod/scripting/mixmod/$f"; \
-    done && \
-    curl -sL -o /tmp/mixmod.phrases.txt "https://raw.githubusercontent.com/ZxYdzero/CS-S-Mixmod/new_syntax/addons/sourcemod/translations/mixmod.phrases.txt"
+RUN wget -q -O /tmp/mixmod.tar.gz "https://github.com/ZxYdzero/CS-S-Mixmod/archive/refs/heads/new_syntax.tar.gz" && \
+    tar -C /tmp -zxf /tmp/mixmod.tar.gz && \
+    cp /tmp/CS-S-Mixmod-new_syntax/addons/sourcemod/scripting/mixmod.sp /src/mods/ && \
+    cp -r /tmp/CS-S-Mixmod-new_syntax/addons/sourcemod/scripting/mixmod /src/mods/ && \
+    cp /tmp/CS-S-Mixmod-new_syntax/addons/sourcemod/translations/mixmod.phrases.txt /tmp/ && \
+    rm -rf /tmp/mixmod.tar.gz /tmp/CS-S-Mixmod-new_syntax
 RUN mkdir /output && \
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
