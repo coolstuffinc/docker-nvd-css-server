@@ -45,7 +45,7 @@ public void OnConfigsExecuted()
 	char ip[64], port[16];
 	g_IpCvar.GetString(ip, sizeof(ip));
 	g_PortCvar.GetString(port, sizeof(port));
-	Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s/", ip, port);
+	Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s", ip, port); // Removida a barra extra aqui
 
 	g_HttpClient = new HTTPClient(g_BaseUrl);
 	g_HttpClient.SetHeader("Content-Type", "application/json");
@@ -79,7 +79,7 @@ public Action Command_OllamaTest(int client, int args)
 	char url[128];
 	char endpoint[16];
 	g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-	Format(url, sizeof(url), "api/%s", endpoint);
+	Format(url, sizeof(url), "/api/%s", endpoint);
 
 	g_HttpClient.Post(url, payload, OnTestResponse, client);
 	delete payload;
@@ -115,20 +115,7 @@ public void OnTestResponse(HTTPResponse response, any client)
 			PrintToServer("[NVD] FAILED: Ollama returned status %d on %s", response.Status, g_BaseUrl);
 		else if (IsClientInGame(client))
 			PrintToChat(client, "\x04[NVD]\x03 FAILED: Ollama returned status %d on %s", response.Status, g_BaseUrl);
-
-		if (response.Data != null)
-		{
-			JSONObject json = view_as<JSONObject>(response.Data);
-			char err[512];
-			if (json.GetString("error", err, sizeof(err)))
-			{
-				if (client == 0)
-					PrintToServer("[NVD] Error: %s", err);
-				else if (IsClientInGame(client))
-					PrintToChat(client, "\x04[NVD]\x03 Error: %s", err);
-			}
-			delete json;
-		}
+		// Removida a checagem de response.Data em erros para evitar Exception "Invalid JSON"
 	}
 }
 
@@ -150,7 +137,7 @@ public int Native_AskAI(Handle plugin, int numParams)
 	char model[64], endpoint[16], url[128];
 	g_ModelCvar.GetString(model, sizeof(model));
 	g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-	Format(url, sizeof(url), "api/%s", endpoint);
+	Format(url, sizeof(url), "/api/%s", endpoint);
 
 	JSONObject payload = new JSONObject();
 	payload.SetString("model", model);
@@ -198,14 +185,7 @@ public void OnOllamaResponse(HTTPResponse response, any data)
 	if (response.Status != HTTPStatus_OK)
 	{
 		LogError("NVD Core: Ollama returned status %d (base URL: %s)", response.Status, g_BaseUrl);
-		if (response.Data != null)
-		{
-			JSONObject json = view_as<JSONObject>(response.Data);
-			char err[512];
-			if (json.GetString("error", err, sizeof(err)))
-				LogError("NVD Core: Ollama error: %s", err);
-			delete json;
-		}
+		// Removida a checagem de response.Data em erros para evitar Exception "Invalid JSON" quando o server retorna HTML/Texto
 		return;
 	}
 

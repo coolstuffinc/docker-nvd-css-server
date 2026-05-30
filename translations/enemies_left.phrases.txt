@@ -9,21 +9,18 @@
 	}
 	"Count0"
 	{
-		"#format"	"{1:s}"
 		"en"		"That was the last one :)"
 		"es"		"Ese fue el último :)"
 		"pt"		"Era o último! :)"
 	}
 	"Count1"
 	{
-		"#format"	"{1:s}"
 		"en"		"One guy left!!!"
 		"es"		"Sólo queda uno!!!"
 		"pt"		"Só falta um!!!"
 	}
 	"Count2"
 	{
-		"#format"	"{1:s}"
 		"en"		"2 to go"
 		"es"		"Faltan 2 para terminar"
 		"pt"		"Faltam 2"
@@ -44,14 +41,12 @@
 	}
 	"Victim2"
 	{
-		"#format"	"{1:s}"
 		"en"		"Only 2 of us left!"
 		"es"		"¡Solo quedamos 2!"
 		"pt"		"Só restam 2 de nós!"
 	}
 	"Victim1"
 	{
-		"#format"	"{1:s}"
 		"en"		"I'm the last one alive!"
 		"es"		"¡Soy el último vivo!"
 		"pt"		"Eu sou o último vivo!"
