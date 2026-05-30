@@ -63,7 +63,9 @@ void Mix_CreateMapList()
         }
 
         g_hMapListMenu = CreateMenu(Mix_HandleMapListMenu);
-        SetMenuTitle(g_hMapListMenu, "选择地图:");
+        char buffer[128];
+        Format(buffer, sizeof(buffer), "%t", "Menu Select Map");
+        SetMenuTitle(g_hMapListMenu, buffer);
 
         for (int i = 0; i < mapCount; i++) {
             AddMenuItem(g_hMapListMenu, g_szMapNames[i], g_szMapNames[i]);

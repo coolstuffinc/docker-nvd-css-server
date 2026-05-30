@@ -109,34 +109,51 @@ void Mix_CreateMainMixMenu(int client)
         }
 
         g_hMixMenu = CreateMenu(Mix_HandleMixMenu);
-        SetMenuTitle(g_hMixMenu, "Mix-Plugin 管理菜单:");
+        char buffer[128];
+        Format(buffer, sizeof(buffer), "%t", "Menu Admin Title");
+        SetMenuTitle(g_hMixMenu, buffer);
 
         // 添加主菜单项
-        AddMenuItem(g_hMixMenu, "live", "开始满十 (mr12)");
-        AddMenuItem(g_hMixMenu, "prac", "恢复热身");
-        AddMenuItem(g_hMixMenu, "map", "选择地图");
-        AddMenuItem(g_hMixMenu, "restart", "重新开始当前回合");
-        AddMenuItem(g_hMixMenu, "swap", "互换队伍");
-        AddMenuItem(g_hMixMenu, "switchadmin", "切换到管理员模式");
+        Format(buffer, sizeof(buffer), "%t", "Menu Live");
+        AddMenuItem(g_hMixMenu, "live", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Prac");
+        AddMenuItem(g_hMixMenu, "prac", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Map");
+        AddMenuItem(g_hMixMenu, "map", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Restart");
+        AddMenuItem(g_hMixMenu, "restart", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Swap");
+        AddMenuItem(g_hMixMenu, "swap", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Switch Admin");
+        AddMenuItem(g_hMixMenu, "switchadmin", buffer);
 
         // 根据当前状态添加录制选项
         if (g_bIsRecording) {
-            AddMenuItem(g_hMixMenu, "stoprecord", "停止录制");
+            Format(buffer, sizeof(buffer), "%t", "Menu Stop Record");
+            AddMenuItem(g_hMixMenu, "stoprecord", buffer);
         } else {
-            AddMenuItem(g_hMixMenu, "record", "开始录制");
+            Format(buffer, sizeof(buffer), "%t", "Menu Record");
+            AddMenuItem(g_hMixMenu, "record", buffer);
         }
 
         // 添加密码相关选项
         if (GetConVarInt(g_hCvarEnablePasswords) == 1) {
-            AddMenuItem(g_hMixMenu, "pass", "设置密码");
-            AddMenuItem(g_hMixMenu, "rpass", "移除密码");
-            AddMenuItem(g_hMixMenu, "rpw", "设置随机密码");
+            Format(buffer, sizeof(buffer), "%t", "Menu Set Password");
+            AddMenuItem(g_hMixMenu, "pass", buffer);
+            Format(buffer, sizeof(buffer), "%t", "Menu Remove Password");
+            AddMenuItem(g_hMixMenu, "rpass", buffer);
+            Format(buffer, sizeof(buffer), "%t", "Menu Random Password");
+            AddMenuItem(g_hMixMenu, "rpw", buffer);
         }
 
-        AddMenuItem(g_hMixMenu, "kickct", "踢出所有CT");
-        AddMenuItem(g_hMixMenu, "kickt", "踢出所有T");
-        AddMenuItem(g_hMixMenu, "random", "随机分配队伍");
-        AddMenuItem(g_hMixMenu, "ko3", "开始刀局");
+        Format(buffer, sizeof(buffer), "%t", "Menu Kick CT");
+        AddMenuItem(g_hMixMenu, "kickct", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Kick T");
+        AddMenuItem(g_hMixMenu, "kickt", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Random Teams");
+        AddMenuItem(g_hMixMenu, "random", buffer);
+        Format(buffer, sizeof(buffer), "%t", "Menu Knife Round");
+        AddMenuItem(g_hMixMenu, "ko3", buffer);
 
         g_bIsMixMenuGenerated = true;
     }
@@ -246,11 +263,13 @@ void Mix_ShowPasswordMenu(int client)
     }
 
     Handle menu = CreateMenu(Mix_HandlePasswordMenu);
+    char titleBuf[128];
     if (g_szPasswordMenuValue[client][0] == '\0') {
-        SetMenuTitle(menu, "输入服务器密码:");
+        Format(titleBuf, sizeof(titleBuf), "%t", "Menu Enter Password");
     } else {
-        SetMenuTitle(menu, "输入服务器密码 (%s):", g_szPasswordMenuValue[client]);
+        Format(titleBuf, sizeof(titleBuf), "%t", "Menu Enter Password With Val", g_szPasswordMenuValue[client]);
     }
+    SetMenuTitle(menu, titleBuf);
 
     char buffer[32];
     for (int i = 0; i < 10; i++) {

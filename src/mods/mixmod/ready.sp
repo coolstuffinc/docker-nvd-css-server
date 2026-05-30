@@ -161,7 +161,9 @@ Action Mix_CreateReadyPanel()
     // 将面板显示给所有符合条件的客户端
     for (int i = 1; i <= MaxClients; i++) {
         if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
-            SendPanelToClient(g_hReadyStatus, i, Mix_HandleDoNothing, 1);
+            if (GetClientMenu(i) == MenuSource_None) {
+                SendPanelToClient(g_hReadyStatus, i, Mix_HandleDoNothing, 1);
+            }
         }
     }
 

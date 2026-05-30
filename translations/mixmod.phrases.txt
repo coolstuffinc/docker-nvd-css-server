@@ -1119,4 +1119,119 @@
         "en"        "Teams have been randomly assigned!"
         "pt"        "Os times foram sorteados!"
     }
+
+    "Menu Admin Title"
+    {
+        "en"        "Mix-Plugin Admin Menu:"
+        "pt"        "Mix-Plugin Menu Admin:"
+    }
+
+    "Menu Live"
+    {
+        "en"        "Start Match (mr12)"
+        "pt"        "Iniciar Partida (mr12)"
+    }
+
+    "Menu Prac"
+    {
+        "en"        "Resume Warmup"
+        "pt"        "Retomar Aquecimento"
+    }
+
+    "Menu Map"
+    {
+        "en"        "Select Map"
+        "pt"        "Selecionar Mapa"
+    }
+
+    "Menu Restart"
+    {
+        "en"        "Restart Current Round"
+        "pt"        "Reiniciar Round Atual"
+    }
+
+    "Menu Swap"
+    {
+        "en"        "Swap Teams"
+        "pt"        "Trocar Times"
+    }
+
+    "Menu Switch Admin"
+    {
+        "en"        "Switch to Admin Mode"
+        "pt"        "Mudar para Modo Admin"
+    }
+
+    "Menu Stop Record"
+    {
+        "en"        "Stop Recording"
+        "pt"        "Parar Gravacao"
+    }
+
+    "Menu Record"
+    {
+        "en"        "Start Recording"
+        "pt"        "Iniciar Gravacao"
+    }
+
+    "Menu Set Password"
+    {
+        "en"        "Set Password"
+        "pt"        "Definir Senha"
+    }
+
+    "Menu Remove Password"
+    {
+        "en"        "Remove Password"
+        "pt"        "Remover Senha"
+    }
+
+    "Menu Random Password"
+    {
+        "en"        "Set Random Password"
+        "pt"        "Definir Senha Aleatoria"
+    }
+
+    "Menu Kick CT"
+    {
+        "en"        "Kick All CTs"
+        "pt"        "Kickar Todos os CTs"
+    }
+
+    "Menu Kick T"
+    {
+        "en"        "Kick All Ts"
+        "pt"        "Kickar Todos os Ts"
+    }
+
+    "Menu Random Teams"
+    {
+        "en"        "Randomize Teams"
+        "pt"        "Sortear Times"
+    }
+
+    "Menu Knife Round"
+    {
+        "en"        "Start Knife Round"
+        "pt"        "Iniciar Knife Round"
+    }
+
+    "Menu Select Map"
+    {
+        "en"        "Select Map:"
+        "pt"        "Selecionar Mapa:"
+    }
+
+    "Menu Enter Password"
+    {
+        "en"        "Enter Server Password:"
+        "pt"        "Digite a Senha do Servidor:"
+    }
+
+    "Menu Enter Password With Val"
+    {
+        "#format"   "{1:s}"
+        "en"        "Enter Server Password ({1}):"
+        "pt"        "Digite a Senha do Servidor ({1}):"
+    }
 }
