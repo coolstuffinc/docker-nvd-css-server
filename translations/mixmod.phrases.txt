@@ -854,6 +854,30 @@
         "pt"        "{1} - Sistema de Pronto"
     }
 
+    "Ready Category Ready"
+    {
+        "en"        "--- Ready ---"
+        "pt"        "--- Prontos ---"
+    }
+
+    "Ready Category Not Ready"
+    {
+        "en"        "--- Not Ready ---"
+        "pt"        "--- Nao Prontos ---"
+    }
+
+    "Ready Category Spectators"
+    {
+        "en"        "--- Spectators ---"
+        "pt"        "--- Espectadores ---"
+    }
+
+    "Ready Nobody"
+    {
+        "en"        "(None)"
+        "pt"        "(Ninguem)"
+    }
+
     "Kicked Not Ready"
     {
         "en"        "You were kicked for not being ready!"

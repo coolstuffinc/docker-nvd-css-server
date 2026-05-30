@@ -116,27 +116,34 @@ Action Mix_CreateReadyPanel()
 
 
     // 显示已准备玩家列表
-    DrawPanelText(g_hReadyStatus, "--- Prontos ---");
+    char buffer[128];
+    Format(buffer, sizeof(buffer), "%t", "Ready Category Ready");
+    DrawPanelText(g_hReadyStatus, buffer);
     if (sReadyPlayersList[0] == '\0') {
-        DrawPanelText(g_hReadyStatus, "(Ninguem)");
+        Format(buffer, sizeof(buffer), "%t", "Ready Nobody");
+        DrawPanelText(g_hReadyStatus, buffer);
     } else {
         DrawPanelText(g_hReadyStatus, sReadyPlayersList);
     }
     DrawPanelText(g_hReadyStatus, "\n");
 
     // 显示未准备玩家列表
-    DrawPanelText(g_hReadyStatus, "--- Nao Prontos ---");
+    Format(buffer, sizeof(buffer), "%t", "Ready Category Not Ready");
+    DrawPanelText(g_hReadyStatus, buffer);
     if (sNotReadyPlayersList[0] == '\0') {
-        DrawPanelText(g_hReadyStatus, "(Ninguem)");
+        Format(buffer, sizeof(buffer), "%t", "Ready Nobody");
+        DrawPanelText(g_hReadyStatus, buffer);
     } else {
         DrawPanelText(g_hReadyStatus, sNotReadyPlayersList);
     }
     DrawPanelText(g_hReadyStatus, "\n");
 
     // 显示观察者列表
-    DrawPanelText(g_hReadyStatus, "--- Espectadores ---");
+    Format(buffer, sizeof(buffer), "%t", "Ready Category Spectators");
+    DrawPanelText(g_hReadyStatus, buffer);
     if (sSpectatorsList[0] == '\0') {
-        DrawPanelText(g_hReadyStatus, "(Ninguem)");
+        Format(buffer, sizeof(buffer), "%t", "Ready Nobody");
+        DrawPanelText(g_hReadyStatus, buffer);
     } else {
         DrawPanelText(g_hReadyStatus, sSpectatorsList);
     }
