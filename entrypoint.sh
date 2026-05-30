@@ -17,6 +17,10 @@ nvd_ollama_endpoint "${NVD_OLLAMA_ENDPOINT:-chat}"
 nvd_ollama_debug "${NVD_OLLAMA_DEBUG:-1}"
 EOF
 
+# Configura o locale para Português (PT-BR)
+export LANG=pt_BR.UTF-8
+export LC_ALL=pt_BR.UTF-8
+
 echo "--- Server Environment Ready ---"
 echo "Hostname: $CSS_HOSTNAME"
 echo "Ollama target: http://${NVD_OLLAMA_IP:-172.17.0.1}:${NVD_OLLAMA_PORT:-11433}"
