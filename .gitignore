@@ -1,2 +1,3 @@
 .vagrant/machines/
 test/
+build.log
