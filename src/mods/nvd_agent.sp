@@ -11,7 +11,6 @@
 
 // Estado do agente
 bool g_AgentBusy = false;
-int g_AgentClient = 0;
 
 // Comandos permitidos (SEGURANÇA: NUNCA remova sem saber o que faz)
 static const char g_AllowedCmds[][] = {
@@ -51,7 +50,6 @@ public Action Command_Agent(int client, int args)
     StripQuotes(request);
     TrimString(request);
 
-    g_AgentClient = client;
     g_AgentBusy = true;
     PrintToChat(client, "[\x04AGENT\x01] Processando...");
 
