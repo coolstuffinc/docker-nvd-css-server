@@ -6,10 +6,6 @@ CSS_DIR="/home/steam/css"
 CSTRIKE_DIR="$CSS_DIR/cstrike"
 SM_CFG_DIR="$CSTRIKE_DIR/cfg/sourcemod"
 
-# Configura o locale para Português (PT-BR)
-export LANG=pt_BR.UTF-8
-export LC_ALL=pt_BR.UTF-8
-
 echo "--- Server Environment Ready ---"
 echo "Hostname: $CSS_HOSTNAME"
 echo "Ollama target: http://${NVD_OLLAMA_IP:-172.17.0.1}:${NVD_OLLAMA_PORT:-11433}"
