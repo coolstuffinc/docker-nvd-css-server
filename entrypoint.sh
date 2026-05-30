@@ -6,17 +6,6 @@ CSS_DIR="/home/steam/css"
 CSTRIKE_DIR="$CSS_DIR/cstrike"
 SM_CFG_DIR="$CSTRIKE_DIR/cfg/sourcemod"
 
-# Gera nvd_core.cfg a partir das env vars (usado pelo AutoExecConfig)
-mkdir -p "$SM_CFG_DIR"
-cat > "$SM_CFG_DIR/nvd_core.cfg" << EOF
-// Auto-generated from environment variables
-nvd_ollama_ip "${NVD_OLLAMA_IP:-172.17.0.1}"
-nvd_ollama_port "${NVD_OLLAMA_PORT:-11433}"
-nvd_ollama_model "${NVD_OLLAMA_MODEL:-nvd-admin}"
-nvd_ollama_endpoint "${NVD_OLLAMA_ENDPOINT:-chat}"
-nvd_ollama_debug "${NVD_OLLAMA_DEBUG:-1}"
-EOF
-
 # Configura o locale para Português (PT-BR)
 export LANG=pt_BR.UTF-8
 export LC_ALL=pt_BR.UTF-8
