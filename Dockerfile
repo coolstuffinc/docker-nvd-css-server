@@ -100,6 +100,7 @@ RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//'
     mkdir -p /home/steam/css/cstrike/addons/sourcemod/configs && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt
 
+COPY --chown=steam:steam cfg/sourcemod/languages.cfg /home/steam/css/cstrike/addons/sourcemod/configs/languages.cfg
 COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
