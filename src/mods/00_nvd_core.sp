@@ -3,7 +3,7 @@
 #include <nvd_core>
 
 // ============================================================================
-// POOL DE CALLBACKS (isso SIM é essencial - evita race condition)
+// POOL DE CALLBACKS (evita race condition entre plugins)
 // ============================================================================
 enum struct PendingRequest
 {
@@ -63,7 +63,7 @@ public void OnConfigsExecuted()
     char ip[64], port[16];
     g_IpCvar.GetString(ip, sizeof(ip));
     g_PortCvar.GetString(port, sizeof(port));
-    Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s/", ip, port);
+    Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s", ip, port);  // ← Sem barra final
 
     g_HttpClient = new HTTPClient(g_BaseUrl);
     g_HttpClient.FollowLocation = true;
@@ -114,100 +114,47 @@ bool FreeSlot(int id, Function &cb, any &data, Handle &plugin)
 // ============================================================================
 public Action Command_OllamaTest(int client, int args)
 {
-	if (g_HttpClient == null)
-	{
-		ReplyToCommand(client, "\x04[NVD]\x03 HTTPClient not initialized");
-		return Plugin_Handled;
-	}
-
-	char model[64], endpoint[16];
-	g_ModelCvar.GetString(model, sizeof(model));
-	g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-
-	JSONObject payload = new JSONObject();
-	payload.SetString("model", model);
-	payload.SetBool("stream", false);
-
-	if (StrEqual(endpoint, "chat"))
-	{
-		JSONObject userMsg = new JSONObject();
-		userMsg.SetString("role", "user");
-		userMsg.SetString("content", "ping");
-
-		JSONArray messages = new JSONArray();
-		messages.Push(userMsg);
-		payload.Set("messages", messages);
-		delete userMsg;
-		delete messages;
-	}
-	else
-	{
-		payload.SetString("prompt", "ping");
-	}
-
-	char url[64];
-	Format(url, sizeof(url), "api/%s", endpoint);
-	
-	g_HttpClient.Post(url, payload, OnTestResponse, client);
-	delete payload;
-	return Plugin_Handled;
-}
-
-public void OnOllamaResponse(HTTPResponse response, any data)
-{
-	if (response.Status != HTTPStatus_OK)
-	{
-		LogError("NVD Core: Ollama returned status %d", response.Status);
-		return;
-	}
-
-	if (response.Data == null) return;
-
-	JSONObject json = view_as<JSONObject>(response.Data);
-	char reply[2048];
-
-	if (!json.GetString("response", reply, sizeof(reply)))
-	{
-		JSONObject msg;
-		if (json.GetObject("message", msg))
-		{
-			msg.GetString("content", reply, sizeof(reply));
-			delete msg;
-		}
-	}
-
-	if (reply[0] != '\0')
-	{
-		if (g_DebugCvar.BoolValue)
-			LogMessage("NVD Core: Ollama response: %s", reply);
-
-		if (data != 0 && IsClientInGame(data))
-			PrintToChat(data, "\x04[NVD]\x03 AI Reply: %s", reply);
-			
-		Call_StartFunction(INVALID_HANDLE, g_Callback);
-		Call_PushString(reply);
-		Call_PushCell(g_CallbackData);
-		Call_Finish();
-	}
-
-	delete json;
-}
+    if (g_HttpClient == null)
+    {
+        ReplyToCommand(client, "[NVD] HTTPClient not initialized");
+        return Plugin_Handled;
+    }
 
     if (client > 0 && IsClientInGame(client))
         PrintToChat(client, "[NVD] Testing Ollama...");
     else
         PrintToServer("[NVD] Testing Ollama...");
 
+    char model[64], endpoint[32];
+    g_ModelCvar.GetString(model, sizeof(model));
+    g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
+
     JSONObject payload = new JSONObject();
-    payload.SetString("model", "nvd-admin");
-    payload.SetString("prompt", "ping");
+    payload.SetString("model", model);
     payload.SetBool("stream", false);
 
-    char url[64], endpoint[32];
-    g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-    Format(url, sizeof(url), "api/%s", endpoint);  // ← SIMPLES!
+    if (StrEqual(endpoint, "chat"))
+    {
+        JSONObject userMsg = new JSONObject();
+        userMsg.SetString("role", "user");
+        userMsg.SetString("content", "ping");
 
-    g_HttpClient.Post(url, payload, OnOllamaResponse, client);  // ← passa client como data
+        JSONArray messages = new JSONArray();
+        messages.Push(userMsg);
+        payload.Set("messages", messages);
+        delete userMsg;
+        delete messages;
+    }
+    else
+    {
+        payload.SetString("prompt", "ping");
+    }
+
+    char url[64];
+    Format(url, sizeof(url), "/api/%s", endpoint);  // ← Barra inicial para URL absoluta
+    
+    // ← Usa o MESMO callback OnOllamaResponse, passando client como data
+    g_HttpClient.Post(url, payload, OnOllamaResponse, client);
     delete payload;
     return Plugin_Handled;
 }
@@ -233,7 +180,7 @@ public int Native_AskAI(Handle plugin, int numParams)
     char model[64], endpoint[32], url[64];
     g_ModelCvar.GetString(model, sizeof(model));
     g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-    Format(url, sizeof(url), "api/%s", endpoint);  // ← SIMPLES!
+    Format(url, sizeof(url), "/api/%s", endpoint);
 
     JSONObject payload = new JSONObject();
     payload.SetString("model", model);
@@ -267,16 +214,18 @@ public int Native_AskAI(Handle plugin, int numParams)
     if (g_DebugCvar.BoolValue)
         LogMessage("NVD_AskAI: POST %s (slot=%d)", url, slot);
 
-    g_HttpClient.Post(url, payload, OnOllamaResponse, slot);  // ← passa slot como data
+    // ← Passa slot como data para OnOllamaResponse
+    g_HttpClient.Post(url, payload, OnOllamaResponse, slot);
     delete payload;
     return 1;
 }
 
 // ============================================================================
-// CALLBACK HTTP
+// CALLBACK HTTP ÚNICO: OnOllamaResponse
 // ============================================================================
 public void OnOllamaResponse(HTTPResponse response, any slotId)
 {
+    // Recupera dados do callback
     Function callback;
     any cbData;
     Handle callerPlugin;
@@ -287,7 +236,7 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
         return;
     }
 
-    // Erro HTTP?
+    // Trata erro HTTP
     if (response.Status != HTTPStatus_OK)
     {
         LogError("NVD Core: HTTP %d", response.Status);
@@ -304,7 +253,7 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
 
     if (response.Data == null)
     {
-        LogError("NVD Core: null response");
+        LogError("NVD Core: null response data");
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
             Call_StartFunction(callerPlugin, callback);
@@ -319,13 +268,19 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     JSONObject json = view_as<JSONObject>(response.Data);
     char reply[2048];
 
-    // Tenta vários formatos de resposta
+    // Tenta extrair resposta (suporta /api/generate e /api/chat)
     if (!json.GetString("response", reply, sizeof(reply)))
     {
+        // Formato /api/chat: message.content direto
         JSONObject msg = view_as<JSONObject>(json.Get("message"));
-        if (msg != null) { msg.GetString("content", reply, sizeof(reply)); delete msg; }
+        if (msg != null)
+        {
+            msg.GetString("content", reply, sizeof(reply));
+            delete msg;
+        }
     }
     
+    // Fallback: estrutura OpenAI-style com choices
     if (reply[0] == '\0')
     {
         JSONArray choices = view_as<JSONArray>(json.Get("choices"));
@@ -349,7 +304,7 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
 
     if (reply[0] == '\0')
     {
-        LogError("NVD Core: empty response");
+        LogError("NVD Core: empty response content");
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
             Call_StartFunction(callerPlugin, callback);
@@ -364,13 +319,22 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     if (g_DebugCvar.BoolValue)
         LogMessage("NVD Reply: %.300s%s", reply, strlen(reply)>300?"...":"");
 
-    // Chama o callback do plugin
+    // Caso especial: se slotId era um client (do Command_OllamaTest), mostra no chat
+    int client = view_as<int>(slotId);
+    if (client > 0 && client <= MaxClients && IsClientInGame(client))
+    {
+        PrintToChat(client, "[NVD] AI: %s", reply);
+    }
+
+    // Chama o callback do plugin chamador
     if (callback != null && callerPlugin != INVALID_HANDLE)
     {
         Call_StartFunction(callerPlugin, callback);
         Call_PushString(reply);
         Call_PushCell(cbData);
-        Call_Finish();
+        int result = Call_Finish();
+        if (result != SP_ERROR_NONE)
+            LogError("NVD Core: Callback failed (error %d)", result);
     }
     
     if (callerPlugin != INVALID_HANDLE)
