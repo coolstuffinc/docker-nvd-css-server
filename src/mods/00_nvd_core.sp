@@ -311,41 +311,33 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     }
 
     JSONObject json = view_as<JSONObject>(response.Data);
+    // Extrai resposta (suporta /api/generate e /api/chat)
     char reply[2048];
+    bool gotReply = false;
 
-    // Tenta extrair resposta (suporta /api/generate e /api/chat)
-    if (!json.GetString("response", reply, sizeof(reply)))
+    // Primeiro tenta campo "response" (do /api/generate)
+    if (json.GetString("response", reply, sizeof(reply)) && reply[0] != '\0')
     {
-        // Formato /api/chat: message.content direto
+        gotReply = true;
+    }
+    // Fallback: tenta campo "message.content" (do /api/chat)
+    else
+    {
         JSONObject msg = view_as<JSONObject>(json.Get("message"));
         if (msg != null)
         {
-            msg.GetString("content", reply, sizeof(reply));
+            if (msg.GetString("content", reply, sizeof(reply)) && reply[0] != '\0')
+                gotReply = true;
             delete msg;
         }
     }
-    
-    // Fallback: estrutura OpenAI-style com choices
-    if (reply[0] == '\0')
+
+    if (!gotReply)
     {
-        JSONArray choices = view_as<JSONArray>(json.Get("choices"));
-        if (choices != null && choices.Length > 0)
-        {
-            JSONObject choice = view_as<JSONObject>(choices.Get(0));
-            if (choice != null)
-            {
-                JSONObject message = view_as<JSONObject>(choice.Get("message"));
-                if (message != null)
-                {
-                    message.GetString("content", reply, sizeof(reply));
-                    delete message;
-                }
-                delete choice;
-            }
-            delete choices;
-        }
+        LogError("NVD Core: No valid response content in JSON");
+        // ... entrega resposta vazia
+        return;
     }
-    delete json;
 
     if (reply[0] == '\0')
     {
