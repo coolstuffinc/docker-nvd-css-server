@@ -105,6 +105,10 @@ RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//'
 COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
+ENV NVD_OLLAMA_IP="172.17.0.1"
+ENV NVD_OLLAMA_PORT="11433"
+ENV NVD_OLLAMA_MODEL="nvd-admin"
+ENV NVD_OLLAMA_ENDPOINT="chat"
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp
 
 ENTRYPOINT ["./entrypoint.sh"]
