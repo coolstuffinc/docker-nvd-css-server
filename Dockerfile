@@ -52,7 +52,8 @@ RUN curl -L -o /tmp/mmsource.tar.gz https://github.com/alliedmodders/metamod-sou
     curl -L -o /tmp/sourcemod.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
     tar -C /home/steam/css/cstrike -zxf /tmp/sourcemod.tar.gz && rm /tmp/sourcemod.tar.gz && \
     curl -L -o /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases/download/1.3.2/sm-ripext-1.3.2-linux.zip && \
-    unzip -o /tmp/ripext.zip -d /home/steam/css/cstrike && rm /tmp/ripext.zip
+    unzip -o /tmp/ripext.zip -d /home/steam/css/cstrike && rm /tmp/ripext.zip && \
+    printf '"Extensions"\n{\n    "rip"\n    {\n        "file"    "addons/sourcemod/extensions/rip.ext.so"\n    }\n}\n' > /home/steam/css/cstrike/addons/sourcemod/extensions/rip.ext.txt
 
 COPY --chown=steam:steam assets/maps.txt /tmp/maps.txt
 RUN mkdir -p /home/steam/css/cstrike/maps && \
