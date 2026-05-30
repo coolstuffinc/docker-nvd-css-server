@@ -74,7 +74,7 @@ void BuildContext(char[] buffer, int maxlen, const char[] request)
 {
     int pos = 0;
     
-    // Lista de jogadores: [ID] Nome (Time)
+    // 1. Lista de jogadores
     pos += Format(buffer[pos], maxlen - pos, "PLAYERS:\n");
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -92,17 +92,26 @@ void BuildContext(char[] buffer, int maxlen, const char[] request)
         pos += Format(buffer[pos], maxlen - pos, "[%d] %s (%s)\n", i, name, teamName);
     }
     
-    // Lista de mapas válidos
+    // 2. Lista de mapas válidos
     pos += Format(buffer[pos], maxlen - pos, "VALID MAPS: ");
     for (int i = 0; i < g_MapCount; i++)
     {
         pos += Format(buffer[pos], maxlen - pos, "%s%s", i == 0 ? "" : ", ", g_MapList[i]);
-        if (pos >= maxlen - 10) break;
+        if (pos >= maxlen - 30) break; // Margem de segurança
     }
-    Format(buffer[pos], maxlen - pos, "\nCURRENT: %s\n", GetCurrentMap());
     
-    // Prompt final
-    pos += Format(buffer[pos], maxlen - pos, "\nREQUEST: %s\n\nRULES:\n1. Use [CMD: <comando>] OU [SAY: <mensagem>].\n2. Máximo 2 linhas.\n3. NUNCA invente comandos ou mapas.", request);
+    // 3. Mapa atual (corrigido)
+    char currentMap[64];
+    GetCurrentMap(currentMap, sizeof(currentMap));
+    pos += Format(buffer[pos], maxlen - pos, "\nCURRENT: %s\n", currentMap);
+    
+    // 4. Instruções finais
+    pos += Format(buffer[pos], maxlen - pos, 
+        "\nREQUEST: %s\n\nRULES:\n"
+        "1. Use EXATAMENTE [CMD: <comando>] OU [SAY: <mensagem>].\n"
+        "2. Máximo 2 linhas no total.\n"
+        "3. NUNCA invente comandos ou mapas.\n"
+        "4. Responda no mesmo idioma do pedido.", request);
 }
 
 // ============================================================================
