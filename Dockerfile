@@ -90,18 +90,15 @@ RUN rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/Cash.smx && \
 COPY --from=builder --chown=steam:steam /output/*.smx /home/steam/css/cstrike/addons/sourcemod/plugins/
 COPY --chown=steam:steam cfg/ /home/steam/css/cstrike/cfg/
 COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/gamedata/
-COPY --chown=steam:steam translations/ /tmp/translations/
+COPY --chown=steam:steam translations/ /home/steam/css/cstrike/addons/sourcemod/translations/
 COPY --chown=steam:steam entrypoint.sh /home/steam/entrypoint.sh
 
 RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//' > /home/steam/css/maplist.txt && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/maplist.txt && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/mapcycle.txt && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/cfg/maplist.txt && \
-    ln -sf /home/steam/css/maplist.txt /home/steam/css/maplist.txt && \
     mkdir -p /home/steam/css/cstrike/addons/sourcemod/configs && \
-    cp /home/steam/css/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt && \
-    cp -rn /tmp/translations/* /home/steam/css/cstrike/addons/sourcemod/translations/ 2>/dev/null || true && \
-    rm -rf /tmp/translations
+    cp /home/steam/css/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt
 
 COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
 
