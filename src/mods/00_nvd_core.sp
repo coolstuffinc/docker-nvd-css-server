@@ -87,7 +87,9 @@ public Action Command_OllamaTest(int client, int args)
 	else
 		Format(url, sizeof(url), "api/%s", endpoint);
 
-	g_HttpClient.Post(url, payload, OnTestResponse, client);
+	// Log para verificar se a URL está correta antes de chamar Post
+	LogMessage("DEBUG: Calling g_HttpClient.Post(url: %s, ...)", url);
+	g_HttpClient.Post(url, payload, OnOllamaResponse, client);
 	delete payload;
 	return Plugin_Handled;
 }
@@ -147,47 +149,8 @@ public int Native_AskAI(Handle plugin, int numParams)
 		Format(url, sizeof(url), "api%s", endpoint);
 	else
 		Format(url, sizeof(url), "api/%s", endpoint);
-
-	JSONObject payload = new JSONObject();
-	payload.SetString("model", model);
-
-	if (StrEqual(endpoint, "chat"))
-	{
-		JSONObject systemMsg = new JSONObject();
-		systemMsg.SetString("role", "system");
-		systemMsg.SetString("content", systemPrompt);
-
-		JSONObject userMsg = new JSONObject();
-		userMsg.SetString("role", "user");
-		userMsg.SetString("content", prompt);
-
-		JSONArray messages = new JSONArray();
-		messages.Push(systemMsg);
-		messages.Push(userMsg);
-
-		payload.Set("messages", messages);
-		payload.SetBool("stream", false);
-
-		delete systemMsg;
-		delete userMsg;
-		delete messages;
-	}
-	else
-	{
-		payload.SetString("prompt", prompt);
-		payload.SetBool("stream", false);
-		payload.SetString("system", systemPrompt);
-	}
-
-	if (g_DebugCvar.BoolValue)
-	{
-		LogMessage("=== [NVD Core Debug] OUTBOUND REQUEST ===");
-		LogMessage("URL: %s%s (Model: %s)", g_BaseUrl, url, model);
-		LogMessage("System Prompt: %s", systemPrompt);
-		LogMessage("User Prompt: %s", prompt);
-		LogMessage("=========================================");
-	}
-
+	
+	LogMessage("DEBUG: Calling g_HttpClient.Post(url: %s, ...)", url);
 	g_HttpClient.Post(url, payload, OnOllamaResponse);
 	delete payload;
 	return 0;
