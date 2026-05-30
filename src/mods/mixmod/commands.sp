@@ -13,43 +13,43 @@
 void Mix_InitCommands()
 {
     // 玩家命令
-    RegConsoleCmd("sm_score", Mix_Command_Score, "显示当前比分");
-    RegConsoleCmd("sm_mvp", Mix_Command_MVP, "显示当前MVP");
-    RegConsoleCmd("sm_ready", Mix_Command_Ready, "设置为准备状态");
-    RegConsoleCmd("sm_r", Mix_Command_Ready, "设置为准备状态 (缩写)");
-    RegConsoleCmd("sm_notready", Mix_Command_NotReady, "设置为未准备状态");
-    RegConsoleCmd("sm_nr", Mix_Command_NotReady, "设置为未准备状态 (缩写)");
-    RegConsoleCmd("sm_sp", Mix_Command_ShowHidePanel, "显示或隐藏指南");
-    RegConsoleCmd("sm_help", Mix_Command_Help, "显示帮助");
+    RegConsoleCmd("sm_score", Mix_Command_Score, "Show current score");
+    RegConsoleCmd("sm_mvp", Mix_Command_MVP, "Show current MVP");
+    RegConsoleCmd("sm_ready", Mix_Command_Ready, "Set ready state");
+    RegConsoleCmd("sm_r", Mix_Command_Ready, "Set ready state (shortcut)");
+    RegConsoleCmd("sm_notready", Mix_Command_NotReady, "Set unready state");
+    RegConsoleCmd("sm_nr", Mix_Command_NotReady, "Set unready state (shortcut)");
+    RegConsoleCmd("sm_sp", Mix_Command_ShowHidePanel, "Toggle help panel");
+    RegConsoleCmd("sm_help", Mix_Command_Help, "Show help");
 
     // 管理员命令
-    RegAdminCmd("sm_mix", Mix_Command_Mix, ACCESS_FLAG, "显示Mix管理菜单");
-    RegAdminCmd("sm_mr12", Mix_Command_Mr12, ACCESS_FLAG, "执行mr12.cfg并开始满十");
-    RegAdminCmd("sm_live", Mix_Command_Mr12, ACCESS_FLAG, "执行mr12.cfg并开始满十");
-    RegAdminCmd("sm_prac", Mix_Command_Prac, ACCESS_FLAG, "恢复热身模式");
-    RegAdminCmd("sm_warmup", Mix_Command_Prac, ACCESS_FLAG, "恢复热身模式 (别名)");
-    RegAdminCmd("sm_map", Mix_Command_Map, ACCESS_FLAG, "显示地图列表");
-    RegAdminCmd("sm_rr", Mix_Command_RestartRound, ACCESS_FLAG, "重启当前回合");
-    RegAdminCmd("sm_swap", Mix_Command_SwapTeams, ACCESS_FLAG, "交换队伍");
-    RegAdminCmd("sm_record", Mix_Command_Record, ACCESS_FLAG, "开始录制");
-    RegAdminCmd("sm_stop", Mix_Command_StopRecord, ACCESS_FLAG, "停止录制");
-    RegAdminCmd("sm_kickct", Mix_Command_KickCT, ACCESS_FLAG, "踢出所有CT");
-    RegAdminCmd("sm_kickt", Mix_Command_KickT, ACCESS_FLAG, "踢出所有T");
-    RegAdminCmd("sm_random", Mix_Command_Random, ACCESS_FLAG, "随机分配队伍");
-    RegAdminCmd("sm_ko3", Mix_Command_Ko3, ACCESS_FLAG, "开始刀局");
-    RegAdminCmd("sm_forceready", Mix_Command_ForceReady, ACCESS_FLAG, "强制所有玩家准备");
-    RegAdminCmd("sm_mapvote", Mix_Command_MapVote, ACCESS_FLAG, "管理员强制开启地图投票");
+    RegAdminCmd("sm_mix", Mix_Command_Mix, ACCESS_FLAG, "Show Mix admin menu");
+    RegAdminCmd("sm_mr12", Mix_Command_Mr12, ACCESS_FLAG, "Start mr12 match");
+    RegAdminCmd("sm_live", Mix_Command_Mr12, ACCESS_FLAG, "Start mr12 match");
+    RegAdminCmd("sm_prac", Mix_Command_Prac, ACCESS_FLAG, "Resume warmup mode");
+    RegAdminCmd("sm_warmup", Mix_Command_Prac, ACCESS_FLAG, "Resume warmup mode (alias)");
+    RegAdminCmd("sm_map", Mix_Command_Map, ACCESS_FLAG, "Show map list");
+    RegAdminCmd("sm_rr", Mix_Command_RestartRound, ACCESS_FLAG, "Restart current round");
+    RegAdminCmd("sm_swap", Mix_Command_SwapTeams, ACCESS_FLAG, "Swap teams");
+    RegAdminCmd("sm_record", Mix_Command_Record, ACCESS_FLAG, "Start recording");
+    RegAdminCmd("sm_stop", Mix_Command_StopRecord, ACCESS_FLAG, "Stop recording");
+    RegAdminCmd("sm_kickct", Mix_Command_KickCT, ACCESS_FLAG, "Kick all CTs");
+    RegAdminCmd("sm_kickt", Mix_Command_KickT, ACCESS_FLAG, "Kick all Ts");
+    RegAdminCmd("sm_random", Mix_Command_Random, ACCESS_FLAG, "Randomize teams");
+    RegAdminCmd("sm_ko3", Mix_Command_Ko3, ACCESS_FLAG, "Start knife round");
+    RegAdminCmd("sm_forceready", Mix_Command_ForceReady, ACCESS_FLAG, "Force all players ready");
+    RegAdminCmd("sm_mapvote", Mix_Command_MapVote, ACCESS_FLAG, "Force map vote");
 
     // 密码相关命令
-    RegAdminCmd("sm_password", Mix_Command_Password, ACCESS_FLAG, "设置服务器密码");
-    RegAdminCmd("sm_removepassword", Mix_Command_RemovePassword, ACCESS_FLAG, "移除服务器密码");
-    RegAdminCmd("sm_rpass", Mix_Command_RemovePassword, ACCESS_FLAG, "移除服务器密码 (别名)");
-    RegAdminCmd("sm_rpw", Mix_Command_RandomPassword, ACCESS_FLAG, "设置随机密码");
+    RegAdminCmd("sm_password", Mix_Command_Password, ACCESS_FLAG, "Set server password");
+    RegAdminCmd("sm_removepassword", Mix_Command_RemovePassword, ACCESS_FLAG, "Remove server password");
+    RegAdminCmd("sm_rpass", Mix_Command_RemovePassword, ACCESS_FLAG, "Remove server password (alias)");
+    RegAdminCmd("sm_rpw", Mix_Command_RandomPassword, ACCESS_FLAG, "Set random password");
 
     // 玩家管理命令
-    RegAdminCmd("sm_spec", Mix_Command_Spec, ACCESS_FLAG, "将玩家移至观察者");
-    RegAdminCmd("sm_mmute", Mix_Command_Mute, ACCESS_FLAG, "静音指定玩家");
-    RegAdminCmd("sm_mgag", Mix_Command_Gag, ACCESS_FLAG, "禁言指定玩家");
+    RegAdminCmd("sm_spec", Mix_Command_Spec, ACCESS_FLAG, "Move player to spec");
+    RegAdminCmd("sm_mmute", Mix_Command_Mute, ACCESS_FLAG, "Mute player");
+    RegAdminCmd("sm_mgag", Mix_Command_Gag, ACCESS_FLAG, "Gag player");
 }
 
 // ...existing code...
