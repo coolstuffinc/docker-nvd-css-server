@@ -33,7 +33,7 @@ int FindBotOnTeam(int team)
 {
   for (int i = 1; i <= MaxClients; i++)
   {
-    if (IsClientInGame(i) && IsFakeClient(i) && GetClientTeam(i) == team)
+    if (IsClientInGame(i) && IsFakeClient(i) && IsPlayerAlive(i) && GetClientTeam(i) == team)
       return i;
   }
   return -1;
