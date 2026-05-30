@@ -48,6 +48,7 @@ public void OnConfigsExecuted()
 	Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s/", ip, port); // Adicionei a barra de volta
 
 	g_HttpClient = new HTTPClient(g_BaseUrl);
+	g_HttpClient.FollowLocation = true; // Agora ele vai seguir os redirects automaticamente
 	g_HttpClient.SetHeader("Content-Type", "application/json");
 	g_HttpClient.SetHeader("User-Agent", "SourceMod-NVD-AI/1.1");
 
