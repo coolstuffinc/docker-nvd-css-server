@@ -170,9 +170,20 @@ public void Agent_Callback(const char[] response, any data)
                 
                 if (cmd[0] != '\0' && IsCommandAllowed(cmd))
                 {
-                    LogAction(-1, -1, "[AGENT] Executing: %s", cmd);
-                    ServerCommand("%s", cmd);
-                    PrintToChat(client, "[\x04AGENT\x01] Comando executado: %s", cmd);
+                    // Força a conversão para votação caso a IA tente um comando direto
+                    char finalCmd[256];
+                    if (StrContains(cmd, "sm_kick") == 0)
+                        Format(finalCmd, sizeof(finalCmd), "sm_votekick %s", cmd[8]);
+                    else if (StrContains(cmd, "sm_ban") == 0)
+                        Format(finalCmd, sizeof(finalCmd), "sm_voteban %s", cmd[7]);
+                    else if (StrContains(cmd, "sm_map") == 0)
+                        Format(finalCmd, sizeof(finalCmd), "sm_votemap %s", cmd[7]);
+                    else
+                        strcopy(finalCmd, sizeof(finalCmd), cmd);
+
+                    LogAction(-1, -1, "[AGENT] Executing: %s", finalCmd);
+                    ServerCommand("%s", finalCmd);
+                    PrintToChat(client, "[\x04AGENT\x01] Votacao iniciada: %s", finalCmd);
                     executed = true;
                 }
                 else if (cmd[0] != '\0')
