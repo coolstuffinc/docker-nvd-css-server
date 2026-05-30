@@ -22,7 +22,12 @@ bool Mix_IsReadyEligibleClient(int client)
         return false;
     }
 
-    if (!IsClientInGame(client) || IsFakeClient(client) || IsClientSourceTV(client) || IsClientReplay(client)) {
+    if (!IsClientInGame(client) || IsClientSourceTV(client) || IsClientReplay(client)) {
+        return false;
+    }
+    
+    // Ignore bots if bot auto ready is disabled
+    if (IsFakeClient(client) && GetConVarInt(g_hCvarBotAutoReady) == 0) {
         return false;
     }
 

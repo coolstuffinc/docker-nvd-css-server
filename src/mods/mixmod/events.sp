@@ -921,6 +921,11 @@ public Action Mix_HudTimer(Handle timer)
     for (int i = 1; i <= MaxClients; i++) {
         if (Mix_IsReadyEligibleClient(i)) {
             playerCount++;
+            
+            // Auto ready bots
+            if (IsFakeClient(i) && !g_bReadyPlayers[i] && GetConVarInt(g_hCvarBotAutoReady) == 1 && g_bAllowReady && !g_bHasMixStarted) {
+                Mix_Command_Ready(i, 0); // Force the bot to issue the ready command
+            }
         }
     }
 

@@ -87,7 +87,7 @@ public Action Mix_Command_Ready(int client, int args)
                 char buf[128];
                 Format(buf, sizeof(buf), "%t", "Only Real Players Ready");
                 PrintToServer("[%s]: %s", MODNAME, buf);
-            } else if (client > 0 && client <= MaxClients && IsClientInGame(client)) {
+            } else if (client > 0 && client <= MaxClients && IsClientInGame(client) && !IsFakeClient(client)) {
                 SetGlobalTransTarget(client);
                 PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Only Real Players Ready");
             }
@@ -195,7 +195,7 @@ public Action Mix_Command_NotReady(int client, int args)
                 char buf[128];
                 Format(buf, sizeof(buf), "%t", "Only Real Players Unready");
                 PrintToServer("[%s]: %s", MODNAME, buf);
-            } else if (client > 0 && client <= MaxClients && IsClientInGame(client)) {
+            } else if (client > 0 && client <= MaxClients && IsClientInGame(client) && !IsFakeClient(client)) {
                 SetGlobalTransTarget(client);
                 PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Only Real Players Unready");
             }

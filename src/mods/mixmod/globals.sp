@@ -112,6 +112,7 @@ Handle g_hCvarEnableVoiceCommands = INVALID_HANDLE;
 Handle g_hPluginVersion = INVALID_HANDLE;
 Handle g_hFogDelete = INVALID_HANDLE;
 Handle g_hCvarOpenAutoKick = INVALID_HANDLE; // 允许在凑满十个人自动踢人
+Handle g_hCvarBotAutoReady = INVALID_HANDLE; // bots ready up automatically
 
 // =============================================================================
 // 游戏ConVar及偏移量
