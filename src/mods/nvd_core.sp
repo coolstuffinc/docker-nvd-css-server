@@ -36,7 +36,7 @@ public void OnConfigsExecuted()
 	char ip[64], port[16], baseUrl[256];
 	g_IpCvar.GetString(ip, sizeof(ip));
 	g_PortCvar.GetString(port, sizeof(port));
-	Format(baseUrl, sizeof(baseUrl), "http://%s:%s", ip, port);
+	Format(baseUrl, sizeof(baseUrl), "http://%s:%s/", ip, port);
 
 	g_HttpClient = new HTTPClient(baseUrl);
 	g_HttpClient.SetHeader("Content-Type", "application/json");

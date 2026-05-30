@@ -33,10 +33,12 @@ stock Client_GetActiveWeaponName(client, String:buffer[], size)
 
 /**
  * Sets the active weapon of a client.
+ * Silently ignores invalid weapon entities.
  */
 stock Client_SetActiveWeapon(client, weapon)
 {
-	SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
+	if (weapon > 0 && IsValidEntity(weapon))
+		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 }
 
 /**

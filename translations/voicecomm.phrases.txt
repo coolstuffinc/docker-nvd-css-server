@@ -1,3 +1,79 @@
 "Phrases"
 {
+	"Start of Round with a Muted Team"
+	{
+		"en"	"Start of Round with a Muted Team"
+	}
+	"Start of Round without Muted Team"
+	{
+		"en"	"Start of Round without Muted Team"
+	}
+	"Spectator - Admin"
+	{
+		"en"	"Spectator - Admin - You can speak"
+	}
+	"Spectator - Not Admin"
+	{
+		"en"	"Spectator - Muted"
+	}
+	"Round End - All Talk On"
+	{
+		"en"	"All-Talk enabled until next round"
+	}
+	"Round End - All Talk Off"
+	{
+		"en"	"All-Talk disabled"
+	}
+	"Enforce Existing Mute"
+	{
+		"en"	"Re-applying your mute"
+	}
+	"DeadAllTalk - Spawn - TeamTalk Off"
+	{
+		"en"	"Dead players can only talk to teammates"
+	}
+	"DeadAllTalk - Death - Admin"
+	{
+		"en"	"You are an admin — you can still talk to alive players"
+	}
+	"DeadAllTalk - Death - Not Admin"
+	{
+		"en"	"You died and have been muted to alive players"
+	}
+	"DeadAllTalk - Spawn - TeamTalk On"
+	{
+		"en"	"Team voice enabled"
+	}
+	"Mute On Join"
+	{
+		"en"	"You have been muted. Wait for round start or use !voicemute"
+	}
+	"Admin On Join"
+	{
+		"en"	"Admin — you have been muted. Use !voicemute to unmute"
+	}
+	"Mute Time Expired"
+	{
+		"en"	"Mute time expired — you can speak again"
+	}
+	"Muted On Death - Not Admin"
+	{
+		"en"	"You died and have been muted"
+	}
+	"Muted On Death - Admin"
+	{
+		"en"	"You died — but as admin you can still speak"
+	}
+	"Remove Stateful Mute"
+	{
+		"en"	"Stateful mute removed for player %d"
+	}
+	"List Mute Name"
+	{
+		"en"	" - Muted: %N"
+	}
+	"No Muted Players"
+	{
+		"en"	"No muted players found"
+	}
 }

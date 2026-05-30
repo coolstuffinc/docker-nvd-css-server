@@ -12,8 +12,14 @@ RUN wget -q -O /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases
     unzip -q -o /tmp/ripext.zip -d /tmp && rm /tmp/ripext.zip
 
 COPY src/ /src/
+RUN curl -sL -o /src/mods/mixmod.sp "https://raw.githubusercontent.com/ZxYdzero/CS-S-Mixmod/new_syntax/addons/sourcemod/scripting/mixmod.sp" && \
+    mkdir -p /src/mods/mixmod && \
+    for f in api.sp commands.sp constants.sp core.sp events.sp globals.sp maps.sp ready.sp scoring.sp stats.sp teams.sp ui.sp util.sp; do \
+        curl -sL -o "/src/mods/mixmod/$f" "https://raw.githubusercontent.com/ZxYdzero/CS-S-Mixmod/new_syntax/addons/sourcemod/scripting/mixmod/$f"; \
+    done && \
+    curl -sL -o /tmp/mixmod.phrases.txt "https://raw.githubusercontent.com/ZxYdzero/CS-S-Mixmod/new_syntax/addons/sourcemod/translations/mixmod.phrases.txt"
 RUN mkdir /output && \
-    find /src/mods/ -name "*.sp" | while read spfile; do \
+    find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
         /tmp/addons/sourcemod/scripting/spcomp \
@@ -94,12 +100,15 @@ COPY --chown=steam:steam entrypoint.sh /home/steam/entrypoint.sh
 
 RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//' > /home/steam/css/maplist.txt && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/maplist.txt && \
+    cp /home/steam/css/maplist.txt /home/steam/css/cstrike/mapcycle.txt && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/cfg/maplist.txt && \
     ln -sf /home/steam/css/maplist.txt /home/steam/css/maplist.txt && \
     mkdir -p /home/steam/css/cstrike/addons/sourcemod/configs && \
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt && \
     cp -rn /tmp/translations/* /home/steam/css/cstrike/addons/sourcemod/translations/ 2>/dev/null || true && \
     rm -rf /tmp/translations
+
+COPY --from=builder /tmp/mixmod.phrases.txt /home/steam/css/cstrike/addons/sourcemod/translations/mixmod.phrases.txt
 
 COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
 
