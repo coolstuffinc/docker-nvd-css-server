@@ -1028,4 +1028,95 @@
         "en"        "Usage: !mgag <player name/ID>"
         "pt"        "Uso: !mgag <nome/ID do jogador>"
     }
+
+    "Clutch Start"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1} entered a 1v{2} clutch"
+        "pt"        "{1} entrou num clutch 1v{2}"
+    }
+
+    "Clutch Won"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1} won the 1v{2} clutch"
+        "pt"        "{1} ganhou o clutch 1v{2}"
+    }
+
+    "Clutch Lost"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1} lost the 1v{2} clutch"
+        "pt"        "{1} perdeu o clutch 1v{2}"
+    }
+
+    "Clutch DC"
+    {
+        "#format"   "{1:d}"
+        "en"        "Clutch player disconnected, 1v{1} failed"
+        "pt"        "O jogador desconectou, clutch 1v{1} falhou"
+    }
+
+    "Clutch Swapped"
+    {
+        "#format"   "{1:d}"
+        "en"        "Clutch player changed teams, 1v{1} failed"
+        "pt"        "O jogador trocou de time, clutch 1v{1} falhou"
+    }
+
+    "Teams All Swapped"
+    {
+        "en"        "All players have swapped teams"
+        "pt"        "Todos os jogadores trocaram de time"
+    }
+
+    "Score Before Swap"
+    {
+        "#format"   "{1:d},{2:d}"
+        "en"        "Score before swapping: CT={1}, T={2}"
+        "pt"        "Placar antes da troca: CT={1}, T={2}"
+    }
+
+    "Score After Swap"
+    {
+        "#format"   "{1:d},{2:d}"
+        "en"        "Score after swapping: CT={1}, T={2}"
+        "pt"        "Placar apos a troca: CT={1}, T={2}"
+    }
+
+    "Scoreboard Updated"
+    {
+        "en"        "Scoreboard updated"
+        "pt"        "Placar atualizado"
+    }
+
+    "Error Random T"
+    {
+        "en"        "Error: Cannot get a random player from T team!"
+        "pt"        "Erro: Nao foi possivel pegar um jogador aleatorio de TR!"
+    }
+
+    "Knife Swap Reset"
+    {
+        "en"        "Teams swapped after knife round, scores reset"
+        "pt"        "Times trocados apos o knife round, placar resetado"
+    }
+
+    "Team Selected"
+    {
+        "en"        "Team selected!"
+        "pt"        "Time selecionado!"
+    }
+
+    "Score Stats Reset"
+    {
+        "en"        "Scores and all player stats have been reset"
+        "pt"        "O placar e as estatisticas foram zeradas"
+    }
+
+    "Teams Randomly Assigned"
+    {
+        "en"        "Teams have been randomly assigned!"
+        "pt"        "Os times foram sorteados!"
+    }
 }

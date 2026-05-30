@@ -476,7 +476,7 @@ void Mix_StartClutch(int client, int team, int enemyCount)
     char playerName[MAX_NAME_LENGTH];
     GetClientName(client, playerName, sizeof(playerName));
 
-    PrintToChatAll("\x04[%s]:\x03 %s 进入了 1v%d 残局", MODNAME, playerName, enemyCount);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Clutch Start", playerName, enemyCount);
 }
 
 /**
@@ -502,10 +502,9 @@ void Mix_Stats_ResolveClutch(int winningTeam)
 
     if (winningTeam == g_iClutchTeam) {
         g_PlayerStats[g_iClutchPlayer].clutches++;
-        PrintToChatAll("\x04[%s]:\x03 %s 赢下了 1v%d 残局", MODNAME, playerName, g_iClutchEnemyCount);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Clutch Won", playerName, g_iClutchEnemyCount);
     } else {
-        g_PlayerStats[g_iClutchPlayer].clutch_losses++;
-        PrintToChatAll("\x04[%s]:\x03 %s 输掉了 1v%d 残局", MODNAME, playerName, g_iClutchEnemyCount);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Clutch Lost", playerName, g_iClutchEnemyCount);
     }
 
     Mix_ResetClutchRoundState();
@@ -530,7 +529,7 @@ void Mix_Stats_HandleClutchDisconnect(int client, int userid)
             g_PlayerStats[g_iClutchPlayer].clutch_losses++;
         }
 
-        PrintToChatAll("\x04[%s]:\x03 残局玩家断开连接，记为 1v%d 残局失败", MODNAME, g_iClutchEnemyCount);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Clutch DC", g_iClutchEnemyCount);
         Mix_ResetClutchRoundState();
         return;
     }
@@ -555,7 +554,7 @@ void Mix_Stats_HandleClutchTeamChange(int client, int userid, int oldTeam, int n
         if (g_iClutchPlayer >= 1 && g_iClutchPlayer <= MaxClients) {
             g_PlayerStats[g_iClutchPlayer].clutch_losses++;
         }
-        PrintToChatAll("\x04[%s]:\x03 残局玩家离开原队伍，记为 1v%d 残局失败", MODNAME, g_iClutchEnemyCount);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Clutch Swapped", g_iClutchEnemyCount);
         Mix_ResetClutchRoundState();
         return;
     }

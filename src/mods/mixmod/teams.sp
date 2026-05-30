@@ -39,7 +39,7 @@ void Mix_SwapTeams()
             PrintToChat(i, "\x04[%s]:\x03 你已被调换至 \x01进攻方\x03 队伍", MODNAME);
         }
     }
-    PrintToChatAll("\x04[%s]:\x03 所有玩家已交换队伍", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Teams All Swapped");
 
     if (flag) {
         g_bDidLiveStarted = true;
@@ -57,7 +57,7 @@ public Action Mix_SwapTimer(Handle timer)
     g_bDidLiveStarted = false; // 在交换队伍前禁用Live状态
 
     // 输出调试信息
-    PrintToChatAll("\x04[%s]:\x03 交换队伍前分数: CT=%d, T=%d", MODNAME, g_iCTScore, g_iTScore);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Score Before Swap", g_iCTScore, g_iTScore);
 
     int team;
     for (int client = 1; client <= MaxClients; client++) {
@@ -75,12 +75,12 @@ public Action Mix_SwapTimer(Handle timer)
     }
 
     // 确保分数已正确交换
-    PrintToChatAll("\x04[%s]:\x03 交换队伍后分数: CT=%d, T=%d", MODNAME, g_iCTScore, g_iTScore);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Score After Swap", g_iCTScore, g_iTScore);
 
     // 更新游戏记分板上的分数
     SetTeamScore(3, g_iCTScore);
     SetTeamScore(2, g_iTScore);
-    PrintToChatAll("\x04[%s]:\x03 记分板已更新", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Scoreboard Updated");
 
     if (GetConVarInt(g_hCvarHalfAutoLiveStart) == 1) {
         g_bDidLiveStarted = true;
@@ -128,7 +128,7 @@ void Mix_RandomizeCTPlayers()
             numSwitched++;
         } else {
             LogMessage("随机分配CT队员时出错...");
-            PrintToChatAll("\x04[%s]:\x01 错误: 无法从T队伍中获取随机玩家!", MODNAME);
+            PrintToChatAll("\x04[%s]:\x01 %t", MODNAME, "Error Random T");
             break;
         }
     }
@@ -261,7 +261,7 @@ public int Mix_HandleTeamsVoteMenu(Handle menu, MenuAction action, int param1, i
     } else if (action == MenuAction_VoteEnd) {
         if (param1 == 0) {  // 投票选择"是"
             // 输出调试信息
-            PrintToChatAll("\x04[%s]:\x03 刀局后交换队伍，分数将重置", MODNAME);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Knife Swap Reset");
 
             int team;
             for (int i = 1; i <= MaxClients; i++) {
@@ -276,7 +276,7 @@ public int Mix_HandleTeamsVoteMenu(Handle menu, MenuAction action, int param1, i
             }
         }
         g_bIsKo3Running = false;
-        PrintToChatAll("\x04[%s]:\x03 队伍已选择!", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Team Selected");
 
         // 重置分数
         g_iCTScore = 0;
@@ -297,7 +297,7 @@ public int Mix_HandleTeamsVoteMenu(Handle menu, MenuAction action, int param1, i
         // 更新游戏记分板上的分数
         SetTeamScore(3, g_iCTScore);
         SetTeamScore(2, g_iTScore);
-        PrintToChatAll("\x04[%s]:\x03 分数和所有玩家的战绩已重置", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Score Stats Reset");
 
         Mix_ExecuteMr12Config();
     }
@@ -318,7 +318,7 @@ void Mix_RandomizeTeams()
 
     // 随机选择5名T玩家并移至CT队伍
     Mix_RandomizeCTPlayers();
-    PrintToChatAll("\x04[%s]:\x03 队伍已随机分配!", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Teams Randomly Assigned");
 }
 
 /**
