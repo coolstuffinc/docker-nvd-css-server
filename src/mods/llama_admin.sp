@@ -45,6 +45,7 @@ public Action Command_Ask(int client, int args)
 	Format(systemPrompt, sizeof(systemPrompt), "You are NVD Admin AI. Concise. RULES: 1. You CANNOT execute direct actions. You can ONLY propose votes for the server to decide (e.g. sm_votekick, sm_votemap, sm_voteban). 2. Propose votes using exactly [CMD: sm_votecommand arg1]. 3. IF NO ACTION REQUESTED, JUST CHAT.");
 
 	NVD_AskAI(prompt, systemPrompt, OnAIResponse, client);
+	return Plugin_Handled;
 }
 
 public void OnAIResponse(const char[] response, any data)
