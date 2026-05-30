@@ -79,7 +79,11 @@ public Action Command_OllamaTest(int client, int args)
 	char url[128];
 	char endpoint[16];
 	g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-	Format(url, sizeof(url), "/api/%s", endpoint);
+	// Remove barra inicial se houver, garantindo um caminho limpo
+	if (endpoint[0] == '/')
+		Format(url, sizeof(url), "api%s", endpoint);
+	else
+		Format(url, sizeof(url), "api/%s", endpoint);
 
 	g_HttpClient.Post(url, payload, OnTestResponse, client);
 	delete payload;
@@ -137,7 +141,10 @@ public int Native_AskAI(Handle plugin, int numParams)
 	char model[64], endpoint[16], url[128];
 	g_ModelCvar.GetString(model, sizeof(model));
 	g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-	Format(url, sizeof(url), "/api/%s", endpoint);
+	if (endpoint[0] == '/')
+		Format(url, sizeof(url), "api%s", endpoint);
+	else
+		Format(url, sizeof(url), "api/%s", endpoint);
 
 	JSONObject payload = new JSONObject();
 	payload.SetString("model", model);
