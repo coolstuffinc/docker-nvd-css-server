@@ -12,12 +12,6 @@ RUN wget -q -O /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases
     unzip -q -o /tmp/ripext.zip -d /tmp && rm /tmp/ripext.zip
 
 COPY src/ /src/
-RUN wget -q -O /tmp/mixmod.tar.gz "https://github.com/ZxYdzero/CS-S-Mixmod/archive/refs/heads/new_syntax.tar.gz" && \
-    tar -C /tmp -zxf /tmp/mixmod.tar.gz && \
-    cp /tmp/CS-S-Mixmod-new_syntax/addons/sourcemod/scripting/mixmod.sp /src/mods/ && \
-    cp -r /tmp/CS-S-Mixmod-new_syntax/addons/sourcemod/scripting/mixmod /src/mods/ && \
-    cp /tmp/CS-S-Mixmod-new_syntax/addons/sourcemod/translations/mixmod.phrases.txt /tmp/ && \
-    rm -rf /tmp/mixmod.tar.gz /tmp/CS-S-Mixmod-new_syntax
 RUN mkdir /output && \
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
@@ -107,8 +101,6 @@ RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//'
     cp /home/steam/css/maplist.txt /home/steam/css/cstrike/addons/sourcemod/configs/maplist.txt && \
     cp -rn /tmp/translations/* /home/steam/css/cstrike/addons/sourcemod/translations/ 2>/dev/null || true && \
     rm -rf /tmp/translations
-
-COPY --from=builder /tmp/mixmod.phrases.txt /home/steam/css/cstrike/addons/sourcemod/translations/mixmod.phrases.txt
 
 COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
 

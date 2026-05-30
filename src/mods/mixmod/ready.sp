@@ -1,0 +1,241 @@
+/**
+ * 准备系统模块
+ */
+
+#if defined _mixmod_ready_included
+  #endinput
+#endif
+#define _mixmod_ready_included
+
+// 新增：准备面板显示控制变量
+bool g_bReadyPanelVisible = true;
+
+/**
+ * 检查客户端是否可参与满十准备。
+ *
+ * 只允许真实玩家且必须在 T/CT 队，避免控制台、观察者、SourceTV/Replay
+ * 或无效客户端污染 ready 计数。
+ */
+bool Mix_IsReadyEligibleClient(int client)
+{
+    if (client < 1 || client > MaxClients) {
+        return false;
+    }
+
+    if (!IsClientInGame(client) || IsFakeClient(client) || IsClientSourceTV(client) || IsClientReplay(client)) {
+        return false;
+    }
+
+    int team = GetClientTeam(client);
+    return (team == CS_TEAM_T || team == CS_TEAM_CT);
+}
+
+/**
+ * 停止自动踢未准备玩家倒计时。
+ */
+void Mix_StopKickUnreadyTimer()
+{
+    if (g_hKickUnreadyTimer != INVALID_HANDLE) {
+        KillTimer(g_hKickUnreadyTimer);
+        g_hKickUnreadyTimer = INVALID_HANDLE;
+    }
+
+    g_bKickCountdownActive = false;
+    g_bIsKicked = false;
+    g_iSecond = 30;
+}
+
+Action Mix_CreateReadyPanel()
+{
+    if (!g_bReadyPanelVisible) {
+        return Plugin_Continue;
+    }
+    if (g_hReadyStatus != INVALID_HANDLE) {
+        CloseHandle(g_hReadyStatus);
+        g_hReadyStatus = INVALID_HANDLE;
+    }
+    g_hReadyStatus = CreatePanel();
+
+    char title[64];
+    Format(title, sizeof(title), "%s - 准备系统", MODNAME);
+    SetPanelTitle(g_hReadyStatus, title);
+    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
+    // 换图之后显示
+    if (g_bTenVoted) {
+        PrintCenterTextAll("Mapa trocado! Digite !r");
+    }
+    // 可用指令 (整合并扩展自 UpdateReadyPanel 和 Mix_CreateReadyPanel)
+    DrawPanelText(g_hReadyStatus, "=====<- 指令与状态 ->=====");
+    DrawPanelText(g_hReadyStatus, "输入 !ready 或 !r 准备");
+    DrawPanelText(g_hReadyStatus, "输入 !notready 或 !nr 取消准备");
+    DrawPanelText(g_hReadyStatus, "输入 !sp 切换菜单显示");
+    DrawPanelText(g_hReadyStatus, "提示: 十人准备后可投票换图 ");
+    DrawPanelText(g_hReadyStatus, "无 RTV / Nominate 功能");
+
+    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
+
+    char readyLine[128];
+
+    DrawPanelText(g_hReadyStatus, readyLine);
+    DrawPanelText(g_hReadyStatus, "\n"); // 添加一些间隔
+
+
+    decl String:sReadyPlayersList[512];     // 存储已准备玩家列表的字符串
+    decl String:sNotReadyPlayersList[512];  // 存储未准备玩家列表的字符串
+    decl String:sSpectatorsList[512];       // 存储观察者列表的字符串
+    decl String:sPlayerName[MAX_NAME_LENGTH]; // 存储单个玩家名称
+
+    // 初始化列表字符串为空
+    Format(sReadyPlayersList, sizeof(sReadyPlayersList), "");
+    Format(sNotReadyPlayersList, sizeof(sNotReadyPlayersList), "");
+    Format(sSpectatorsList, sizeof(sSpectatorsList), "");
+
+
+    for (new i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && !IsClientSourceTV(i) && !IsClientReplay(i))
+        {
+            GetClientName(i, sPlayerName, sizeof(sPlayerName));
+
+            if (GetClientTeam(i) == CS_TEAM_SPECTATOR) {
+                Format(sSpectatorsList, sizeof(sSpectatorsList), "%s%s\n", sSpectatorsList, sPlayerName);
+            } else {
+                if (g_bReadyPlayers[i])
+                {
+                    Format(sReadyPlayersList, sizeof(sReadyPlayersList), "%s%s\n", sReadyPlayersList, sPlayerName);
+                    // actualReadyCount++;
+                }
+                else
+                {
+                    Format(sNotReadyPlayersList, sizeof(sNotReadyPlayersList), "%s%s\n", sNotReadyPlayersList, sPlayerName);
+                }
+            }
+        }
+    }
+
+
+    // 显示已准备玩家列表
+    DrawPanelItem(g_hReadyStatus, "--- 已准备 ---");
+    if (sReadyPlayersList[0] == '\0') {
+        DrawPanelText(g_hReadyStatus, "(无)");
+    } else {
+        DrawPanelText(g_hReadyStatus, sReadyPlayersList);
+    }
+    DrawPanelText(g_hReadyStatus, "\n");
+
+    // 显示未准备玩家列表
+    DrawPanelItem(g_hReadyStatus, "--- 未准备 ---");
+    if (sNotReadyPlayersList[0] == '\0') {
+        DrawPanelText(g_hReadyStatus, "(无)");
+    } else {
+        DrawPanelText(g_hReadyStatus, sNotReadyPlayersList);
+    }
+    DrawPanelText(g_hReadyStatus, "\n");
+
+    // 显示观察者列表
+    DrawPanelItem(g_hReadyStatus, "--- 观察者 ---");
+    if (sSpectatorsList[0] == '\0') {
+        DrawPanelText(g_hReadyStatus, "(无)");
+    } else {
+        DrawPanelText(g_hReadyStatus, sSpectatorsList);
+    }
+
+    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
+
+    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
+    // 将面板显示给所有符合条件的客户端
+    for (int i = 1; i <= MaxClients; i++) {
+        if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
+            SendPanelToClient(g_hReadyStatus, i, Mix_HandleDoNothing, 1);
+        }
+    }
+
+    return Plugin_Continue;
+}
+
+// 在十人准备后隐藏准备面板
+void Mix_HideReadyPanel()
+{
+    g_bReadyPanelVisible = false;
+    if (g_hReadyStatus != INVALID_HANDLE) {
+        CloseHandle(g_hReadyStatus);
+        g_hReadyStatus = INVALID_HANDLE;
+    }
+}
+
+// 重新显示准备面板
+void Mix_ShowReadyPanel()
+{
+    if (!g_bReadyPanelVisible) {
+        g_bReadyPanelVisible = true;
+        Mix_CreateReadyPanel();
+    }
+}
+
+/**
+ * 重置所有玩家的准备状态
+ */
+void Mix_ResetReadySystem()
+{
+    g_bAllowReady = true;
+    g_iReadyCount = 0;
+    // g_bTenVoted = false; // 不要在这里重置g_bTenVoted，否则流程会出错
+    for (int i = 1; i <= MaxClients; i++) {
+        g_bReadyPlayers[i] = false;
+        g_iReadyPlayersData[i] = -1;
+    }
+}
+
+/**
+ * 准备系统倒计时定时器
+ * 用于在达到10名准备玩家后，倒计时踢出未准备的玩家
+ */
+public Action Mix_ReadyCountdownTimer(Handle timer, any data)
+{
+    // 检查玩家数量是否仍然满足条件
+    int playerCount = 0;
+    for (int i = 1; i <= MaxClients; i++) {
+        if (Mix_IsReadyEligibleClient(i)) {
+            playerCount++;
+        }
+    }
+    
+    // 如果玩家数量不足10人或已经有10人准备，停止计时器
+    if (playerCount < 10 || g_iReadyCount >= 10) {
+        PrintToChatAll("\x04[%s]:\x03 Conditions changed, cancelling unready player kick", MODNAME);
+        g_hKickUnreadyTimer = INVALID_HANDLE;
+        g_bKickCountdownActive = false;
+        g_bIsKicked = false;
+        g_iSecond = 30;
+        return Plugin_Stop;
+    }
+    
+    if (g_iSecond <= 0) {
+        if (!g_bIsKicked) {
+            g_bIsKicked = true;
+            
+            int kickCount = 0;
+            for (int i = 1; i <= MaxClients; i++) {
+                if (Mix_IsReadyEligibleClient(i)) {
+                    if (!g_bReadyPlayers[i]) {
+                        KickClient(i, "[%s]: 你没有准备就绪，已被踢出服务器!", MODNAME);
+                        kickCount++;
+                    }
+                }
+            }
+            if (kickCount > 0) {
+                PrintToChatAll("\x04[%s]:\x03 Kicked %d unready players!", MODNAME, kickCount);
+            }
+        }
+        g_bKickCountdownActive = false;
+        g_hKickUnreadyTimer = INVALID_HANDLE;
+        g_bIsKicked = false;
+        g_iSecond = 30;
+        return Plugin_Stop;
+    } else {
+        PrintCenterTextAll("Unready players will be kicked in %ds", g_iSecond);
+        g_iSecond--;
+    }
+    
+    return Plugin_Continue;
+}

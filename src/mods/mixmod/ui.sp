@@ -1,0 +1,477 @@
+/**
+ * UI模块
+ */
+
+#if defined _mixmod_ui_included
+  #endinput
+#endif
+#define _mixmod_ui_included
+
+char g_szPasswordMenuValue[MAXPLAYERS + 1][32];
+
+/**
+ * 初始化UI系统
+ */
+void Mix_InitUI()
+{
+    // 创建各种面板和菜单
+    if (g_hHelpPanel != INVALID_HANDLE) {
+        CloseHandle(g_hHelpPanel);
+        g_hHelpPanel = INVALID_HANDLE;
+    }
+
+    g_hHelpPanel = CreatePanel();
+    SetPanelTitle(g_hHelpPanel, "Mix-Plugin Ajuda");
+    DrawPanelItem(g_hHelpPanel, "", ITEMDRAW_SPACER);
+    DrawPanelText(g_hHelpPanel, "--- Comandos do Jogador ---");
+    DrawPanelText(g_hHelpPanel, "!score - Mostrar Placar");
+    DrawPanelText(g_hHelpPanel, "!mvp - Mostrar MVP");
+    DrawPanelText(g_hHelpPanel, "!hp - Mostrar HP inimigo (morto)");
+    DrawPanelText(g_hHelpPanel, "!ready, !r - Marcar pronto");
+    DrawPanelText(g_hHelpPanel, "!notready, !nr - Marcar nao pronto");
+    DrawPanelText(g_hHelpPanel, "!sp - Mostrar/Ocultar Painel");
+    DrawPanelText(g_hHelpPanel, " ");
+    DrawPanelText(g_hHelpPanel, "--- Comandos Admin ---");
+    DrawPanelText(g_hHelpPanel, "!mix - Menu Mix");
+    DrawPanelText(g_hHelpPanel, "!mr12, !live - Iniciar Partida");
+    DrawPanelText(g_hHelpPanel, "!prac, !warmup - Modo Treino");
+    DrawPanelText(g_hHelpPanel, "!map - Lista de Mapas");
+    DrawPanelText(g_hHelpPanel, "!rr - Reiniciar Round");
+    DrawPanelText(g_hHelpPanel, "!swap - Trocar Times");
+    DrawPanelText(g_hHelpPanel, "!record, !stop - Gravar/Parar");
+    DrawPanelItem(g_hHelpPanel, "", ITEMDRAW_SPACER);
+
+    SetPanelCurrentKey(g_hHelpPanel, 10);
+    DrawPanelItem(g_hHelpPanel, "Fechar", ITEMDRAW_CONTROL);
+}
+
+/**
+ * 显示玩家帮助面板
+ *
+ * @param client 目标客户端
+ */
+void Mix_ShowHelp(int client)
+{
+    if (g_hHelpPanel == INVALID_HANDLE) {
+        Mix_InitUI();
+    }
+
+    SendPanelToClient(g_hHelpPanel, client, Mix_HandleDoNothing, 30);
+}
+
+/**
+ * 创建主满十菜单
+ *
+ * @param client 目标客户端
+ */
+void Mix_CreateMainMixMenu(int client)
+{
+    if (!g_bIsMixMenuGenerated || g_hMixMenu == INVALID_HANDLE) {
+        if (g_hMixMenu != INVALID_HANDLE) {
+            CloseHandle(g_hMixMenu);
+            g_hMixMenu = INVALID_HANDLE;
+        }
+
+        g_hMixMenu = CreateMenu(Mix_HandleMixMenu);
+        SetMenuTitle(g_hMixMenu, "Mix-Plugin 管理菜单:");
+
+        // 添加主菜单项
+        AddMenuItem(g_hMixMenu, "live", "开始满十 (mr12)");
+        AddMenuItem(g_hMixMenu, "prac", "恢复热身");
+        AddMenuItem(g_hMixMenu, "map", "选择地图");
+        AddMenuItem(g_hMixMenu, "restart", "重新开始当前回合");
+        AddMenuItem(g_hMixMenu, "swap", "互换队伍");
+        AddMenuItem(g_hMixMenu, "switchadmin", "切换到管理员模式");
+
+        // 根据当前状态添加录制选项
+        if (g_bIsRecording) {
+            AddMenuItem(g_hMixMenu, "stoprecord", "停止录制");
+        } else {
+            AddMenuItem(g_hMixMenu, "record", "开始录制");
+        }
+
+        // 添加密码相关选项
+        if (GetConVarInt(g_hCvarEnablePasswords) == 1) {
+            AddMenuItem(g_hMixMenu, "pass", "设置密码");
+            AddMenuItem(g_hMixMenu, "rpass", "移除密码");
+            AddMenuItem(g_hMixMenu, "rpw", "设置随机密码");
+        }
+
+        AddMenuItem(g_hMixMenu, "kickct", "踢出所有CT");
+        AddMenuItem(g_hMixMenu, "kickt", "踢出所有T");
+        AddMenuItem(g_hMixMenu, "random", "随机分配队伍");
+        AddMenuItem(g_hMixMenu, "ko3", "开始刀局");
+
+        g_bIsMixMenuGenerated = true;
+    }
+
+    DisplayMenu(g_hMixMenu, client, MENU_TIME_FOREVER);
+}
+
+/**
+ * 处理主满十菜单选择
+ */
+public int Mix_HandleMixMenu(Handle menu, MenuAction action, int param1, int param2)
+{
+    if (action == MenuAction_Select) {
+        char option[32];
+        GetMenuItem(menu, param2, option, sizeof(option));
+
+        if (StrEqual(option, "live")) {
+            Mix_StartLive(param1);
+        } else if (StrEqual(option, "prac")) {
+            Mix_ExecutePracConfig(param1);
+        } else if (StrEqual(option, "map")) {
+            // 确保地图列表已生成
+            if (!g_bIsMapListGenerated) {
+                Mix_CreateMapList();
+            }
+
+            // 如果地图列表菜单无效，重新创建
+            if (g_hMapListMenu == INVALID_HANDLE) {
+                Mix_CreateMapList(); // 这将重新创建菜单
+            }
+
+            // 显示菜单
+            if (g_hMapListMenu != INVALID_HANDLE) {
+                DisplayMenu(g_hMapListMenu, param1, MENU_TIME_FOREVER);
+            } else {
+
+                PrintToChat(param1, "\x04[%s]:\x03 Cannot display map list, contact admin", MODNAME);
+            }
+        } else if (StrEqual(option, "restart")) {
+            Mix_RestartRound(param1);
+        } else if (StrEqual(option, "swap")) {
+            Mix_SwapTeams();
+        } else if (StrEqual(option, "switchadmin")) {
+            if (g_hAdminMenu != INVALID_HANDLE) {
+                DisplayMenu(g_hAdminMenu, param1, MENU_TIME_FOREVER);
+            } else {
+
+                PrintToChat(param1, "\x04[%s]:\x03 Admin menu unavailable", MODNAME);
+            }
+        } else if (StrEqual(option, "record")) {
+            Mix_StartRecord(param1);
+        } else if (StrEqual(option, "stoprecord")) {
+            Mix_StopRecord(param1, 1);
+        } else if (StrEqual(option, "pass")) {
+            Mix_HandlePasswordCommand(param1);
+        } else if (StrEqual(option, "rpass")) {
+            Mix_RemovePassword(param1);
+        } else if (StrEqual(option, "rpw")) {
+            Mix_SetRandomPassword(param1);
+        } else if (StrEqual(option, "kickct")) {
+            Mix_KickTeam(param1, TEAM_CT, GetConVarInt(g_hCvarKickAdmins));
+        } else if (StrEqual(option, "kickt")) {
+            Mix_KickTeam(param1, TEAM_T, GetConVarInt(g_hCvarKickAdmins));
+        } else if (StrEqual(option, "random")) {
+            Mix_RandomizeTeams();
+        } else if (StrEqual(option, "ko3")) {
+            Mix_StartKnifeRound(param1);
+        }
+
+        // 在一些操作后重新生成菜单
+        g_bIsMixMenuGenerated = false;
+    }
+
+    return 0;
+}
+
+/**
+ * 处理密码命令
+ */
+void Mix_HandlePasswordCommand(int client)
+{
+    if (GetConVarInt(g_hCvarEnablePasswords) == 1) {
+        if (!Mix_IsInGameClient(client)) {
+            PrintToServer("[%s]: 此命令只能在游戏内使用", MODNAME);
+            return;
+        }
+
+        g_szPasswordMenuValue[client][0] = '\0';
+        Mix_ShowPasswordMenu(client);
+    } else {
+        if (Mix_IsInGameClient(client)) {
+            PrintToChat(client, "\x04[%s]:\x03 Password commands disabled", MODNAME);
+        } else {
+            PrintToServer("[%s]: Password commands disabled", MODNAME);
+        }
+    }
+}
+
+/**
+ * 显示密码输入菜单。
+ */
+void Mix_ShowPasswordMenu(int client)
+{
+    if (!Mix_IsInGameClient(client)) {
+        return;
+    }
+
+    Handle menu = CreateMenu(Mix_HandlePasswordMenu);
+    if (g_szPasswordMenuValue[client][0] == '\0') {
+        SetMenuTitle(menu, "输入服务器密码:");
+    } else {
+        SetMenuTitle(menu, "输入服务器密码 (%s):", g_szPasswordMenuValue[client]);
+    }
+
+    char buffer[32];
+    for (int i = 0; i < 10; i++) {
+        Format(buffer, sizeof(buffer), "%d", i);
+        AddMenuItem(menu, buffer, buffer);
+    }
+
+    AddMenuItem(menu, "a", "a");
+    AddMenuItem(menu, "b", "b");
+    AddMenuItem(menu, "c", "c");
+    AddMenuItem(menu, "d", "d");
+    AddMenuItem(menu, "e", "e");
+    AddMenuItem(menu, "f", "f");
+
+    DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+
+/**
+ * 处理密码菜单
+ */
+public int Mix_HandlePasswordMenu(Handle menu, MenuAction action, int param1, int param2)
+{
+    if (action == MenuAction_Select) {
+        if (!Mix_IsInGameClient(param1)) {
+            return 0;
+        }
+
+        char item[32];
+        GetMenuItem(menu, param2, item, sizeof(item));
+
+        if (strlen(g_szPasswordMenuValue[param1]) + strlen(item) >= sizeof(g_szPasswordMenuValue[])) {
+            PrintToChat(param1, "\x04[%s]:\x03 Password length limit reached", MODNAME);
+            return 0;
+        }
+
+        StrCat(g_szPasswordMenuValue[param1], sizeof(g_szPasswordMenuValue[]), item);
+
+        char name[MAX_NAME_LENGTH];
+        GetClientName(param1, name, sizeof(name));
+
+        if (strlen(g_szPasswordMenuValue[param1]) >= 4) {
+            // 密码长度足够，设置密码
+            SetConVarString(g_hPassword, g_szPasswordMenuValue[param1]);
+
+            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03set the server password", MODNAME, name);
+            g_szPasswordMenuValue[param1][0] = '\0';
+        } else {
+            // 继续输入密码
+            Mix_ShowPasswordMenu(param1);
+        }
+    } else if (action == MenuAction_Cancel) {
+        if (param1 >= 1 && param1 <= MaxClients) {
+            g_szPasswordMenuValue[param1][0] = '\0';
+        }
+    } else if (action == MenuAction_End) {
+        CloseHandle(menu);
+    }
+
+    return 0;
+}
+
+/**
+ * 设置随机密码
+ */
+void Mix_SetRandomPassword(int client)
+{
+    if (GetConVarInt(g_hCvarEnablePasswords) == 1) {
+        char password[32];
+        char chars[] = "0123456789abcdef";
+
+        for (int i = 0; i < 5; i++) {
+            int randomIndex = GetRandomInt(0, strlen(chars) - 1);
+            password[i] = chars[randomIndex];
+        }
+        password[5] = '\0';
+
+        SetConVarString(g_hPassword, password);
+        g_bIsRandomPasswordWasLastPw = true;
+
+        if (GetConVarInt(g_hCvarRpwShowPass) == 1) {
+            // 向所有人显示密码
+
+            PrintToChatAll("\x04[%s]:\x03 Server password set to: \x04%s", MODNAME, password);
+        } else {
+            // 只向管理员显示密码
+            if (client != 0) {
+                char name[MAX_NAME_LENGTH];
+                GetClientName(client, name, sizeof(name));
+
+                PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03set a random password", MODNAME, name);
+                PrintToChat(client, "\x04[%s]:\x03 Server password set to: \x04%s", MODNAME, password);
+            } else {
+
+                PrintToChatAll("\x04[%s]:\x03 服务器Random password has been set", MODNAME);
+                PrintToServer("[%s]: Server password set to: %s", MODNAME, password);
+            }
+
+            // 通知其他管理员
+            for (int i = 1; i <= MaxClients; i++) {
+                if (i != client && IsClientInGame(i) && !IsFakeClient(i)) {
+                    if (CheckCommandAccess(i, "sm_password", ADMFLAG_KICK, false)) {
+
+                        PrintToChat(i, "\x04[%s]:\x03 Server password set to: \x04%s", MODNAME, password);
+                    }
+                }
+            }
+        }
+    } else {
+        if (client != 0) {
+
+            PrintToChat(client, "\x04[%s]:\x03 Password commands disabled", MODNAME);
+        } else {
+            PrintToServer("[%s]: Password commands disabled", MODNAME);
+        }
+    }
+}
+
+/**
+ * 移除服务器密码
+ */
+void Mix_RemovePassword(int client)
+{
+    if (GetConVarInt(g_hCvarEnablePasswords) == 1) {
+        SetConVarString(g_hPassword, "");
+        g_bIsRandomPasswordWasLastPw = false;
+
+        if (client != 0) {
+            char name[MAX_NAME_LENGTH];
+            GetClientName(client, name, sizeof(name));
+
+            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03removed the server password", MODNAME, name);
+        } else {
+
+            PrintToChatAll("\x04[%s]:\x03 Server password removed", MODNAME);
+        }
+    } else {
+        if (client != 0) {
+
+            PrintToChat(client, "\x04[%s]:\x03 Password commands disabled", MODNAME);
+        } else {
+            PrintToServer("[%s]: Password commands disabled", MODNAME);
+        }
+    }
+}
+
+/**
+ * 启动满十(live)
+ */
+void Mix_StartLive(int client)
+{
+    if (GetConVarInt(g_hCvarEnabled) == 1) {
+        // 重置所有玩家的战绩和统计数据
+        Mix_ResetAllStats();
+
+        // 重置MVP系统的分数
+        for (int i = 1; i <= MaxClients; i++) {
+            g_iScoresOfTheRound[i] = 0;
+            g_iScoresOfTheGame[i] = 0;
+            g_iDeathsOfTheGame[i] = 0;
+        }
+
+        // 首先执行mr12配置，确保配置正确加载
+        Mix_ExecuteMr12Config();
+
+        g_bHasMixStarted = true;
+        g_bDidLiveStarted = true;
+        g_bIsItManual = true;
+
+        g_iCurrentRound = 1;
+        g_iCurrentHalf = 1;
+        g_iCTScore = 0;
+        g_iTScore = 0;
+        g_iCTScoreH1 = 0;
+        g_iTScoreH1 = 0;
+
+        if (g_bIsBuyZoneDisabled) {
+            if (Mix_EnableBuyZone()) {
+                g_bIsBuyZoneDisabled = false;
+            }
+        }
+
+        char name[MAX_NAME_LENGTH];
+        Mix_GetCommandSourceName(client, name, sizeof(name));
+        PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03started the live match", MODNAME, name);
+
+        char teamAName[32];
+        char teamBName[32];
+        GetConVarString(g_hCvarCusomNameTeamCT, teamAName, sizeof(teamAName));
+        GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
+
+        char hostName[128];
+        Format(hostName, sizeof(hostName), "%s | %s vs %s | Live", g_szHostName, teamAName, teamBName);
+        SetConVarString(g_hHostName, hostName);
+
+        if (GetConVarInt(g_hCvarUseZBMatchCommand) == 1) {
+            ServerCommand("zb_lo3");
+        } else {
+            int restartTime = GetConVarInt(g_hCvarRestartTimeInLiveCommand);
+            if (restartTime < 1) {
+                restartTime = 1;
+            }
+            SetConVarInt(g_hRestartGame, restartTime);
+        }
+
+        // 录制已经在Mix_ExecuteMr12Config中启动，不需要再次启动
+    }
+}
+
+/**
+ * 重启当前回合
+ */
+void Mix_RestartRound(int client)
+{
+    if (GetConVarInt(g_hCvarEnabled) == 1) {
+        if (GetConVarInt(g_hCvarEnableRRCommand) == 1) {
+            char name[MAX_NAME_LENGTH];
+            Mix_GetCommandSourceName(client, name, sizeof(name));
+
+            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03restarted the round", MODNAME, name);
+            SetConVarInt(g_hRestartGame, 1);
+        } else {
+
+            PrintToChat(client, "\x04[%s]:\x03 Restart round command disabled", MODNAME);
+        }
+    }
+}
+
+/**
+ * 开始刀局
+ */
+void Mix_StartKnifeRound(int client)
+{
+    if (GetConVarInt(g_hCvarEnabled) == 1) {
+        if (GetConVarInt(g_hCvarEnableKnifeRound) == 1) {
+            g_bHasMixStarted = true;
+            g_bDidLiveStarted = true;
+            g_bIsKo3Running = true;
+
+            // 刀局开始时禁用购买区
+            if (!g_bIsBuyZoneDisabled) {
+                if (Mix_DisableBuyZone()) {
+                    g_bIsBuyZoneDisabled = true;
+                }
+            }
+
+            if (GetConVarInt(g_hCvarUseKo3Command) == 1) {
+                ServerCommand("zb_ko3");
+            } else {
+                SetConVarInt(g_hRestartGame, 3);
+            }
+
+            char name[MAX_NAME_LENGTH];
+            Mix_GetCommandSourceName(client, name, sizeof(name));
+
+            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03started the knife round", MODNAME, name);
+        } else {
+
+            PrintToChat(client, "\x04[%s]:\x03 Knife round disabled", MODNAME);
+        }
+    }
+}
