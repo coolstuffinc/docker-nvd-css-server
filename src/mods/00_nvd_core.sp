@@ -242,41 +242,49 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     {
         LogError("NVD Core: HTTP %d", response.Status);
         
-        // Tenta logar header Location (útil para redirects 307)
-        char location[256];
-        if (response.GetHeader("Location", location, sizeof(location)))
+        // 1. Loga headers importantes para debug de redirect
+        char headerVal[256];
+        
+        // Header Location (para onde redirecionar)
+        if (response.GetHeader("Location", headerVal, sizeof(headerVal)))
         {
-            LogError("NVD Core: Redirect Location: %s", location);
+            LogError("NVD Core: Redirect Location: %s", headerVal);
         }
         
-        // Tenta extrair mensagem de erro do JSON da resposta
-        if (response.Data != null)
+        // Header Content-Type (para saber se é JSON ou não)
+        if (response.GetHeader("Content-Type", headerVal, sizeof(headerVal)))
+        {
+            LogError("NVD Core: Content-Type: %s", headerVal);
+        }
+        
+        // 2. Loga o body BRUTO da resposta (antes de tentar parsear JSON)
+        if (response.Body != null && response.Body[0] != '\0')
+        {
+            LogError("NVD Core: Raw Body: %.500s", response.Body);
+        }
+        else
+        {
+            LogError("NVD Core: Empty response body");
+        }
+        
+        // 3. Tenta acessar response.Data APENAS se Content-Type for JSON
+        //    (evita crash quando o body não é JSON válido)
+        if (response.GetHeader("Content-Type", headerVal, sizeof(headerVal)) && 
+            StrContains(headerVal, "application/json") != -1 &&
+            response.Data != null)
         {
             JSONObject json = view_as<JSONObject>(response.Data);
             char errorMsg[512];
             
-            // Tenta campo "error" (comum em APIs)
             if (json.GetString("error", errorMsg, sizeof(errorMsg)))
             {
                 LogError("NVD Core: API Error: %s", errorMsg);
             }
-            // Tenta campo "message" (alternativa comum)
             else if (json.GetString("message", errorMsg, sizeof(errorMsg)))
             {
                 LogError("NVD Core: API Message: %s", errorMsg);
             }
-            // Fallback: tenta serializar o JSON para log
-            else
-            {
-                char rawJson[1024];
-                json.ToString(rawJson, sizeof(rawJson));
-                LogError("NVD Core: Raw JSON Response: %.500s", rawJson);
-            }
-            // NÃO delete json aqui — response.Data é gerenciado pelo ripext
-        }
-        else
-        {
-            LogError("NVD Core: No JSON data in response (check Content-Type header)");
+            // NÃO delete json — response.Data é gerenciado pelo ripext
         }
         
         // Mantém callback do plugin chamador para não travar
