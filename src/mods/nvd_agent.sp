@@ -106,12 +106,14 @@ void BuildContext(char[] buffer, int maxlen, const char[] request)
     pos += Format(buffer[pos], maxlen - pos, "\nCURRENT: %s\n", currentMap);
     
     // 4. Instruções finais
-    pos += Format(buffer[pos], maxlen - pos, 
-        "\nREQUEST: %s\n\nRULES:\n"
+    char longPromptTemplate[] = 
+      "\nREQUEST: %s\n\nRULES:\n"
         "1. Use EXATAMENTE [CMD: <comando>] OU [SAY: <mensagem>].\n"
         "2. Máximo 2 linhas no total.\n"
         "3. NUNCA invente comandos ou mapas.\n"
-        "4. Responda no mesmo idioma do pedido.", request);
+        "4. Responda no mesmo idioma do pedido.";
+
+    pos += Format(buffer[pos], maxlen - pos, longPromptTemplate, request);
 }
 
 // ============================================================================
