@@ -150,6 +150,37 @@ public int Native_AskAI(Handle plugin, int numParams)
 	else
 		Format(url, sizeof(url), "api/%s/", endpoint);
 
+	JSONObject payload = new JSONObject();
+	payload.SetString("model", model);
+
+	if (StrEqual(endpoint, "chat"))
+	{
+		JSONObject systemMsg = new JSONObject();
+		systemMsg.SetString("role", "system");
+		systemMsg.SetString("content", systemPrompt);
+
+		JSONObject userMsg = new JSONObject();
+		userMsg.SetString("role", "user");
+		userMsg.SetString("content", prompt);
+
+		JSONArray messages = new JSONArray();
+		messages.Push(systemMsg);
+		messages.Push(userMsg);
+
+		payload.Set("messages", messages);
+		payload.SetBool("stream", false);
+
+		delete systemMsg;
+		delete userMsg;
+		delete messages;
+	}
+	else
+	{
+		payload.SetString("prompt", prompt);
+		payload.SetBool("stream", false);
+		payload.SetString("system", systemPrompt);
+	}
+
 	LogMessage("DEBUG: Calling g_HttpClient.Post(url: %s, ...)", url);
 	g_HttpClient.Post(url, payload, OnOllamaResponse);
 	delete payload;
