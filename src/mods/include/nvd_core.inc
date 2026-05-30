@@ -18,6 +18,6 @@ native void NVD_AskAI(const char[] prompt, const char[] systemPrompt, NVD_Respon
 public SharedPlugin __pl_nvd_core = 
 {
 	name = "nvd_core",
-	file = "nvd_core.smx",
-	required = 1,
+	file = "00_nvd_core.smx",
+	required = 0, // Mudado de 1 para 0
 };
