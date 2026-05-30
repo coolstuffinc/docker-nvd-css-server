@@ -14,35 +14,71 @@ char g_szPasswordMenuValue[MAXPLAYERS + 1][32];
  */
 void Mix_InitUI()
 {
-    // 创建各种面板和菜单
     if (g_hHelpPanel != INVALID_HANDLE) {
         CloseHandle(g_hHelpPanel);
         g_hHelpPanel = INVALID_HANDLE;
     }
 
     g_hHelpPanel = CreatePanel();
-    SetPanelTitle(g_hHelpPanel, "Mix-Plugin Ajuda");
+    char buf[128];
+
+    Format(buf, sizeof(buf), "%t", "Help Panel Title");
+    SetPanelTitle(g_hHelpPanel, buf);
     DrawPanelItem(g_hHelpPanel, "", ITEMDRAW_SPACER);
-    DrawPanelText(g_hHelpPanel, "--- Comandos do Jogador ---");
-    DrawPanelText(g_hHelpPanel, "!score - Mostrar Placar");
-    DrawPanelText(g_hHelpPanel, "!mvp - Mostrar MVP");
-    DrawPanelText(g_hHelpPanel, "!hp - Mostrar HP inimigo (morto)");
-    DrawPanelText(g_hHelpPanel, "!ready, !r - Marcar pronto");
-    DrawPanelText(g_hHelpPanel, "!notready, !nr - Marcar nao pronto");
-    DrawPanelText(g_hHelpPanel, "!sp - Mostrar/Ocultar Painel");
+
+    Format(buf, sizeof(buf), "%t", "Help Player Commands");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Score");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help MVP");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help HP");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Ready");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Not Ready");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Panel Toggle");
+    DrawPanelText(g_hHelpPanel, buf);
+
     DrawPanelText(g_hHelpPanel, " ");
-    DrawPanelText(g_hHelpPanel, "--- Comandos Admin ---");
-    DrawPanelText(g_hHelpPanel, "!mix - Menu Mix");
-    DrawPanelText(g_hHelpPanel, "!mr12, !live - Iniciar Partida");
-    DrawPanelText(g_hHelpPanel, "!prac, !warmup - Modo Treino");
-    DrawPanelText(g_hHelpPanel, "!map - Lista de Mapas");
-    DrawPanelText(g_hHelpPanel, "!rr - Reiniciar Round");
-    DrawPanelText(g_hHelpPanel, "!swap - Trocar Times");
-    DrawPanelText(g_hHelpPanel, "!record, !stop - Gravar/Parar");
+
+    Format(buf, sizeof(buf), "%t", "Help Admin Commands");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Mix");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Live");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Prac");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Map");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Restart Round");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Swap");
+    DrawPanelText(g_hHelpPanel, buf);
+
+    Format(buf, sizeof(buf), "%t", "Help Record");
+    DrawPanelText(g_hHelpPanel, buf);
+
     DrawPanelItem(g_hHelpPanel, "", ITEMDRAW_SPACER);
 
     SetPanelCurrentKey(g_hHelpPanel, 10);
-    DrawPanelItem(g_hHelpPanel, "Fechar", ITEMDRAW_CONTROL);
+
+    Format(buf, sizeof(buf), "%t", "Close");
+    DrawPanelItem(g_hHelpPanel, buf, ITEMDRAW_CONTROL);
 }
 
 /**
@@ -136,8 +172,8 @@ public int Mix_HandleMixMenu(Handle menu, MenuAction action, int param1, int par
             if (g_hMapListMenu != INVALID_HANDLE) {
                 DisplayMenu(g_hMapListMenu, param1, MENU_TIME_FOREVER);
             } else {
-
-                PrintToChat(param1, "\x04[%s]:\x03 Cannot display map list, contact admin", MODNAME);
+                SetGlobalTransTarget(param1);
+                PrintToChat(param1, "\x04[%s]:\x03 %t", MODNAME, "Cannot Display Map List");
             }
         } else if (StrEqual(option, "restart")) {
             Mix_RestartRound(param1);
@@ -147,8 +183,8 @@ public int Mix_HandleMixMenu(Handle menu, MenuAction action, int param1, int par
             if (g_hAdminMenu != INVALID_HANDLE) {
                 DisplayMenu(g_hAdminMenu, param1, MENU_TIME_FOREVER);
             } else {
-
-                PrintToChat(param1, "\x04[%s]:\x03 Admin menu unavailable", MODNAME);
+                SetGlobalTransTarget(param1);
+                PrintToChat(param1, "\x04[%s]:\x03 %t", MODNAME, "Admin Menu Unavailable");
             }
         } else if (StrEqual(option, "record")) {
             Mix_StartRecord(param1);
@@ -192,7 +228,8 @@ void Mix_HandlePasswordCommand(int client)
         Mix_ShowPasswordMenu(client);
     } else {
         if (Mix_IsInGameClient(client)) {
-            PrintToChat(client, "\x04[%s]:\x03 Password commands disabled", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Password Commands Disabled");
         } else {
             PrintToServer("[%s]: Password commands disabled", MODNAME);
         }
@@ -245,7 +282,8 @@ public int Mix_HandlePasswordMenu(Handle menu, MenuAction action, int param1, in
         GetMenuItem(menu, param2, item, sizeof(item));
 
         if (strlen(g_szPasswordMenuValue[param1]) + strlen(item) >= sizeof(g_szPasswordMenuValue[])) {
-            PrintToChat(param1, "\x04[%s]:\x03 Password length limit reached", MODNAME);
+            SetGlobalTransTarget(param1);
+            PrintToChat(param1, "\x04[%s]:\x03 %t", MODNAME, "Password Length Limit");
             return 0;
         }
 
@@ -255,15 +293,11 @@ public int Mix_HandlePasswordMenu(Handle menu, MenuAction action, int param1, in
         GetClientName(param1, name, sizeof(name));
 
         if (strlen(g_szPasswordMenuValue[param1]) >= 4) {
-            // 密码长度足够，设置密码
             SetConVarString(g_hPassword, g_szPasswordMenuValue[param1]);
 
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03set the server password", MODNAME, name);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Password Set By", name);
             g_szPasswordMenuValue[param1][0] = '\0';
         } else {
-            // 继续输入密码
-            Mix_ShowPasswordMenu(param1);
-        }
     } else if (action == MenuAction_Cancel) {
         if (param1 >= 1 && param1 <= MaxClients) {
             g_szPasswordMenuValue[param1][0] = '\0';
@@ -294,37 +328,33 @@ void Mix_SetRandomPassword(int client)
         g_bIsRandomPasswordWasLastPw = true;
 
         if (GetConVarInt(g_hCvarRpwShowPass) == 1) {
-            // 向所有人显示密码
-
-            PrintToChatAll("\x04[%s]:\x03 Server password set to: \x04%s", MODNAME, password);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Password Set To", password);
         } else {
-            // 只向管理员显示密码
             if (client != 0) {
                 char name[MAX_NAME_LENGTH];
                 GetClientName(client, name, sizeof(name));
 
-                PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03set a random password", MODNAME, name);
-                PrintToChat(client, "\x04[%s]:\x03 Server password set to: \x04%s", MODNAME, password);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Random Password Set By", name);
+                SetGlobalTransTarget(client);
+                PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Password Set To", password);
             } else {
-
-                PrintToChatAll("\x04[%s]:\x03 服务器Random password has been set", MODNAME);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Random Password Set");
                 PrintToServer("[%s]: Server password set to: %s", MODNAME, password);
             }
 
-            // 通知其他管理员
             for (int i = 1; i <= MaxClients; i++) {
                 if (i != client && IsClientInGame(i) && !IsFakeClient(i)) {
                     if (CheckCommandAccess(i, "sm_password", ADMFLAG_KICK, false)) {
-
-                        PrintToChat(i, "\x04[%s]:\x03 Server password set to: \x04%s", MODNAME, password);
+                        SetGlobalTransTarget(i);
+                        PrintToChat(i, "\x04[%s]:\x03 %t", MODNAME, "Password Set To", password);
                     }
                 }
             }
         }
     } else {
         if (client != 0) {
-
-            PrintToChat(client, "\x04[%s]:\x03 Password commands disabled", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Password Commands Disabled");
         } else {
             PrintToServer("[%s]: Password commands disabled", MODNAME);
         }
@@ -344,15 +374,14 @@ void Mix_RemovePassword(int client)
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03removed the server password", MODNAME, name);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Password Removed By", name);
         } else {
-
-            PrintToChatAll("\x04[%s]:\x03 Server password removed", MODNAME);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Password Removed");
         }
     } else {
         if (client != 0) {
-
-            PrintToChat(client, "\x04[%s]:\x03 Password commands disabled", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Password Commands Disabled");
         } else {
             PrintToServer("[%s]: Password commands disabled", MODNAME);
         }
@@ -397,7 +426,7 @@ void Mix_StartLive(int client)
 
         char name[MAX_NAME_LENGTH];
         Mix_GetCommandSourceName(client, name, sizeof(name));
-        PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03started the live match", MODNAME, name);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Live Started By", name);
 
         char teamAName[32];
         char teamBName[32];
@@ -432,11 +461,11 @@ void Mix_RestartRound(int client)
             char name[MAX_NAME_LENGTH];
             Mix_GetCommandSourceName(client, name, sizeof(name));
 
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03restarted the round", MODNAME, name);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Round Restarted By", name);
             SetConVarInt(g_hRestartGame, 1);
         } else {
-
-            PrintToChat(client, "\x04[%s]:\x03 Restart round command disabled", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Restart Round Disabled");
         }
     }
 }
@@ -468,10 +497,10 @@ void Mix_StartKnifeRound(int client)
             char name[MAX_NAME_LENGTH];
             Mix_GetCommandSourceName(client, name, sizeof(name));
 
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03started the knife round", MODNAME, name);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Knife Round Started By", name);
         } else {
-
-            PrintToChat(client, "\x04[%s]:\x03 Knife round disabled", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Knife Round Disabled");
         }
     }
 }

@@ -60,6 +60,7 @@
         "en"        "Not live yet!"
         "chi"     "尚未启动!"
         "ru"        "Еще не запущен!"
+        "pt"        "Ainda nao ao vivo!"
     }
 
     "Match Point"
@@ -426,5 +427,581 @@
         "en"        "Player     Kills Deaths Assists HS   K/D"
         "chi"     "玩家     击杀  死亡  助攻  爆头  K/D"
         "ru"        "Игрок     Убийства Смерти Ассисты ХС   К/Д"
+    }
+
+    // === NVD additions / PT-BR translations ===
+
+    "Help Panel Title"
+    {
+        "en"        "Mix-Plugin Help"
+        "pt"        "Mix-Plugin Ajuda"
+    }
+
+    "Help Player Commands"
+    {
+        "en"        "--- Player Commands ---"
+        "pt"        "--- Comandos do Jogador ---"
+    }
+
+    "Help Score"
+    {
+        "en"        "!score - Show Score"
+        "pt"        "!score - Mostrar Placar"
+    }
+
+    "Help MVP"
+    {
+        "en"        "!mvp - Show MVP"
+        "pt"        "!mvp - Mostrar MVP"
+    }
+
+    "Help HP"
+    {
+        "en"        "!hp - Show enemy HP (dead)"
+        "pt"        "!hp - Mostrar HP inimigo (morto)"
+    }
+
+    "Help Ready"
+    {
+        "en"        "!ready, !r - Ready up"
+        "pt"        "!ready, !r - Marcar pronto"
+    }
+
+    "Help Not Ready"
+    {
+        "en"        "!notready, !nr - Not ready"
+        "pt"        "!notready, !nr - Marcar nao pronto"
+    }
+
+    "Help Panel Toggle"
+    {
+        "en"        "!sp - Show/Hide Panel"
+        "pt"        "!sp - Mostrar/Ocultar Painel"
+    }
+
+    "Help Admin Commands"
+    {
+        "en"        "--- Admin Commands ---"
+        "pt"        "--- Comandos Admin ---"
+    }
+
+    "Help Mix"
+    {
+        "en"        "!mix - Mix Menu"
+        "pt"        "!mix - Menu Mix"
+    }
+
+    "Help Live"
+    {
+        "en"        "!mr12, !live - Start Match"
+        "pt"        "!mr12, !live - Iniciar Partida"
+    }
+
+    "Help Prac"
+    {
+        "en"        "!prac, !warmup - Warmup Mode"
+        "pt"        "!prac, !warmup - Modo Treino"
+    }
+
+    "Help Map"
+    {
+        "en"        "!map - Map List"
+        "pt"        "!map - Lista de Mapas"
+    }
+
+    "Help Restart Round"
+    {
+        "en"        "!rr - Restart Round"
+        "pt"        "!rr - Reiniciar Round"
+    }
+
+    "Help Swap"
+    {
+        "en"        "!swap - Swap Teams"
+        "pt"        "!swap - Trocar Times"
+    }
+
+    "Help Record"
+    {
+        "en"        "!record, !stop - Record/Stop"
+        "pt"        "!record, !stop - Gravar/Parar"
+    }
+
+    "Close"
+    {
+        "en"        "Close"
+        "pt"        "Fechar"
+    }
+
+    "Winner Panel Title"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} - Winner"
+        "pt"        "{1} - Vencedor"
+    }
+
+    "Match Over"
+    {
+        "en"        "Match Over"
+        "pt"        "Fim de Jogo"
+    }
+
+    "Winner Is Team"
+    {
+        "#format"   "{1:s}"
+        "en"        "*** WINNER ***\n  -* {1} *-"
+        "pt"        "*** VENCEDOR ***\n  -* {1} *-"
+    }
+
+    "Draw Result"
+    {
+        "en"        "*** DRAW ***"
+        "pt"        "*** EMPATE ***"
+    }
+
+    "Map Changed Ready"
+    {
+        "en"        "Map changed! Type !r to ready"
+        "pt"        "Mapa trocado! Digite !r para pronto"
+    }
+
+    "Unready Kick Warning"
+    {
+        "#format"   "{1:d}"
+        "en"        "Unready players will be kicked in {1}s"
+        "pt"        "Jogadores nao prontos serao kickados em {1}s"
+    }
+
+    "Cannot Display Map List"
+    {
+        "en"        "Cannot display map list, contact admin"
+        "pt"        "Nao foi possivel exibir lista de mapas, contate admin"
+    }
+
+    "Admin Menu Unavailable"
+    {
+        "en"        "Admin menu unavailable"
+        "pt"        "Menu admin indisponivel"
+    }
+
+    "Password Commands Disabled"
+    {
+        "en"        "Password commands disabled"
+        "pt"        "Comandos de senha desativados"
+    }
+
+    "Password Length Limit"
+    {
+        "en"        "Password length limit reached"
+        "pt"        "Limite de tamanho de senha atingido"
+    }
+
+    "Password Set By"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} set the server password"
+        "pt"        "Admin {1} definiu a senha do servidor"
+    }
+
+    "Password Set To"
+    {
+        "#format"   "{1:s}"
+        "en"        "Server password set to: {1}"
+        "pt"        "Senha do servidor definida para: {1}"
+    }
+
+    "Random Password Set By"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} set a random password"
+        "pt"        "Admin {1} definiu senha aleatoria"
+    }
+
+    "Random Password Set"
+    {
+        "en"        "Random password has been set"
+        "pt"        "Senha aleatoria foi definida"
+    }
+
+    "Password Removed By"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} removed the server password"
+        "pt"        "Admin {1} removeu a senha do servidor"
+    }
+
+    "Password Removed"
+    {
+        "en"        "Server password removed"
+        "pt"        "Senha do servidor removida"
+    }
+
+    "Live Started By"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} started the live match"
+        "pt"        "Admin {1} iniciou a partida"
+    }
+
+    "Round Restarted By"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} restarted the round"
+        "pt"        "Admin {1} reiniciou o round"
+    }
+
+    "Restart Round Disabled"
+    {
+        "en"        "Restart round command disabled"
+        "pt"        "Comando de reiniciar round desativado"
+    }
+
+    "Knife Round Started By"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} started the knife round"
+        "pt"        "Admin {1} iniciou o round de faca"
+    }
+
+    "Knife Round Disabled"
+    {
+        "en"        "Knife round disabled"
+        "pt"        "Round de faca desativado"
+    }
+
+    "Only Real Players Ready"
+    {
+        "en"        "Only real players on T/CT can ready"
+        "pt"        "Apenas jogadores reais em T/CT podem ficar pronto"
+    }
+
+    "Only Real Players Unready"
+    {
+        "en"        "Only real players on T/CT can unready"
+        "pt"        "Apenas jogadores reais em T/CT podem cancelar pronto"
+    }
+
+    "Force Ready All"
+    {
+        "en"        "Admin force-readied all players!"
+        "pt"        "Admin forcou todos os jogadores a ficarem prontos!"
+    }
+
+    "Match Not Started Scored"
+    {
+        "en"        "Match has not started"
+        "pt"        "Partida nao iniciada"
+    }
+
+    "First Half"
+    {
+        "#format"   "{1:d},{2:d},{3:d}"
+        "en"        "First Half - Round: {1}, CT: {2}, T: {3}"
+        "pt"        "Primeiro Tempo - Round: {1}, CT: {2}, T: {3}"
+    }
+
+    "Second Half"
+    {
+        "#format"   "{1:d},{2:d},{3:d}"
+        "en"        "Second Half - Round: {1}, CT: {2}, T: {3}"
+        "pt"        "Segundo Tempo - Round: {1}, CT: {2}, T: {3}"
+    }
+
+    "Record Started"
+    {
+        "#format"   "{1:s},{2:s}"
+        "en"        "Starting recording {1} to file {2}"
+        "pt"        "Iniciando gravacao {1} para arquivo {2}"
+    }
+
+    "Record Stopped"
+    {
+        "en"        "Recording stopped"
+        "pt"        "Gravacao parada"
+    }
+
+    "Map Vote Start"
+    {
+        "en"        "Starting map vote"
+        "pt"        "Iniciando votacao de mapa"
+    }
+
+    "Map Vote Result"
+    {
+        "#format"   "{1:s}"
+        "en"        "Vote result: {1}, changing map..."
+        "pt"        "Resultado: {1}, alterando mapa..."
+    }
+
+    "Map Vote Over"
+    {
+        "en"        "Map vote over, type !ready to continue"
+        "pt"        "Votacao encerrada, digite !ready para continuar"
+    }
+
+    "No Map List"
+    {
+        "en"        "Map list is empty!"
+        "pt"        "Lista de mapas vazia!"
+    }
+
+    "Invalid Map Name"
+    {
+        "en"        "Invalid map name!"
+        "pt"        "Nome de mapa invalido!"
+    }
+
+    "Failed Map List"
+    {
+        "en"        "Failed to create map list!"
+        "pt"        "Falha ao criar lista de mapas!"
+    }
+
+    "Executing Cfg"
+    {
+        "#format"   "{1:s}"
+        "en"        "Executing {1}..."
+        "pt"        "Executando {1}..."
+    }
+
+    "Stats Reset"
+    {
+        "en"        "All player stats and scores have been reset"
+        "pt"        "Estatisticas e pontuacoes de todos os jogadores foram resetadas"
+    }
+
+    "Changing Map"
+    {
+        "#format"   "{1:s}"
+        "en"        "Changing map to {1}"
+        "pt"        "Alterando mapa para {1}"
+    }
+
+    "Buy Zone Restored"
+    {
+        "en"        "Buy zone restored"
+        "pt"        "Zona de compra restaurada"
+    }
+
+    "Knife Attackers Won"
+    {
+        "en"        "Attackers won knife round - Team selection vote..."
+        "pt"        "Atacantes venceram round de faca - Votacao de time..."
+    }
+
+    "Knife Defenders Won"
+    {
+        "en"        "Defenders won knife round - Team selection vote..."
+        "pt"        "Defensores venceram round de faca - Votacao de time..."
+    }
+
+    "Removed Items"
+    {
+        "#format"   "{1:d}"
+        "en"        "Removed {1} items"
+        "pt"        "Removidos {1} itens"
+    }
+
+    "Overtime End"
+    {
+        "#format"   "{1:d},{2:d},{3:d},{4:d}"
+        "en"        "MR3 Overtime: CT={1} (orig={2}), T={3} (orig={4})"
+        "pt"        "MR3 Prorrogacao: CT={1} (orig={2}), T={3} (orig={4})"
+    }
+
+    "Overtime Tie"
+    {
+        "en"        "OT tied, advancing to next MR3 OT!"
+        "pt"        "Prorrogacao empatada, avancando para proxima MR3 OT!"
+    }
+
+    "Overtime Decided"
+    {
+        "en"        "MR3 OT decided, match over!"
+        "pt"        "MR3 OT decidida, partida encerrada!"
+    }
+
+    "Ten Players Auto"
+    {
+        "#format"   "{1:d}"
+        "en"        "10 players! Unready players kicked in {1}s. Type !r to ready!"
+        "pt"        "10 jogadores! Nao prontos serao kickados em {1}s. Digite !r!"
+    }
+
+    "Kicked Unready"
+    {
+        "#format"   "{1:d}"
+        "en"        "Kicked {1} unready players!"
+        "pt"        "Kickados {1} jogadores nao prontos!"
+    }
+
+    "Ready Cancelled"
+    {
+        "en"        "Conditions changed, cancelling unready kick"
+        "pt"        "Condicoes alteradas, cancelando kick de nao prontos"
+    }
+
+    "Map List Error"
+    {
+        "en"        "Cannot read map list from maps directory!"
+        "pt"        "Nao foi possivel ler lista de mapas do diretorio!"
+    }
+
+    "Ready Panel Title"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} - Ready System"
+        "pt"        "{1} - Sistema de Pronto"
+    }
+
+    "Kicked Not Ready"
+    {
+        "en"        "You were kicked for not being ready!"
+        "pt"        "Voce foi kickado por nao estar pronto!"
+    }
+
+    "Match Point"
+    {
+        "#format"   "{1:s}"
+        "en"        "Match point for {1}"
+        "pt"        "Match point para {1}"
+    }
+
+    "Admin Selected Map"
+    {
+        "#format"   "{1:s},{2:s}"
+        "en"        "Admin {1} selected map {2}"
+        "pt"        "Admin {1} selecionou mapa {2}"
+    }
+
+    "Admin Executed Cfg"
+    {
+        "#format"   "{1:s},{2:s}"
+        "en"        "Admin {1} executed {2}"
+        "pt"        "Admin {1} executou {2}"
+    }
+
+    "Admin Started Recording"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} started recording"
+        "pt"        "Admin {1} iniciou gravacao"
+    }
+
+    "Admin Stopped Recording"
+    {
+        "#format"   "{1:s}"
+        "en"        "Admin {1} stopped recording"
+        "pt"        "Admin {1} parou gravacao"
+    }
+
+    "Your Stats"
+    {
+        "#format"   "{1:d},{2:d}"
+        "en"        "Your stats: Kills {1}, Deaths {2}"
+        "pt"        "Suas estatisticas: Kills {1}, Deaths {2}"
+    }
+
+    "Error Finding MVP"
+    {
+        "en"        "Error finding MVP"
+        "pt"        "Erro ao encontrar MVP"
+    }
+
+    "MVP Header"
+    {
+        "en"        "Kill stats:"
+        "pt"        "Estatisticas:"
+    }
+
+    "MVP Line"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        " - MVP: {1}, Kills: {2}"
+        "pt"        " - MVP: {1}, Kills: {2}"
+    }
+
+    "MVP Data Disabled"
+    {
+        "en"        "MVP data display disabled"
+        "pt"        "Exibicao de dados MVP desativada"
+    }
+
+    "MVP Not Yet"
+    {
+        "en"        "MVP not yet determined, wait"
+        "pt"        "MVP ainda nao determinado, aguarde"
+    }
+
+    "Your Kills"
+    {
+        "#format"   "{1:d}"
+        "en"        "You killed {1} enemies"
+        "pt"        "Voce matou {1} inimigos"
+    }
+
+    "Match Ended"
+    {
+        "en"        "Match ended"
+        "pt"        "Partida encerrada"
+    }
+
+    "Winner Is"
+    {
+        "#format"   "{1:s}"
+        "en"        "Winner: {1}"
+        "pt"        "Vencedor: {1}"
+    }
+
+    "Draw Announce"
+    {
+        "en"        "Draw! | IT'S A DRAW!"
+        "pt"        "Empate! | IT'S A DRAW!"
+    }
+
+    "Player Muted"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} was muted"
+        "pt"        "{1} foi mutado"
+    }
+
+    "Player Unmuted"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} was unmuted"
+        "pt"        "{1} foi desmutado"
+    }
+
+    "Player Gagged"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} was gagged"
+        "pt"        "{1} foi gagado"
+    }
+
+    "Player Ungagged"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} was ungagged"
+        "pt"        "{1} foi desgagado"
+    }
+
+    "Usage Spec"
+    {
+        "en"        "Usage: !spec <player name/ID>"
+        "pt"        "Uso: !spec <nome/ID do jogador>"
+    }
+
+    "Usage Mute"
+    {
+        "en"        "Usage: !mmute <player name/ID>"
+        "pt"        "Uso: !mmute <nome/ID do jogador>"
+    }
+
+    "Usage Gag"
+    {
+        "en"        "Usage: !mgag <player name/ID>"
+        "pt"        "Uso: !mgag <nome/ID do jogador>"
     }
 }

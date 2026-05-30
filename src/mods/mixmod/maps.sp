@@ -42,7 +42,7 @@ void Mix_CreateMapList()
                 mapList.GetString(i, g_szMapNames[i], 32);
             }
         } else {
-            PrintToChatAll("\x04[%s]:\x03 Cannot read map list from maps directory!", MODNAME);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Map List Error");
             delete mapList;
             return;
         }
@@ -50,7 +50,7 @@ void Mix_CreateMapList()
         delete mapList;
 
         if (mapCount <= 0) {
-            PrintToChatAll("\x04[%s]:\x03 Map list empty! Contact admin", MODNAME);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "No Map List");
             return;
         }
 
@@ -111,17 +111,15 @@ public int Mix_HandleMapListMenu(Handle menu, MenuAction action, int param1, int
 public Action Mix_ChangeMap(Handle timer, int client)
 {
     if (strlen(g_szMatchMap) > 0) {
-        // 这里使用硬编码的消息，因为没有对应的翻译短语
-        // 可以在翻译文件中添加"Changing Map"短语
-        PrintToChatAll("\x04[%s]:\x03 Changing map to %s", MODNAME, g_szMatchMap);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Changing Map", g_szMatchMap);
         ServerCommand("changelevel %s", g_szMatchMap);
     } else {
-        // 这里使用硬编码的消息，因为没有对应的翻译短语
-        // 可以在翻译文件中添加"Invalid Map Name"短语
         if (Mix_IsInGameClient(client)) {
-            PrintToChat(client, "\x04[%s]:\x03 Invalid map name!", MODNAME);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Invalid Map Name");
         } else {
-            PrintToServer("[%s]: Invalid map name!", MODNAME);
+            char buf[128];
+            Format(buf, sizeof(buf), "%t", "Invalid Map Name");
+            PrintToServer("[%s]: %s", MODNAME, buf);
         }
     }
 
@@ -151,8 +149,8 @@ void Mix_ExecuteMr12Config()
         char customCfg[32];
         GetConVarString(g_hCvarCustomLiveCfg, customCfg, sizeof(customCfg));
 
-        PrintToChatAll("\x04[%s]:\x03 Executing %s...", MODNAME, customCfg);
-        PrintToChatAll("\x04[%s]:\x03 All player scores and stats have been reset", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Executing Cfg", customCfg);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Stats Reset");
 
         Mix_StartRecord(0);
 
@@ -176,9 +174,9 @@ void Mix_ExecutePracConfig(int client)
         if (client != 0) {
             char name[33];
             GetClientName(client, name, sizeof(name));
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03executed %s", MODNAME, name, customCfg);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Admin Executed Cfg", name, customCfg);
         } else {
-            PrintToChatAll("\x04[%s]:\x03 Executing %s...", MODNAME, customCfg);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Executing Cfg", customCfg);
         }
 
         ServerCommand("exec %s", customCfg);
@@ -198,9 +196,9 @@ void Mix_ExecuteMr3Config(int client)
         if (client != 0) {
             char name[33];
             GetClientName(client, name, sizeof(name));
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03executed %s", MODNAME, name, customCfg);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Admin Executed Cfg", name, customCfg);
         } else {
-            PrintToChatAll("\x04[%s]:\x03 Executing %s...", MODNAME, customCfg);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Executing Cfg", customCfg);
         }
 
         ServerCommand("exec %s", customCfg);
@@ -233,12 +231,12 @@ void Mix_StartRecord(int client)
 
         if (client == 0) {
             if (g_bIsItManual) {
-                PrintToChatAll("\x04[%s]:\x03 Starting recording %s to file %s", MODNAME, mapName, filePath);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Record Started", mapName, filePath);
             }
         } else {
             char name[33];
             GetClientName(client, name, sizeof(name));
-            PrintToChatAll("\x04[%s]:\x03 Admin %s started recording", MODNAME, name);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Admin Started Recording", name);
         }
 
         // 先停止旧的录制，再开始新录制
@@ -260,12 +258,12 @@ void Mix_StopRecord(int client, int inform)
     if (GetConVarInt(g_hCvarEnableAutoSourceTVRecord) == 1 && g_bIsRecording) {
         if (client == 0) {
             if (g_bIsItManual && inform != 0) {
-                PrintToChatAll("\x04[%s]:\x03 Recording stopped", MODNAME);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Record Stopped");
             }
         } else {
             char name[33];
             GetClientName(client, name, sizeof(name));
-            PrintToChatAll("\x04[%s]:\x03 管理员 \x04%s \x03Recording stopped", MODNAME, name);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Admin Stopped Recording", name);
         }
 
         ServerCommand("tv_stoprecord");
@@ -284,12 +282,12 @@ void Mix_VoteMap()
     }
 
     if (!g_bIsMapListGenerated) {
-        PrintToChatAll("\x04[%s]:\x03 Failed to create map list!", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Failed Map List");
         return;
     }
 
     Handle mapVoteMenu = CreateMenu(Mix_HandleMapVoteMenu);
-    SetMenuTitle(mapVoteMenu, "选择地图:");
+    SetMenuTitle(mapVoteMenu, "Selecionar mapa:");
 
     int mapCount = 0;
     for (int i = 0; i < MAX_MAPS; i++) {
@@ -300,7 +298,7 @@ void Mix_VoteMap()
     }
 
     if (mapCount <= 0) {
-        PrintToChatAll("\x04[%s]:\x03 Map list is empty!", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "No Map List");
         CloseHandle(mapVoteMenu);
         return;
     }
@@ -308,7 +306,7 @@ void Mix_VoteMap()
     SetMenuExitButton(mapVoteMenu, false);
     Mix_VoteMenuToAll(mapVoteMenu, 20, 0);
 
-    PrintToChatAll("\x04[%s]:\x03 Starting map vote", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Map Vote Start");
     g_bHasVoteMap = true;
 }
 
@@ -324,7 +322,7 @@ public int Mix_HandleMapVoteMenu(Handle menu, MenuAction action, int param1, int
         GetMenuItem(menu, param1, mapName, sizeof(mapName));
 
         g_szMatchMap = mapName;
-        PrintToChatAll("\x04[%s]:\x03 Vote result: %s, changing map...", MODNAME, mapName);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Map Vote Result", mapName);
 
         // 延迟更换地图
         CreateTimer(3.0, Mix_ChangeMap, 0);
@@ -343,7 +341,7 @@ void Mix_OnVoteMapEnd()
 {
     Mix_ResetReadySystem();
     g_bTenVoted = true;
-    PrintToChatAll("\x04[%s]:\x03 Map vote over, all players type !ready to continue!", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Map Vote Over");
 }
 
 /**

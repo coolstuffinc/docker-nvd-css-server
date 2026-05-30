@@ -16,7 +16,8 @@ void Mix_ShowScores(int client)
 {
     if (client == 0 || !IsFakeClient(client)) {
         if (!g_bHasMixStarted) {
-            PrintToChat(client, "\x04[%s]:\x03 Match has not started...", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Match Not Started Scored");
             return;
         }
 
@@ -26,43 +27,52 @@ void Mix_ShowScores(int client)
         GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
 
         if (g_iCurrentHalf == 1) {
-            PrintToChat(client, "\x04[%s]:\x03 回合\x03 %d \x04- 半场\x03 %d\x04 /\x03 2\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", MODNAME, g_iCurrentRound, g_iCurrentHalf, teamAName, g_iCTScoreH1, teamBName, g_iTScoreH1);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "First Half", g_iCurrentRound, g_iCTScoreH1, g_iTScoreH1);
 
-            if (!g_bDidLiveStarted)
-                PrintToChat(client, "\x04[%s]:\x03 Not live yet!", MODNAME);
+            if (!g_bDidLiveStarted) {
+                SetGlobalTransTarget(client);
+                PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Not Live");
+            }
         } else if (g_iCurrentHalf == 2) {
-            PrintToChat(client, "\x04[%s]:\x03 回合\x03 %d \x04- 半场\x03 %d\x04 /\x03 2\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", MODNAME, g_iCurrentRound, g_iCurrentHalf, teamAName, g_iCTScore, teamBName, g_iTScore);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Second Half", g_iCurrentRound, g_iCTScore, g_iTScore);
 
             if (GetConVarInt(g_hCvarMr3Enabled) == 1) {
                 if ((g_iCTScore == 15) && (g_iTScore == 14))
-                    PrintToChatAll("\x04[%s]:\x03 Match point for %s - \x04如果 %s 获胜，将加载Mr3!", MODNAME, teamAName, teamBName);
+                    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamAName);
                 else if ((g_iCTScore == 14) && (g_iTScore == 15))
-                    PrintToChatAll("\x04[%s]:\x03 Match point for %s - \x04如果 %s 获胜，将加载Mr3!", MODNAME, teamBName, teamAName);
+                    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamBName);
                 else {
                     if (g_iCTScore == 15)
-                        PrintToChatAll("\x04[%s]:\x03 Match point for %s", MODNAME, teamAName);
+                        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamAName);
                     if (g_iTScore == 15)
-                        PrintToChatAll("\x04[%s]:\x03 Match point for %s", MODNAME, teamBName);
+                        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamBName);
                 }
             } else {
                 if (g_iCTScore == 15)
-                    PrintToChatAll("\x04[%s]:\x03 Match point for %s", MODNAME, teamAName);
+                    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamAName);
                 if (g_iTScore == 15)
-                    PrintToChatAll("\x04[%s]:\x03 Match point for %s", MODNAME, teamBName);
+                    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamBName);
             }
 
-            if (!g_bDidLiveStarted)
-                PrintToChat(client, "\x04[%s]:\x03 Not live yet!", MODNAME);
+            if (!g_bDidLiveStarted) {
+                SetGlobalTransTarget(client);
+                PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Match Not Started Scored");
+            }
         } else if (g_iCurrentHalf > 2) {
-            PrintToChat(client, "\x04[%s]:\x03 回合\x03 %d \x04- 半场\x03 %d\x04 /\x03 4\x04 - %s\x03 %d,\x04 %s\x03 %d\x04.", MODNAME, g_iCurrentRound, g_iCurrentHalf, teamAName, g_iCTScore, teamBName, g_iTScore);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Second Half", g_iCurrentRound, g_iCTScore, g_iTScore);
 
             if (g_iCTScore == 18)
-                PrintToChatAll("\x04[%s]:\x03 Match point for %s", MODNAME, teamAName);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamAName);
             if (g_iTScore == 18)
-                PrintToChatAll("\x04[%s]:\x03 Match point for %s", MODNAME, teamBName);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Point", teamBName);
 
-            if (!g_bDidLiveStarted)
-                PrintToChat(client, "\x04[%s]:\x03 Not live yet!", MODNAME);
+            if (!g_bDidLiveStarted) {
+                SetGlobalTransTarget(client);
+                PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Match Not Started Scored");
+            }
         }
     }
 }
@@ -237,26 +247,25 @@ void Mix_CreateWinningTeamPanel(int team)
     GetConVarString(g_hCvarCusomNameTeamCT, teamAName, sizeof(teamAName));
     GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
 
-    char titleFormat[32];
-    char teamNameFormat[150];
-    Format(titleFormat, sizeof(titleFormat), "%s - Vencedor\n -", MODNAME);
-
+    char buf[256];
+    Format(buf, sizeof(buf), "%t", "Winner Panel Title", MODNAME);
     g_hWinTeamPanel = CreatePanel();
-    SetPanelTitle(g_hWinTeamPanel, titleFormat);
+    SetPanelTitle(g_hWinTeamPanel, buf);
     DrawPanelItem(g_hWinTeamPanel, "", ITEMDRAW_SPACER);
 
-    if (team == 3)
-        Format(teamNameFormat, sizeof(teamNameFormat), "--------------\nFim de Jogo\n\n*** VENCEDOR ***\n  -* %s *- \n------------", teamAName);
-    else if (team == 2)
-        Format(teamNameFormat, sizeof(teamNameFormat), "--------------\nFim de Jogo\n\n*** VENCEDOR ***\n  -* %s *- \n------------", teamBName);
-    else if (team == 1)
-        Format(teamNameFormat, sizeof(teamNameFormat), "--------------\nFim de Jogo\n\n*** EMPATE ***\n \n------------");
-
-    DrawPanelText(g_hWinTeamPanel, teamNameFormat);
+    if (team == 3) {
+        Format(buf, sizeof(buf), "%t", "Winner Is Team", teamAName);
+    } else if (team == 2) {
+        Format(buf, sizeof(buf), "%t", "Winner Is Team", teamBName);
+    } else if (team == 1) {
+        Format(buf, sizeof(buf), "%t", "Draw Result");
+    }
+    DrawPanelText(g_hWinTeamPanel, buf);
     DrawPanelItem(g_hWinTeamPanel, "", ITEMDRAW_SPACER);
 
     SetPanelCurrentKey(g_hWinTeamPanel, 10);
-    DrawPanelItem(g_hWinTeamPanel, "Fechar", ITEMDRAW_CONTROL);
+    Format(buf, sizeof(buf), "%t", "Close");
+    DrawPanelItem(g_hWinTeamPanel, buf, ITEMDRAW_CONTROL);
 
     for (int i = 1; i <= MaxClients; i++) {
         if(IsClientInGame(i) && !IsFakeClient(i)) {
@@ -280,9 +289,8 @@ public Action Mix_DisplayScores(Handle timer)
         if (IsClientConnected(i) && !IsFakeClient(i)) {
             int kills = g_iScoresOfTheGame[i];
             int deaths = g_iDeathsOfTheGame[i];
-            char name[33];
-            GetClientName(i, name, sizeof(name));
-            PrintToChat(i, "\x04[%s]:\x03 Your stats: Kills %d, Deaths %d", MODNAME, kills, deaths);
+            SetGlobalTransTarget(i);
+            PrintToChat(i, "\x04[%s]:\x03 %t", MODNAME, "Your Stats", kills, deaths);
         }
     }
     // ...existing code...
@@ -304,15 +312,15 @@ public Action Mix_DisplayScores(Handle timer)
         }
     }
     if (winner < 1) {
-        PrintToChatAll("\x04[%s]:\x03 Error finding MVP...", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Error Finding MVP");
         return Plugin_Continue;
     }
     char winnerName[33];
     GetClientName(winner, winnerName, sizeof(winnerName));
     int kills = g_iScoresOfTheGame[winner];
-    PrintToChatAll("\x04[%s]:\x03 Kill stats:", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "MVP Header");
     PrintToChatAll("------------------");
-    PrintToChatAll("\x03 - \x01MVP:\x04 %s , \x03击杀数:\x04 %d \x03!", winnerName, kills);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "MVP Line", winnerName, kills);
     Mix_StopRecord(0, 0);  // 停止录制
     Mix_ResetAllStats();
     return Plugin_Continue;
@@ -327,12 +335,14 @@ void Mix_ShowMVP(int client)
 {
     if (GetConVarInt(g_hCvarEnabled) == 1) {
         if (!g_bHasMixStarted) {
-            PrintToChat(client, "\x04[%s]:\x03 Match has not started", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Match Not Started Scored");
             return;
         }
 
         if (GetConVarInt(g_hCvarShowMVP) == 0) {
-            PrintToChat(client, "\x04[%s]:\x03 MVP data display disabled", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "MVP Data Disabled");
             return;
         }
 
@@ -353,20 +363,21 @@ void Mix_ShowMVP(int client)
         int kills = g_iScoresOfTheGame[index];
 
         if (kills <= 0) {
-            PrintToChat(client, "\x04[%s]:\x03 MVP not yet determined, wait", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "MVP Not Yet");
             return;
         }
 
-        PrintToChat(client, "\x04[%s]:\x03 MVP:", MODNAME);
+        SetGlobalTransTarget(client);
+        PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "MVP Header");
         PrintToChat(client, "------------------");
-        PrintToChat(client, "\x03 - \x01MVP:\x04 %s , 击杀数:\x04 %d 个敌人！", mvpName, kills);
+        PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "MVP Line", mvpName, kills);
 
         if (index == client)
             return;
 
-        char clientName[33];
-        GetClientName(client, clientName, sizeof(clientName));
-        PrintToChat(client, "\x03 你击杀了 \x04 %d \x03 个敌人", g_iScoresOfTheGame[client]);
+        SetGlobalTransTarget(client);
+        PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Your Kills", g_iScoresOfTheGame[client]);
     }
 }
 
@@ -383,18 +394,14 @@ public Action Mix_InformMatchEnd(Handle timer, int team)
     GetConVarString(g_hCvarCusomNameTeamCT, teamAName, sizeof(teamAName));
     GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
 
-    // 输出调试信息
-    PrintToChatAll("\x04[%s]:\x03 Mix_InformMatchEnd被调用，胜利队伍=%d", MODNAME, team);
-
-    PrintToChatAll("\x04--- Mix-Plugin created by iDragon ---");
-    PrintToChatAll("\x04[%s]:\x03 比赛结束", MODNAME);
+    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Match Ended");
 
     if (team == 3)
-        PrintToChatAll("\x04[%s]: \x03获胜者是:\x04 %s", MODNAME, teamAName);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Winner Is", teamAName);
     else if (team == 2)
-        PrintToChatAll("\x04[%s]: \x03获胜者是:\x04 %s", MODNAME, teamBName);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Winner Is", teamBName);
     else if (team == 1)
-        PrintToChatAll("\x04[%s]: \x03平局.\x04 |IT'S A DRAW!", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Draw Announce");
 
     // 调用API事件
     Mix_API_OnMixEnd(team, g_iCTScore, g_iTScore);

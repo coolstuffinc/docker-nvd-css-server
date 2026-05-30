@@ -84,9 +84,12 @@ public Action Mix_Command_Ready(int client, int args)
     if (GetConVarInt(g_hCvarEnabled) == 1 && GetConVarInt(g_hCvarAutoMixEnabled) == 1) {
         if (!Mix_IsReadyEligibleClient(client)) {
             if (client == 0) {
-                PrintToServer("[%s]: Ready: only real T/CT players can ready", MODNAME);
+                char buf[128];
+                Format(buf, sizeof(buf), "%t", "Only Real Players Ready");
+                PrintToServer("[%s]: %s", MODNAME, buf);
             } else if (client > 0 && client <= MaxClients && IsClientInGame(client)) {
-                PrintToChat(client, "\x04[%s]:\x03 Only real players on T/CT can ready", MODNAME);
+                SetGlobalTransTarget(client);
+                PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Only Real Players Ready");
             }
             return Plugin_Handled;
         }
@@ -189,9 +192,12 @@ public Action Mix_Command_NotReady(int client, int args)
     if (GetConVarInt(g_hCvarEnabled) == 1 && GetConVarInt(g_hCvarAutoMixEnabled) == 1) {
         if (!Mix_IsReadyEligibleClient(client)) {
             if (client == 0) {
-                PrintToServer("[%s]: 取消Ready: only real T/CT players can ready", MODNAME);
+                char buf[128];
+                Format(buf, sizeof(buf), "%t", "Only Real Players Unready");
+                PrintToServer("[%s]: %s", MODNAME, buf);
             } else if (client > 0 && client <= MaxClients && IsClientInGame(client)) {
-                PrintToChat(client, "\x04[%s]:\x03 Only real players on T/CT can unready", MODNAME);
+                SetGlobalTransTarget(client);
+                PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Only Real Players Unready");
             }
             return Plugin_Handled;
         }
@@ -433,7 +439,7 @@ public Action Mix_Command_ForceReady(int client, int args)
                 added++;
             }
         }
-        PrintToChatAll("\x04[%s]:\x03 Admin force-readied all players!", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Force Ready All");
     }
     return Plugin_Handled;
 }
@@ -478,7 +484,8 @@ public Action Mix_Command_Spec(int client, int args)
 {
     if (GetConVarInt(g_hCvarEnabled) == 1) {
         if (args < 1) {
-            PrintToChat(client, "\x04[%s]:\x03 Usage: !spec <player name/ID>", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Usage Spec");
             return Plugin_Handled;
         }
 
@@ -500,7 +507,8 @@ public Action Mix_Command_Mute(int client, int args)
 {
     if (GetConVarInt(g_hCvarEnabled) == 1 && GetConVarInt(g_hCvarEnableVoiceCommands) == 1) {
         if (args < 1) {
-            PrintToChat(client, "\x04[%s]:\x03 Usage: !mmute <player name/ID>", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Usage Mute");
             return Plugin_Handled;
         }
 
@@ -516,10 +524,10 @@ public Action Mix_Command_Mute(int client, int args)
 
             if (g_bMutedPlayers[target]) {
                 SetClientListeningFlags(target, VOICE_MUTED);
-                PrintToChatAll("\x04[%s]:\x03 %s 被静音了", MODNAME, name);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Player Muted", name);
             } else {
                 SetClientListeningFlags(target, VOICE_NORMAL);
-                PrintToChatAll("\x04[%s]:\x03 %s 取消了静音", MODNAME, name);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Player Unmuted", name);
             }
         }
     }
@@ -533,7 +541,8 @@ public Action Mix_Command_Gag(int client, int args)
 {
     if (GetConVarInt(g_hCvarEnabled) == 1 && GetConVarInt(g_hCvarEnableVoiceCommands) == 1) {
         if (args < 1) {
-            PrintToChat(client, "\x04[%s]:\x03 Usage: !mgag <player name/ID>", MODNAME);
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Usage Gag");
             return Plugin_Handled;
         }
 
@@ -548,9 +557,9 @@ public Action Mix_Command_Gag(int client, int args)
             GetClientName(target, name, sizeof(name));
 
             if (g_bGaggedPlayers[target]) {
-                PrintToChatAll("\x04[%s]:\x03 %s 被禁言了", MODNAME, name);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Player Gagged", name);
             } else {
-                PrintToChatAll("\x04[%s]:\x03 %s 取消了禁言", MODNAME, name);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Player Ungagged", name);
             }
         }
     }

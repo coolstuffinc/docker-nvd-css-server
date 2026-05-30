@@ -141,7 +141,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                 if (Mix_EnableBuyZone()) {
                     g_bIsBuyZoneDisabled = false;
                 }
-                PrintToChatAll("\x04[%s]:\x03 Buy zone restored", MODNAME);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Buy Zone Restored");
             }
 
             if (GetConVarInt(g_hCvarRemoveProps) == 1) {
@@ -174,7 +174,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                 }
 
                 // 输出调试信息
-                PrintToChatAll("\x04[%s]:\x03 First Half - Round: %d, CT: %d, T: %d", MODNAME, g_iCurrentRound, g_iCTScoreH1, g_iTScoreH1);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "First Half", g_iCurrentRound, g_iCurrentHalf, g_iCTScoreH1, g_iTScoreH1);
                 if (GetConVarInt(g_hCvarShowScores) == 1) {
                     // 使用多语言系统
                     for (int i = 1; i <= MaxClients; i++) {
@@ -354,7 +354,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                     for (int i = 1; i <= MaxClients; i++) {
                         if (IsClientInGame(i) && !IsFakeClient(i)) {
                             SetGlobalTransTarget(i);
-                            PrintToChat(i, "\x04[%s]:\x03 OT Round %d %s Half - Round: %d", MODNAME, otRound, otHalf == 1 ? "上" : "下", g_iCurrentRound);
+                            PrintToChat(i, "\x04[%s]:\x03 OT Round %d %s Half - Round: %d", MODNAME, otRound, otHalf == 1 ? "1st" : "2nd", g_iCurrentRound);
                             PrintToChat(i, "\x04[%s]:\x03 %t", MODNAME, "Score", teamAName, g_iCTScore, teamBName, g_iTScore);
                         }
                     }
@@ -366,7 +366,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                     for (int i = 1; i <= MaxClients; i++) {
                         if (IsClientInGame(i) && !IsFakeClient(i)) {
                             SetGlobalTransTarget(i);
-                            PrintToChat(i, "\x04[%s]:\x03 \x0BOT Round %d %s Half - Match point for %s", MODNAME, otRound, otHalf == 1 ? "上" : "下", teamAName);
+                            PrintToChat(i, "\x04[%s]:\x03 \x0BOT Round %d %s Half - Match point for %s", MODNAME, otRound, otHalf == 1 ? "1st" : "2nd", teamAName);
                         }
                     }
                 }
@@ -374,7 +374,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                     for (int i = 1; i <= MaxClients; i++) {
                         if (IsClientInGame(i) && !IsFakeClient(i)) {
                             SetGlobalTransTarget(i);
-                            PrintToChat(i, "\x04[%s]:\x03 \x0BOT Round %d %s Half - Match point for %s", MODNAME, otRound, otHalf == 1 ? "上" : "下", teamBName);
+                            PrintToChat(i, "\x04[%s]:\x03 \x0BOT Round %d %s Half - Match point for %s", MODNAME, otRound, otHalf == 1 ? "1st" : "2nd", teamBName);
                         }
                     }
                 }
@@ -397,12 +397,13 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                         Handle panel = CreatePanel();
                         SetPanelTitle(panel, titleFormat);
                         DrawPanelItem(panel, "", ITEMDRAW_SPACER);
-                        char buffer[128];
-                        Format(buffer, sizeof(buffer), "%t", "Teams Will Swap");
-                        DrawPanelText(panel, buffer);
+                        char bufferSwap[128];
+                        Format(bufferSwap, sizeof(bufferSwap), "%t", "Teams Will Swap");
+                        DrawPanelText(panel, bufferSwap);
                         DrawPanelItem(panel, "", ITEMDRAW_SPACER);
                         SetPanelCurrentKey(panel, 10);
-                        DrawPanelItem(panel, "Fechar", ITEMDRAW_CONTROL);
+                        Format(bufferSwap, sizeof(bufferSwap), "%t", "Close");
+                        DrawPanelItem(panel, bufferSwap, ITEMDRAW_CONTROL);
                         for (int i = 1; i <= MaxClients; i++) {
                             if (IsClientInGame(i) && !IsFakeClient(i)) {
                                 SendPanelToClient(panel, i, Mix_HandleDoNothing, (GetConVarInt(g_hFreezeTime) - 1));
@@ -425,12 +426,13 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                         Handle panel = CreatePanel();
                         SetPanelTitle(panel, titleFormat);
                         DrawPanelItem(panel, "", ITEMDRAW_SPACER);
-                        char buffer[128];
-                        Format(buffer, sizeof(buffer), "%t", "Teams Will Swap");
-                        DrawPanelText(panel, buffer);
+                        char bufferSwap[128];
+                        Format(bufferSwap, sizeof(bufferSwap), "%t", "Teams Will Swap");
+                        DrawPanelText(panel, bufferSwap);
                         DrawPanelItem(panel, "", ITEMDRAW_SPACER);
                         SetPanelCurrentKey(panel, 10);
-                        DrawPanelItem(panel, "Fechar", ITEMDRAW_CONTROL);
+                        Format(bufferSwap, sizeof(bufferSwap), "%t", "Close");
+                        DrawPanelItem(panel, bufferSwap, ITEMDRAW_CONTROL);
                         for (int i = 1; i <= MaxClients; i++) {
                             if (IsClientInGame(i) && !IsFakeClient(i)) {
                                 SendPanelToClient(panel, i, Mix_HandleDoNothing, (GetConVarInt(g_hFreezeTime) - 1));
@@ -486,17 +488,16 @@ public Action Mix_Event_RoundEnd(Handle event, const char[] name, bool dontBroad
 
             if (GetConVarInt(g_hCvarKnifeWinTeamVote) == 1) {
                 Handle teamVoteMenu = CreateMenu(Mix_HandleTeamsVoteMenu, MenuAction_VoteEnd | MenuAction_End | MenuAction_VoteCancel);
-                SetMenuTitle(teamVoteMenu, "是否切换队伍?");
-                AddMenuItem(teamVoteMenu, "yes", "是");
-                AddMenuItem(teamVoteMenu, "no", "否");
+                SetMenuTitle(teamVoteMenu, "Trocar de time?");
+                AddMenuItem(teamVoteMenu, "yes", "Sim");
+                AddMenuItem(teamVoteMenu, "no", "Nao");
                 SetMenuExitButton(teamVoteMenu, false);
                 VoteMenuToTeam(teamVoteMenu, winningTeam, 20);
 
-                // 没有对应的翻译短语
                 if (winningTeam == 2) {
-                    PrintToChatAll("\x04[%s]:\x03 Attackers won knife round - Team selection vote...", MODNAME);
+                    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Knife Attackers Won");
                 } else if (winningTeam == 3) {
-                    PrintToChatAll("\x04[%s]:\x03 Defenders won knife round - Team selection vote...", MODNAME);
+                    PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Knife Defenders Won");
                 }
             } else {
                 Mix_ExecuteMr12Config();
@@ -600,13 +601,10 @@ public Action Mix_Event_RoundEnd(Handle event, const char[] name, bool dontBroad
 
         // 如果是MR3，检查加时赛是否需要继续
         if (g_iCurrentHalf > 2 && ((g_iCTScore - g_iCTScore2 >= 4) || (g_iTScore - g_iTScore2 >= 4) || ((g_iCTScore - g_iCTScore2 == 3) && (g_iTScore - g_iTScore2 == 3)))) {
-            // 输出调试信息
-            PrintToChatAll("\x04[%s]:\x03 MR3 Overtime: CT=%d (orig=%d), T=%d (orig=%d)", MODNAME, g_iCTScore, g_iCTScore2, g_iTScore, g_iTScore2);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Overtime End", g_iCTScore, g_iCTScore2, g_iTScore, g_iTScore2);
 
-            // 判断是否平局
             if ((g_iCTScore - g_iCTScore2 == 3) && (g_iTScore - g_iTScore2 == 3)) {
-                // 平局，自动进入下一轮加时赛
-                PrintToChatAll("\x04[%s]:\x03 OT tied, auto-advancing to next MR3 OT!", MODNAME);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Overtime Tie");
                 float time = GetConVarFloat(g_hCvarDelayBeforeSwapping);
                 if (time < 0.1) time = 0.1;
                 CreateTimer(time, Mix_SwapTimer);
@@ -658,7 +656,7 @@ public Action Mix_Event_RoundEnd(Handle event, const char[] name, bool dontBroad
                     }
                 }
                 // 输出调试信息
-                PrintToChatAll("\x04[%s]:\x03 MR3 OT decided, match over!", MODNAME);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Overtime Decided");
                 Mix_ResetMatchState();
                 SetConVarString(g_hHostName, g_szHostName);
                 Mix_ExecutePracConfig(0);
@@ -944,7 +942,9 @@ public Action Mix_HudTimer(Handle timer)
         g_hKickUnreadyTimer = CreateTimer(1.0, Mix_ReadyCountdownTimer, _, TIMER_REPEAT);
 
         // 向所有玩家广播一次开始信息
-        PrintHintTextToAll("\x04[%s]:\x03 10 players! Unready players kicked in %ds. Type !r to ready!", MODNAME, g_iSecond);
+        char msg[128];
+        Format(msg, sizeof(msg), "%t", "Ten Players Auto", g_iSecond);
+        PrintHintTextToAll(msg);
     }
 
     return Plugin_Continue;
@@ -992,9 +992,7 @@ bool Mix_RemoveProps()
         }
 
         if (removed > 0) {
-            // 这里使用硬编码的消息，因为没有对应的翻译短语
-            // 可以在翻译文件中添加"Props Removed"短语
-            PrintToChatAll("\x04[%s]:\x03 Removed %d items", MODNAME, removed);
+            PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Removed Items", removed);
             return true;
         }
     }

@@ -57,20 +57,21 @@ Action Mix_CreateReadyPanel()
     g_hReadyStatus = CreatePanel();
 
     char title[64];
-    Format(title, sizeof(title), "%s - 准备系统", MODNAME);
+    Format(title, sizeof(title), "%t", "Ready Panel Title", MODNAME);
     SetPanelTitle(g_hReadyStatus, title);
     DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
     // 换图之后显示
     if (g_bTenVoted) {
-        PrintCenterTextAll("Mapa trocado! Digite !r");
+        Format(title, sizeof(title), "%t", "Map Changed Ready");
+        PrintCenterTextAll(title);
     }
     // 可用指令 (整合并扩展自 UpdateReadyPanel 和 Mix_CreateReadyPanel)
     DrawPanelText(g_hReadyStatus, "=====<- 指令与状态 ->=====");
-    DrawPanelText(g_hReadyStatus, "输入 !ready 或 !r 准备");
-    DrawPanelText(g_hReadyStatus, "输入 !notready 或 !nr 取消准备");
-    DrawPanelText(g_hReadyStatus, "输入 !sp 切换菜单显示");
-    DrawPanelText(g_hReadyStatus, "提示: 十人准备后可投票换图 ");
-    DrawPanelText(g_hReadyStatus, "无 RTV / Nominate 功能");
+    DrawPanelText(g_hReadyStatus, "Digite !ready ou !r para pronto");
+    DrawPanelText(g_hReadyStatus, "Digite !notready ou !nr para cancelar");
+    DrawPanelText(g_hReadyStatus, "Digite !sp para alternar menu");
+    DrawPanelText(g_hReadyStatus, "Dica: 10 prontos = votacao de mapa");
+    DrawPanelText(g_hReadyStatus, "Sem RTV / Nominate");
 
     DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
 
@@ -202,7 +203,7 @@ public Action Mix_ReadyCountdownTimer(Handle timer, any data)
     
     // 如果玩家数量不足10人或已经有10人准备，停止计时器
     if (playerCount < 10 || g_iReadyCount >= 10) {
-        PrintToChatAll("\x04[%s]:\x03 Conditions changed, cancelling unready player kick", MODNAME);
+        PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Ready Cancelled");
         g_hKickUnreadyTimer = INVALID_HANDLE;
         g_bKickCountdownActive = false;
         g_bIsKicked = false;
@@ -218,13 +219,13 @@ public Action Mix_ReadyCountdownTimer(Handle timer, any data)
             for (int i = 1; i <= MaxClients; i++) {
                 if (Mix_IsReadyEligibleClient(i)) {
                     if (!g_bReadyPlayers[i]) {
-                        KickClient(i, "[%s]: 你没有准备就绪，已被踢出服务器!", MODNAME);
+                        KickClient(i, "[%s]: %t", MODNAME, "Kicked Not Ready");
                         kickCount++;
                     }
                 }
             }
             if (kickCount > 0) {
-                PrintToChatAll("\x04[%s]:\x03 Kicked %d unready players!", MODNAME, kickCount);
+                PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Kicked Unready", kickCount);
             }
         }
         g_bKickCountdownActive = false;
@@ -233,7 +234,9 @@ public Action Mix_ReadyCountdownTimer(Handle timer, any data)
         g_iSecond = 30;
         return Plugin_Stop;
     } else {
-        PrintCenterTextAll("Unready players will be kicked in %ds", g_iSecond);
+        char msg[128];
+        Format(msg, sizeof(msg), "%t", "Unready Kick Warning", g_iSecond);
+        PrintCenterTextAll(msg);
         g_iSecond--;
     }
     
