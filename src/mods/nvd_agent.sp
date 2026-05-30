@@ -83,7 +83,11 @@ void BuildContext(char[] buffer, int maxlen, const char[] request)
         char name[MAX_NAME_LENGTH];
         GetClientName(i, name, sizeof(name));
         int team = GetClientTeam(i);
-        const char[] teamName = (team == 2) ? "T" : ((team == 3) ? "CT" : "SPEC");
+        
+        char teamName[8];
+        if (team == 2) teamName = "T";
+        else if (team == 3) teamName = "CT";
+        else teamName = "SPEC";
         
         pos += Format(buffer[pos], maxlen - pos, "[%d] %s (%s)\n", i, name, teamName);
     }
@@ -93,7 +97,7 @@ void BuildContext(char[] buffer, int maxlen, const char[] request)
     for (int i = 0; i < g_MapCount; i++)
     {
         pos += Format(buffer[pos], maxlen - pos, "%s%s", i == 0 ? "" : ", ", g_MapList[i]);
-        if (pos >= maxlen - 10) break; // Previne overflow
+        if (pos >= maxlen - 10) break;
     }
     Format(buffer[pos], maxlen - pos, "\nCURRENT: %s\n", GetCurrentMap());
     
