@@ -154,7 +154,11 @@ public Action Command_OllamaTest(int client, int args)
 
     char url[128], endpoint[16];
     g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-    Format(url, sizeof(url), "api/%s", endpoint[0] == '/' ? endpoint[1] : endpoint);
+
+    if (endpoint[0] == '/')
+        Format(url, sizeof(url), "api%s", endpoint);
+    else
+        Format(url, sizeof(url), "api/%s", endpoint);
 
     // ← PASSA "client" como data para OnOllamaResponse
     g_HttpClient.Post(url, payload, OnOllamaResponse, client);
