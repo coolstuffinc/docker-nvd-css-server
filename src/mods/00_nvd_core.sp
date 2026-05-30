@@ -197,17 +197,14 @@ public void OnOllamaResponse(HTTPResponse response, any data)
 {
 	if (response.Status != HTTPStatus_OK)
 	{
-		LogError("NVD Core: Ollama returned status %d (URL: %s%s)", response.Status, g_BaseUrl, url);
+		LogError("NVD Core: Ollama returned status %d", response.Status);
 		
-		// Logar o header Location se houver redirecionamento
 		char location[512];
 		if (response.GetHeader("Location", location, sizeof(location)))
 		{
 			LogError("NVD Core: Redirect Location: %s", location);
 		}
 		
-		return;
-	}
 		return;
 	}
 
