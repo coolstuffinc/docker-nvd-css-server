@@ -196,8 +196,15 @@ public void OnOllamaResponse(HTTPResponse response, any data)
 {
 	if (response.Status != HTTPStatus_OK)
 	{
-		LogError("NVD Core: Ollama returned status %d (base URL: %s)", response.Status, g_BaseUrl);
-		// Removida a checagem de response.Data em erros para evitar Exception "Invalid JSON" quando o server retorna HTML/Texto
+		LogError("NVD Core: Ollama returned status %d (URL: %s%s)", response.Status, g_BaseUrl, url);
+		if (response.Data != null)
+		{
+			// Vamos tentar ler como string bruta para ver o que o Ollama está dizendo no redirect
+			char err[1024];
+			// Ripext não tem um jeito simples de ler como string bruta se não for JSON, 
+			// então vamos só logar que falhou
+			LogError("NVD Core: Received error response.");
+		}
 		return;
 	}
 
