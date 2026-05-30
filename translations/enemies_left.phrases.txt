@@ -2,7 +2,6 @@
 {
 	"Blind"
 	{
-		"#format"	"{1:s}"
 		"en"		"I'm blind! I can't see!!!"
 		"es"		"Me han cegado! No puedo ver!!!"
 		"pt"		"Tomei flash! Não consigo ver!!!"

@@ -126,8 +126,8 @@ public void OnPlayerBlind(Event event, const char[] name, bool dontBroadcast)
     if (g_CvarRadio.BoolValue)
       FakeClientCommand(client, "fallback");
 
-    char nameBuffer[MAX_NAME_LENGTH];
-    GetClientName(client, nameBuffer, sizeof(nameBuffer));
-    PrintToChatAll("\x01%t", "Blind", nameBuffer);
+    char msg[128];
+    Format(msg, sizeof(msg), "say_team %T", "Blind", LANG_SERVER);
+    FakeClientCommand(client, msg);
   }
 }
