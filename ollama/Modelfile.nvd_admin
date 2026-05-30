@@ -4,13 +4,13 @@
 # =============================================================================
 
 #FROM llama3.2:3b-instruct-q4_K_M
-#FROM llama3.2:1b-instruct-q4_K_M
+FROM llama3.2:1b-instruct-q4_K_M
 #FROM smollm2:1.7b
 #FROM smollm2:1.7b-instruct-q4_K_M
-FROM smollm2:1.7b-instruct-q4_K_S
+#FROM smollm2:1.7b-instruct-q4_K_S
 
 PARAMETER temperature 0.15
-PARAMETER num_predict 10
+PARAMETER num_predict 80
 PARAMETER top_p 0.8
 PARAMETER repeat_penalty 1.25
 
