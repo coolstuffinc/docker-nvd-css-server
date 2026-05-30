@@ -49,6 +49,7 @@ public void OnConfigsExecuted()
 
 	g_HttpClient = new HTTPClient(g_BaseUrl);
 	g_HttpClient.SetHeader("Content-Type", "application/json");
+	g_HttpClient.SetHeader("User-Agent", "SourceMod-NVD-AI/1.1");
 
 	if (g_DebugCvar.BoolValue)
 	{
