@@ -1,4 +1,4 @@
-#define VERSION "1.0"
+#define VERSION "1.1"
 #include <sourcemod>
 #include <cstrike>
 #include <sdktools>
@@ -9,7 +9,7 @@
 public Plugin myinfo = {
   name = "Enemies left",
   author = "Axel Juan Nieves",
-  description = "Says in chat enemies left to go",
+  description = "Bots call out remaining enemies via chat",
   version = VERSION
 };
 
@@ -20,13 +20,23 @@ ConVar g_CvarBlind;
 public void OnPluginStart()
 {
   LoadTranslations("enemies_left.phrases");
-  g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Automatically says on chat how many enemies are left.");
+  g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Bot says how many enemies are left on kill.");
   g_CvarRadio = CreateConVar("sm_eleft_radio", "1", "Executes radio command on kill (contextual by remaining enemies).");
   g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you.");
   CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 
   HookEvent("player_death", Event_PlayerDeath);
   HookEvent("player_blind", OnPlayerBlind);
+}
+
+int FindBotOnTeam(int team)
+{
+  for (int i = 1; i <= MaxClients; i++)
+  {
+    if (IsClientInGame(i) && IsFakeClient(i) && GetClientTeam(i) == team)
+      return i;
+  }
+  return -1;
 }
 
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -72,35 +82,36 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
     if (g_CvarChat.BoolValue)
     {
-      for (int i = 1; i <= MaxClients; i++)
+      int attackerBot = FindBotOnTeam(attackerTeam);
+      int victimBot = FindBotOnTeam(victimTeam);
+      char msg[64];
+
+      if (attackerBot != -1)
       {
-        if (!IsClientInGame(i) || IsFakeClient(i))
-          continue;
-        int team = GetClientTeam(i);
-        if (team == attackerTeam)
-        {
-          int n = iVictimSideAlive;
-          if (n > 2)
-            PrintToChat(i, "\x04[NVD]\x01 %d enemies left", n);
-          else if (n == 2)
-            PrintToChat(i, "\x04[NVD]\x01 2 enemies left");
-          else if (n == 1)
-            PrintToChat(i, "\x04[NVD]\x01 1 enemy left");
-          else
-            PrintToChat(i, "\x04[NVD]\x01 Last one!");
-        }
-        else if (team == victimTeam)
-        {
-          int n = iAttackerSideAlive;
-          if (n > 2)
-            PrintToChat(i, "\x04[NVD]\x01 %d teammates left", n);
-          else if (n == 2)
-            PrintToChat(i, "\x04[NVD]\x01 2 teammates left");
-          else if (n == 1)
-            PrintToChat(i, "\x04[NVD]\x01 1 teammate left");
-          else
-            PrintToChat(i, "\x04[NVD]\x01 No teammates left!");
-        }
+        int n = iVictimSideAlive;
+        if (n > 2)
+          Format(msg, sizeof(msg), "say_team %d enemies left", n);
+        else if (n == 2)
+          Format(msg, sizeof(msg), "say_team 2 enemies left");
+        else if (n == 1)
+          Format(msg, sizeof(msg), "say_team 1 enemy left");
+        else
+          Format(msg, sizeof(msg), "say_team Last one!");
+        FakeClientCommand(attackerBot, msg);
+      }
+
+      if (victimBot != -1)
+      {
+        int n = iAttackerSideAlive;
+        if (n > 2)
+          Format(msg, sizeof(msg), "say_team %d teammates left", n);
+        else if (n == 2)
+          Format(msg, sizeof(msg), "say_team 2 teammates left");
+        else if (n == 1)
+          Format(msg, sizeof(msg), "say_team 1 teammate left");
+        else
+          Format(msg, sizeof(msg), "say_team No teammates left!");
+        FakeClientCommand(victimBot, msg);
       }
     }
   }	
