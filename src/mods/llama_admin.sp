@@ -63,6 +63,7 @@ public void OnAIResponse(const char[] response, any data)
 			
 			// Execute the parsed command on the server
 			TrimString(cmd);
+			LogMessage("[Llama Admin] Extracted and executing command: '%s'", cmd);
 			ServerCommand("%s", cmd);
 
 			// Remove the [CMD: ...] block from the reply text

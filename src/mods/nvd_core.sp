@@ -172,7 +172,11 @@ public int Native_AskAI(Handle plugin, int numParams)
 
 	if (g_DebugCvar.BoolValue)
 	{
-		LogMessage("NVD Core: POST %s, model=%s, endpoint=%s", g_BaseUrl, model, url);
+		LogMessage("=== [NVD Core Debug] OUTBOUND REQUEST ===");
+		LogMessage("URL: %s%s (Model: %s)", g_BaseUrl, url, model);
+		LogMessage("System Prompt: %s", systemPrompt);
+		LogMessage("User Prompt: %s", prompt);
+		LogMessage("=========================================");
 	}
 
 	g_HttpClient.Post(url, payload, OnOllamaResponse);
@@ -216,7 +220,11 @@ public void OnOllamaResponse(HTTPResponse response, any data)
 	}
 
 	if (g_DebugCvar.BoolValue)
-		LogMessage("NVD Core: Ollama response: %s", reply);
+	{
+		LogMessage("=== [NVD Core Debug] INBOUND RESPONSE ===");
+		LogMessage("Ollama response: %s", reply);
+		LogMessage("=========================================");
+	}
 
 	Call_StartFunction(INVALID_HANDLE, g_Callback);
 	Call_PushString(reply);
