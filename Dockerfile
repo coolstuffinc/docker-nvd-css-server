@@ -22,7 +22,7 @@ RUN mkdir /output && \
             -i/src/mods/include \
             "$spfile" \
             -o"/output/$smxname" || \
-        echo "Warning: Failed to compile $spfile, skipping..."; \
+        { echo "ERROR: Failed to compile $spfile"; exit 1; }; \
     done
 
 # Stage 2: Runtime
