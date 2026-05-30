@@ -41,7 +41,7 @@ public void OnPluginStart()
     g_IpCvar = CreateConVar("nvd_ollama_ip", "172.17.0.1", "Ollama server IP");
     g_PortCvar = CreateConVar("nvd_ollama_port", "11433", "Ollama server port");
     g_ModelCvar = CreateConVar("nvd_ollama_model", "nvd-admin", "Ollama model name");
-    g_EndpointCvar = CreateConVar("nvd_ollama_endpoint", "chat", "API endpoint: chat or generate");
+    g_EndpointCvar = CreateConVar("nvd_ollama_endpoint", "generate", "API endpoint: chat or generate");
     g_DebugCvar = CreateConVar("nvd_ollama_debug", "1", "Enable debug logging");
     AutoExecConfig(true, "nvd_core");
 
@@ -239,7 +239,42 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     // Trata erro HTTP
     if (response.Status != HTTPStatus_OK)
     {
-        LogError("NVD Core: HTTP %d", response.Status);
+        // Log detalhado para debug (sempre, ou só com debug ativo)
+        LogError("NVD Core: HTTP %d - %s", response.Status, response.StatusLine);
+        
+        // Log headers (útil para redirects - ver Location header)
+        if (g_DebugCvar.BoolValue && response.Headers != null)
+        {
+            char headers[1024];
+            response.Headers.ExportToString(headers, sizeof(headers));
+            LogMessage("NVD Core: Response Headers:\n%s", headers);
+        }
+        
+        // Tenta extrair e logar o body, mesmo em erro
+        if (response.Data != null)
+        {
+            JSONObject json = view_as<JSONObject>(response.Data);
+            char errorBody[2048];
+            
+            // Tenta pegar campo "error" comum em APIs
+            if (json.GetString("error", errorBody, sizeof(errorBody)))
+            {
+                LogError("NVD Core: API Error: %s", errorBody);
+            }
+            else
+            {
+                // Fallback: exporta JSON completo para log
+                json.ExportToString(errorBody, sizeof(errorBody));
+                LogError("NVD Core: Raw Response Body: %s", errorBody);
+            }
+            delete json;
+        }
+        else
+        {
+            LogError("NVD Core: Empty response body (null data)");
+        }
+        
+        // Callback do plugin chamador (mantém comportamento original)
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
             Call_StartFunction(callerPlugin, callback);
