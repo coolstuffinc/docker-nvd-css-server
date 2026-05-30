@@ -38,6 +38,27 @@ public void OnPluginStart()
 	HookEvent("round_end", Event_RoundEnd);
 	HookEvent("bomb_planted", Event_BombPlanted);
 	HookEvent("bomb_defused", Event_BombDefused);
+	HookEvent("cs_win_panel_round", Event_WinPanel); // Novo Hook
+}
+
+public void Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
+{
+	if (!CanBotChat()) return;
+
+	int client = event.GetInt("funfact_player");
+	char token[64];
+	event.GetString("funfact_token", token, sizeof(token));
+
+	if (client > 0 && IsClientInGame(client))
+	{
+		char botName[32];
+		GetClientName(client, botName, sizeof(botName));
+		
+		char context[256];
+		// Traduzimos o token interno para algo legível para a IA
+		Format(context, sizeof(context), "Player '%s' got MVP fact: %s. Generate a funny short roast in Portuguese BR.", botName, token);
+		AskBotChat(context);
+	}
 }
 
 public void OnMapStart()
