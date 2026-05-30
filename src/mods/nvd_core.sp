@@ -1,6 +1,6 @@
 #include <sourcemod>
 #include <ripext>
-#include "../include/nvd_core"
+#include <nvd_core>
 
 HTTPClient g_HttpClient;
 Function g_Callback;

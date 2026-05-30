@@ -19,7 +19,7 @@ RUN mkdir /output && \
         /tmp/addons/sourcemod/scripting/spcomp \
             -i/tmp/addons/sourcemod/scripting/include \
             -i/src \
-            -i/src/include \
+            -i/src/mods/include \
             "$spfile" \
             -o"/output/$smxname" || \
         echo "Warning: Failed to compile $spfile, skipping..."; \

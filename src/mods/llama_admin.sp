@@ -1,6 +1,6 @@
 #include <sourcemod>
 #include <sdktools>
-#include "../include/nvd_core"
+#include <nvd_core>
 
 #pragma semicolon 1
 #pragma newdecls required
