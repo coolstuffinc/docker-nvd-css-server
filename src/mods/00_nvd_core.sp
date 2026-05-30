@@ -114,11 +114,84 @@ bool FreeSlot(int id, Function &cb, any &data, Handle &plugin)
 // ============================================================================
 public Action Command_OllamaTest(int client, int args)
 {
-    if (g_HttpClient == null)
-    {
-        ReplyToCommand(client, "[NVD] HTTPClient not initialized");
-        return Plugin_Handled;
-    }
+	if (g_HttpClient == null)
+	{
+		ReplyToCommand(client, "\x04[NVD]\x03 HTTPClient not initialized");
+		return Plugin_Handled;
+	}
+
+	char model[64], endpoint[16];
+	g_ModelCvar.GetString(model, sizeof(model));
+	g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
+
+	JSONObject payload = new JSONObject();
+	payload.SetString("model", model);
+	payload.SetBool("stream", false);
+
+	if (StrEqual(endpoint, "chat"))
+	{
+		JSONObject userMsg = new JSONObject();
+		userMsg.SetString("role", "user");
+		userMsg.SetString("content", "ping");
+
+		JSONArray messages = new JSONArray();
+		messages.Push(userMsg);
+		payload.Set("messages", messages);
+		delete userMsg;
+		delete messages;
+	}
+	else
+	{
+		payload.SetString("prompt", "ping");
+	}
+
+	char url[64];
+	Format(url, sizeof(url), "api/%s", endpoint);
+	
+	g_HttpClient.Post(url, payload, OnTestResponse, client);
+	delete payload;
+	return Plugin_Handled;
+}
+
+public void OnOllamaResponse(HTTPResponse response, any data)
+{
+	if (response.Status != HTTPStatus_OK)
+	{
+		LogError("NVD Core: Ollama returned status %d", response.Status);
+		return;
+	}
+
+	if (response.Data == null) return;
+
+	JSONObject json = view_as<JSONObject>(response.Data);
+	char reply[2048];
+
+	if (!json.GetString("response", reply, sizeof(reply)))
+	{
+		JSONObject msg;
+		if (json.GetObject("message", msg))
+		{
+			msg.GetString("content", reply, sizeof(reply));
+			delete msg;
+		}
+	}
+
+	if (reply[0] != '\0')
+	{
+		if (g_DebugCvar.BoolValue)
+			LogMessage("NVD Core: Ollama response: %s", reply);
+
+		if (data != 0 && IsClientInGame(data))
+			PrintToChat(data, "\x04[NVD]\x03 AI Reply: %s", reply);
+			
+		Call_StartFunction(INVALID_HANDLE, g_Callback);
+		Call_PushString(reply);
+		Call_PushCell(g_CallbackData);
+		Call_Finish();
+	}
+
+	delete json;
+}
 
     if (client > 0 && IsClientInGame(client))
         PrintToChat(client, "[NVD] Testing Ollama...");
