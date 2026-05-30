@@ -90,25 +90,25 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
       {
         int n = iVictimSideAlive;
         if (n > 2)
-          Format(msg, sizeof(msg), "say_team %d enemies left", n);
+          Format(msg, sizeof(msg), "say_team %T", "CountMany", LANG_SERVER, n);
         else if (n == 2)
-          Format(msg, sizeof(msg), "say_team 2 enemies left");
+          Format(msg, sizeof(msg), "say_team %T", "Count2", LANG_SERVER);
         else if (n == 1)
-          Format(msg, sizeof(msg), "say_team 1 enemy left");
+          Format(msg, sizeof(msg), "say_team %T", "Count1", LANG_SERVER);
         else
-          Format(msg, sizeof(msg), "say_team All dead!");
+          Format(msg, sizeof(msg), "say_team %T", "Count0", LANG_SERVER);
         FakeClientCommand(attackerBot, msg);
       }
 
       if (victimBot != -1)
       {
-        int n = iVictimSideAlive; // CORREÇÃO: Conta quantos sobraram no PRÓPRIO time da vítima
+        int n = iVictimSideAlive; // Conta quantos sobraram no PRÓPRIO time da vítima
         if (n > 2)
-          Format(msg, sizeof(msg), "say_team We are down to %d now!", n);
+          Format(msg, sizeof(msg), "say_team %T", "VictimMany", LANG_SERVER, n);
         else if (n == 2)
-          Format(msg, sizeof(msg), "say_team Only 2 of us left!");
+          Format(msg, sizeof(msg), "say_team %T", "Victim2", LANG_SERVER);
         else if (n == 1)
-          Format(msg, sizeof(msg), "say_team I'm the last one alive!");
+          Format(msg, sizeof(msg), "say_team %T", "Victim1", LANG_SERVER);
         
         // Se n == 0, o próprio bot estaria morto e não passaria na checagem do FindBotOnTeam (IsPlayerAlive)
         if (n > 0)
