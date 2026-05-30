@@ -96,22 +96,23 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
         else if (n == 1)
           Format(msg, sizeof(msg), "say_team 1 enemy left");
         else
-          Format(msg, sizeof(msg), "say_team Last one!");
+          Format(msg, sizeof(msg), "say_team All dead!");
         FakeClientCommand(attackerBot, msg);
       }
 
       if (victimBot != -1)
       {
-        int n = iAttackerSideAlive;
+        int n = iVictimSideAlive; // CORREÇÃO: Conta quantos sobraram no PRÓPRIO time da vítima
         if (n > 2)
-          Format(msg, sizeof(msg), "say_team %d teammates left", n);
+          Format(msg, sizeof(msg), "say_team We are down to %d now!", n);
         else if (n == 2)
-          Format(msg, sizeof(msg), "say_team 2 teammates left");
+          Format(msg, sizeof(msg), "say_team Only 2 of us left!");
         else if (n == 1)
-          Format(msg, sizeof(msg), "say_team 1 teammate left");
-        else
-          Format(msg, sizeof(msg), "say_team No teammates left!");
-        FakeClientCommand(victimBot, msg);
+          Format(msg, sizeof(msg), "say_team I'm the last one alive!");
+        
+        // Se n == 0, o próprio bot estaria morto e não passaria na checagem do FindBotOnTeam (IsPlayerAlive)
+        if (n > 0)
+          FakeClientCommand(victimBot, msg);
       }
     }
   }	
