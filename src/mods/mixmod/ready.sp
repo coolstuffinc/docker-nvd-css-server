@@ -116,34 +116,36 @@ Action Mix_CreateReadyPanel()
 
 
     // 显示已准备玩家列表
-    DrawPanelItem(g_hReadyStatus, "--- 已准备 ---");
+    DrawPanelText(g_hReadyStatus, "--- Prontos ---");
     if (sReadyPlayersList[0] == '\0') {
-        DrawPanelText(g_hReadyStatus, "(无)");
+        DrawPanelText(g_hReadyStatus, "(Ninguem)");
     } else {
         DrawPanelText(g_hReadyStatus, sReadyPlayersList);
     }
     DrawPanelText(g_hReadyStatus, "\n");
 
     // 显示未准备玩家列表
-    DrawPanelItem(g_hReadyStatus, "--- 未准备 ---");
+    DrawPanelText(g_hReadyStatus, "--- Nao Prontos ---");
     if (sNotReadyPlayersList[0] == '\0') {
-        DrawPanelText(g_hReadyStatus, "(无)");
+        DrawPanelText(g_hReadyStatus, "(Ninguem)");
     } else {
         DrawPanelText(g_hReadyStatus, sNotReadyPlayersList);
     }
     DrawPanelText(g_hReadyStatus, "\n");
 
     // 显示观察者列表
-    DrawPanelItem(g_hReadyStatus, "--- 观察者 ---");
+    DrawPanelText(g_hReadyStatus, "--- Espectadores ---");
     if (sSpectatorsList[0] == '\0') {
-        DrawPanelText(g_hReadyStatus, "(无)");
+        DrawPanelText(g_hReadyStatus, "(Ninguem)");
     } else {
         DrawPanelText(g_hReadyStatus, sSpectatorsList);
     }
 
     DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
 
-    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
+    // Permitir que o painel não bloqueie as teclas de troca de arma (1-9, 0)
+    SetPanelKeys(g_hReadyStatus, 0);
+
     // 将面板显示给所有符合条件的客户端
     for (int i = 1; i <= MaxClients; i++) {
         if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
