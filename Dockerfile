@@ -17,7 +17,9 @@ RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
     cd /ripext && \
     git submodule update --init --recursive && \
     perl curl/lib/mk-ca-bundle.pl && \
-    mkdir build && cd build && \
+    mkdir build && \
+    mv ca-bundle.crt build/ && \
+    cd build && \
     python3 ../configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
     ambuild
 
