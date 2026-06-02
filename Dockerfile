@@ -30,7 +30,8 @@ RUN wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/release
 COPY src/ /src/
 RUN mkdir /output && \
     find /ripext/build/ -name "rip.ext.so" -exec cp {} /output/ \; && \
-    cp /ripext/rip.ext.txt /output/ && \
+    find /ripext/build/ -name "rip.ext.txt" -exec cp {} /output/ \; && \
+    # Compile outros plugins
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
