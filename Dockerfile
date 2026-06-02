@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Clone build dependencies
-RUN git clone https://github.com/alliedmodders/sourcemod.git /sourcemod --recursive && \
+RUN git clone --branch 1.12.0-git7236 --depth 1 https://github.com/alliedmodders/sourcemod.git /sourcemod && \
+    git -C /sourcemod submodule update --init --recursive && \
     git clone https://github.com/alliedmodders/ambuild.git /ambuild && \
     pip3 install ./ambuild
 
