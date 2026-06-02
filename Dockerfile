@@ -105,8 +105,8 @@ RUN rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/Cash.smx && \
     rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/botdropbomb.smx.old
 
 COPY --from=builder --chown=steam:steam /output/*.smx /home/steam/css/cstrike/addons/sourcemod/plugins/
-COPY --from=builder --chown=steam:steam /output/*.so /home/steam/css/cstrike/addons/sourcemod/extensions/
-COPY --from=builder --chown=steam:steam /output/rip.ext.txt /home/steam/css/cstrike/addons/sourcemod/extensions/
+COPY --from=builder --chown=steam:steam /output/rip.ext.so /home/steam/css/cstrike/addons/sourcemod/extensions/x64/
+COPY --from=builder --chown=steam:steam /output/rip.ext.txt /home/steam/css/cstrike/addons/sourcemod/extensions/x64/
 COPY --chown=steam:steam cfg/ /home/steam/css/cstrike/cfg/
 COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/addons/sourcemod/gamedata/
 COPY --chown=steam:steam translations/ /home/steam/css/cstrike/addons/sourcemod/translations/
