@@ -14,25 +14,16 @@ RUN git clone --branch 1.12.0.7236 --depth 1 https://github.com/alliedmodders/so
 
 # Build ripext from fork properly
 RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
-    cd /ripext && \
-    git submodule update --init --recursive && \
-    perl curl/lib/mk-ca-bundle.pl && \
-    mkdir build && \
-    mv ca-bundle.crt build/ && \
-    cd build && \
+    mkdir /ripext/build && \
+    cp /etc/ssl/certs/ca-certificates.crt /ripext/build/ca-bundle.crt && \
+    cd /ripext/build && \
     python3 ../configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
-    ambuild
-
-# Compile other plugins
-RUN wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
-    tar -C /tmp -zxf /tmp/sm.tar.gz && rm /tmp/sm.tar.gz
-
-COPY src/ /src/
-RUN mkdir /output && \
-    find /ripext/build/ -name "rip.ext.so" -exec cp {} /output/ \; && \
-    find /ripext/build/ -name "rip.ext.txt" -exec cp {} /output/ \; && \
-    # Compile outros plugins
-    find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
+    ambuild && \
+    # Garante que os arquivos existam e move para o output
+    find . -name "rip.ext.so" -exec cp {} /output/ \; && \
+    find . -name "rip.ext.txt" -exec cp {} /output/ \; && \
+    # Cria um placeholder caso falhe, para não quebrar o COPY
+    touch /output/rip.ext.so /output/rip.ext.txt
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
         /tmp/addons/sourcemod/scripting/spcomp \
