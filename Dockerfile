@@ -3,7 +3,7 @@ FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl unzip ca-certificates lib32gcc-s1 lib32stdc++6 \
-    git build-essential python3 python3-pip && \
+    git build-essential python3 python3-pip clang && \
     rm -rf /var/lib/apt/lists/*
 
 # Clone build dependencies
@@ -13,8 +13,8 @@ RUN git clone https://github.com/alliedmodders/sourcemod.git /sourcemod --recurs
 
 # Build ripext from fork
 RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
-    cd /ripext && \
-    python3 configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
+    mkdir /ripext/build && cd /ripext/build && \
+    python3 ../configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
     ambuild
 
 # Compile other plugins
