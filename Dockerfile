@@ -14,7 +14,7 @@ RUN git clone https://github.com/alliedmodders/sourcemod.git /sourcemod --recurs
 # Build ripext from fork
 RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
     cd /ripext && \
-    python3 configure.py --enable-optimize --sourcemod=/sourcemod --targets=x86_64 && \
+    python3 configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
     ambuild
 
 # Compile other plugins
