@@ -3,20 +3,21 @@ FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl unzip ca-certificates lib32gcc-s1 lib32stdc++6 \
-    git build-essential python3 python3-pip clang && \
+    git build-essential python3 python3-pip clang perl && \
     rm -rf /var/lib/apt/lists/*
 
-# Clone build dependencies
+# Clone build dependencies pinned
 RUN git clone --branch 1.12.0.7236 --depth 1 https://github.com/alliedmodders/sourcemod.git /sourcemod && \
     git -C /sourcemod submodule update --init --recursive && \
     git clone https://github.com/alliedmodders/ambuild.git /ambuild && \
     pip3 install ./ambuild
 
-# Build ripext from fork
+# Build ripext from fork properly
 RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
-    mkdir /ripext/build && \
-    cp /etc/ssl/certs/ca-certificates.crt /ripext/build/ca-bundle.crt && \
-    cd /ripext/build && \
+    cd /ripext && \
+    git submodule update --init --recursive && \
+    perl curl/lib/mk-ca-bundle.pl && \
+    mkdir build && cd build && \
     python3 ../configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
     ambuild
 
@@ -26,10 +27,8 @@ RUN wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/release
 
 COPY src/ /src/
 RUN mkdir /output && \
-    # Encontra e move o binário do ripext compilado, não importa onde esteja
     find /ripext/build/ -name "rip.ext.so" -exec cp {} /output/ \; && \
-    echo '"Extensions"\n{\n    "rip"\n    {\n        "file"    "addons/sourcemod/extensions/rip.ext.so"\n    }\n}' > /output/rip.ext.txt && \
-    # Compila outros plugins
+    cp /ripext/rip.ext.txt /output/ && \
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
