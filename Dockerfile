@@ -26,10 +26,10 @@ RUN wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/release
 
 COPY src/ /src/
 RUN mkdir /output && \
-    # Move compiled ripext
-    cp /ripext/build/bin/rip.ext.so /output/ && \
+    # Encontra e move o binário do ripext compilado, não importa onde esteja
+    find /ripext/build/ -name "rip.ext.so" -exec cp {} /output/ \; && \
     echo '"Extensions"\n{\n    "rip"\n    {\n        "file"    "addons/sourcemod/extensions/rip.ext.so"\n    }\n}' > /output/rip.ext.txt && \
-    # Compile other plugins
+    # Compila outros plugins
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
