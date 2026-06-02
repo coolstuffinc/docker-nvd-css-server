@@ -13,7 +13,9 @@ RUN git clone https://github.com/alliedmodders/sourcemod.git /sourcemod --recurs
 
 # Build ripext from fork
 RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
-    mkdir /ripext/build && cd /ripext/build && \
+    mkdir /ripext/build && \
+    cp /etc/ssl/certs/ca-certificates.crt /ripext/build/ca-bundle.crt && \
+    cd /ripext/build && \
     python3 ../configure.py --enable-optimize --sm-path=/sourcemod --targets=x86_64 && \
     ambuild
 
