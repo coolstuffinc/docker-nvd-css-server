@@ -2,17 +2,31 @@
 FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget curl unzip ca-certificates lib32gcc-s1 lib32stdc++6 && \
+    wget curl unzip ca-certificates lib32gcc-s1 lib32stdc++6 \
+    git build-essential python3 python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
+# Clone build dependencies
+RUN git clone https://github.com/alliedmodders/sourcemod.git /sourcemod --recursive && \
+    git clone https://github.com/alliedmodders/ambuild.git /ambuild && \
+    pip3 install ./ambuild
+
+# Build ripext from fork
+RUN git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
+    cd /ripext && \
+    python3 configure.py --enable-optimize --sourcemod=/sourcemod --targets=x86_64 && \
+    ambuild
+
+# Compile other plugins
 RUN wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
     tar -C /tmp -zxf /tmp/sm.tar.gz && rm /tmp/sm.tar.gz
 
-RUN wget -q -O /tmp/ripext.zip https://github.com/ErikMinekus/sm-ripext/releases/download/1.3.2/sm-ripext-1.3.2-linux.zip && \
-    unzip -q -o /tmp/ripext.zip -d /tmp && rm /tmp/ripext.zip
-
 COPY src/ /src/
 RUN mkdir /output && \
+    # Move compiled ripext
+    cp /ripext/build/bin/rip.ext.so /output/ && \
+    echo '"Extensions"\n{\n    "rip"\n    {\n        "file"    "addons/sourcemod/extensions/rip.ext.so"\n    }\n}' > /output/rip.ext.txt && \
+    # Compile other plugins
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
@@ -88,6 +102,8 @@ RUN rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/Cash.smx && \
     rm -f /home/steam/css/cstrike/addons/sourcemod/plugins/botdropbomb.smx.old
 
 COPY --from=builder --chown=steam:steam /output/*.smx /home/steam/css/cstrike/addons/sourcemod/plugins/
+COPY --from=builder --chown=steam:steam /output/*.so /home/steam/css/cstrike/addons/sourcemod/extensions/
+COPY --from=builder --chown=steam:steam /output/rip.ext.txt /home/steam/css/cstrike/addons/sourcemod/extensions/
 COPY --chown=steam:steam cfg/ /home/steam/css/cstrike/cfg/
 COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/addons/sourcemod/gamedata/
 COPY --chown=steam:steam translations/ /home/steam/css/cstrike/addons/sourcemod/translations/
