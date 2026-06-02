@@ -3,7 +3,7 @@
 #include <nvd_core>
 
 // ============================================================================
-// POOL DE CALLBACKS (evita race condition entre plugins)
+// POOL DE CALLBACKS
 // ============================================================================
 enum struct PendingRequest
 {
@@ -41,7 +41,7 @@ public void OnPluginStart()
     g_IpCvar = CreateConVar("nvd_ollama_ip", "172.17.0.1", "Ollama server IP");
     g_PortCvar = CreateConVar("nvd_ollama_port", "11433", "Ollama server port");
     g_ModelCvar = CreateConVar("nvd_ollama_model", "nvd-admin", "Ollama model name");
-    g_EndpointCvar = CreateConVar("nvd_ollama_endpoint", "generate", "API endpoint: chat or generate");
+    g_EndpointCvar = CreateConVar("nvd_ollama_endpoint", "chat", "API endpoint: chat or generate");
     g_DebugCvar = CreateConVar("nvd_ollama_debug", "1", "Enable debug logging");
     AutoExecConfig(true, "nvd_core");
 
@@ -63,7 +63,7 @@ public void OnConfigsExecuted()
     char ip[64], port[16];
     g_IpCvar.GetString(ip, sizeof(ip));
     g_PortCvar.GetString(port, sizeof(port));
-    Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s", ip, port);  // ← Sem barra final
+    Format(g_BaseUrl, sizeof(g_BaseUrl), "http://%s:%s", ip, port);
 
     g_HttpClient = new HTTPClient(g_BaseUrl);
     g_HttpClient.FollowLocation = true;
@@ -151,9 +151,8 @@ public Action Command_OllamaTest(int client, int args)
     }
 
     char url[64];
-    Format(url, sizeof(url), "/api/%s", endpoint);  // ← Barra inicial para URL absoluta
+    Format(url, sizeof(url), "api/%s", endpoint);
     
-    // ← Usa o MESMO callback OnOllamaResponse, passando client como data
     g_HttpClient.Post(url, payload, OnOllamaResponse, client);
     delete payload;
     return Plugin_Handled;
@@ -180,7 +179,7 @@ public int Native_AskAI(Handle plugin, int numParams)
     char model[64], endpoint[32], url[64];
     g_ModelCvar.GetString(model, sizeof(model));
     g_EndpointCvar.GetString(endpoint, sizeof(endpoint));
-    Format(url, sizeof(url), "/api/%s", endpoint);
+    Format(url, sizeof(url), "api/%s", endpoint);
 
     JSONObject payload = new JSONObject();
     payload.SetString("model", model);
@@ -214,7 +213,6 @@ public int Native_AskAI(Handle plugin, int numParams)
     if (g_DebugCvar.BoolValue)
         LogMessage("NVD_AskAI: POST %s (slot=%d)", url, slot);
 
-    // ← Passa slot como data para OnOllamaResponse
     g_HttpClient.Post(url, payload, OnOllamaResponse, slot);
     delete payload;
     return 1;
@@ -225,7 +223,6 @@ public int Native_AskAI(Handle plugin, int numParams)
 // ============================================================================
 public void OnOllamaResponse(HTTPResponse response, any slotId)
 {
-    // Recupera dados do callback
     Function callback;
     any cbData;
     Handle callerPlugin;
@@ -236,55 +233,14 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
         return;
     }
 
-    // Trata erro HTTP
     if (response.Status != HTTPStatus_OK)
     {
-        LogError("NVD Core: HTTP %d", response.Status);
+        LogError("NVD Core: HTTP Error %d", response.Status);
         
-        char headerVal[256];
-        
-        // Loga headers úteis para debug
-        if (response.GetHeader("Location", headerVal, sizeof(headerVal)))
-            LogError("NVD Core: Redirect Location: %s", headerVal);
-            
-        if (response.GetHeader("Content-Type", headerVal, sizeof(headerVal)))
-            LogError("NVD Core: Content-Type: %s", headerVal);
-        
-        // SÓ tenta acessar response.Data se Content-Type for JSON
-        // Isso evita crash quando o body é HTML/texto (ex: redirect 307)
-        if (response.GetHeader("Content-Type", headerVal, sizeof(headerVal)) && 
-            StrContains(headerVal, "application/json") != -1)
-        {
-            // Mesmo com Content-Type correto, response.Data pode falhar se o JSON for malformado.
-            // Sem try/catch, aceitamos o risco mínimo e logamos o que der.
-            JSON json = response.Data;
-            if (json != null)
-            {
-                JSONObject obj = view_as<JSONObject>(json);
-                if (obj != null)
-                {
-                    char errorMsg[512];
-                    if (obj.GetString("error", errorMsg, sizeof(errorMsg)))
-                        LogError("NVD Core: API Error: %s", errorMsg);
-                    else if (obj.GetString("message", errorMsg, sizeof(errorMsg)))
-                        LogError("NVD Core: API Message: %s", errorMsg);
-                    else
-                    {
-                        char rawJson[1024];
-                        obj.ToString(rawJson, sizeof(rawJson));
-                        LogError("NVD Core: Raw JSON: %.500s", rawJson);
-                    }
-                }
-            }
-        }
-        else
-        {
-            // Content-Type não é JSON → body provavelmente é texto/HTML de redirect
-            LogError("NVD Core: Response body is not JSON (Content-Type: %s). Cannot parse without try/catch.", 
-                     headerVal[0] != '\0' ? headerVal : "unknown");
-        }
-        
-        // Mantém callback do plugin chamador para não travar a fila
+        char location[512];
+        if (response.GetHeader("Location", location, sizeof(location)))
+            LogError("NVD Core: Redirect Location: %s", location);
+
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
             Call_StartFunction(callerPlugin, callback);
@@ -311,33 +267,38 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     }
 
     JSONObject json = view_as<JSONObject>(response.Data);
-    // Extrai resposta (suporta /api/generate e /api/chat)
     char reply[2048];
-    bool gotReply = false;
 
-    // Primeiro tenta campo "response" (do /api/generate)
-    if (json.GetString("response", reply, sizeof(reply)) && reply[0] != '\0')
-    {
-        gotReply = true;
-    }
-    // Fallback: tenta campo "message.content" (do /api/chat)
-    else
+    if (!json.GetString("response", reply, sizeof(reply)))
     {
         JSONObject msg = view_as<JSONObject>(json.Get("message"));
         if (msg != null)
         {
-            if (msg.GetString("content", reply, sizeof(reply)) && reply[0] != '\0')
-                gotReply = true;
+            msg.GetString("content", reply, sizeof(reply));
             delete msg;
         }
     }
-
-    if (!gotReply)
+    
+    if (reply[0] == '\0')
     {
-        LogError("NVD Core: No valid response content in JSON");
-        // ... entrega resposta vazia
-        return;
+        JSONArray choices = view_as<JSONArray>(json.Get("choices"));
+        if (choices != null && choices.Length > 0)
+        {
+            JSONObject choice = view_as<JSONObject>(choices.Get(0));
+            if (choice != null)
+            {
+                JSONObject message = view_as<JSONObject>(choice.Get("message"));
+                if (message != null)
+                {
+                    message.GetString("content", reply, sizeof(reply));
+                    delete message;
+                }
+                delete choice;
+            }
+            delete choices;
+        }
     }
+    delete json;
 
     if (reply[0] == '\0')
     {
@@ -356,14 +317,12 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     if (g_DebugCvar.BoolValue)
         LogMessage("NVD Reply: %.300s%s", reply, strlen(reply)>300?"...":"");
 
-    // Caso especial: se slotId era um client (do Command_OllamaTest), mostra no chat
     int client = view_as<int>(slotId);
     if (client > 0 && client <= MaxClients && IsClientInGame(client))
     {
         PrintToChat(client, "[NVD] AI: %s", reply);
     }
 
-    // Chama o callback do plugin chamador
     if (callback != null && callerPlugin != INVALID_HANDLE)
     {
         Call_StartFunction(callerPlugin, callback);
