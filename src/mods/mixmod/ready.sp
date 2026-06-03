@@ -121,7 +121,6 @@ Action Mix_CreateReadyPanel()
             Format(cmdLine, sizeof(cmdLine), "%s\n%s\n%s", c1, c2, c3);
             Format(hintMsg, sizeof(hintMsg), "%s\n%s", hintMsg, cmdLine);
 
-            ShowHudText(i, 4, "");
             SetHudTextParams(0.75, 0.2, 60.0, 200, 200, 50, 255);
             ShowHudText(i, 4, "%s", hintMsg);
         }
