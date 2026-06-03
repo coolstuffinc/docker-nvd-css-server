@@ -50,8 +50,13 @@ Compiled from `src/` during build:
 `qrcode_console` adds:
 - `sm_qrcode <text>`
 - `sm_qr <text>`
+- Admin controls:
+  - `sm_qrcode_allowcmd <sm_qrcode|sm_qr|all>`
+  - `sm_qrcode_disallowcmd <sm_qrcode|sm_qr|all>`
+  - `sm_qrcode_listcmd`
 
 The plugin prints an ASCII QR code into the caller's console (or server console) using a pure SourcePawn version-1 QR implementation inspired by Nayuki's QR generator. Current payload limit is 17 bytes (QR version 1, ECC level L, byte mode).
+It is now configurable as a standalone-ready module through auto-generated cvars in `cfg/sourcemod/plugin.qrcode_console.cfg` (global enable, per-command enable, and public/admin access mode).
 
 Pre-compiled from the `assets` branch:
 - voicecomm, rankme, save_scores
