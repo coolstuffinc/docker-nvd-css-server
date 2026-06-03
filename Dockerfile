@@ -104,6 +104,7 @@ COPY --from=builder --chown=steam:steam /output/*.smx /home/steam/css/cstrike/ad
 COPY --from=builder --chown=steam:steam /output/rip.ext.so /home/steam/css/cstrike/addons/sourcemod/extensions/
 COPY --from=builder --chown=steam:steam /output/rip.ext.txt /home/steam/css/cstrike/addons/sourcemod/extensions/
 COPY --chown=steam:steam cfg/ /home/steam/css/cstrike/cfg/
+COPY --chown=steam:steam src/ /home/steam/css/cstrike/addons/sourcemod/scripting/src/
 COPY --chown=steam:steam gamedata/ /home/steam/css/cstrike/addons/sourcemod/gamedata/
 COPY --chown=steam:steam translations/ /home/steam/css/cstrike/addons/sourcemod/translations/
 COPY --chown=steam:steam entrypoint.sh /home/steam/entrypoint.sh
