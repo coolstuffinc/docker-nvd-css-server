@@ -3,7 +3,8 @@ FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl unzip ca-certificates lib32gcc-s1 lib32stdc++6 \
-    git build-essential python3 python3-pip clang perl && \
+    git build-essential g++-multilib libstdc++6 lib32stdc++6 \
+    python3 python3-pip clang perl && \
     rm -rf /var/lib/apt/lists/*
 
 # Clone build dependencies pinned
