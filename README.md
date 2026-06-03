@@ -43,10 +43,10 @@ docker run -d --name css-server \
 This server includes an AI Admin assistant powered by Ollama. For detailed setup and troubleshooting, see [AI_ADMIN.md](AI_ADMIN.md).
 
 Compiled from `src/` during build:
-- bot2player, botdropbomb, enemies_left, forceroundend, givecash, llama_admin, playerstacker
+- bot2player, botdropbomb, enemies_left, forceroundend, givecash, llama_admin, mixmod, playerstacker
 
 Pre-compiled from the `assets` branch:
-- mixmod, voicecomm, rankme, save_scores
+- voicecomm, rankme, save_scores
 
 ## Maps
 

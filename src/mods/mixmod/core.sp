@@ -52,7 +52,7 @@ void Mix_InitConVars()
     g_hCvarEnableVoiceCommands = CreateConVar("sm_mixmod_enable_voice_commands", "1", "Enable sm_mmute/sm_mgag? 0 - Off, 1 - On");
     g_hFogDelete = CreateConVar("sm_mixmod_delete_fog", "1", "Remove map fog? 0 - Off, 1 - On");
     g_hCvarOpenAutoKick = CreateConVar("sm_mixmod_auto_kick", "0", "Auto-kick unready players when 10 players are in? 0 - Off, 1 - On");
-    g_hCvarBotAutoReady = CreateConVar("sm_mixmod_bot_auto_ready", "1", "Bots auto-ready? 0 - Off, 1 - On");
+    g_hCvarBotAutoReady = CreateConVar("sm_mixmod_bot_auto_ready", "1", "Bots give ready automatically? 0 - No, 1 - Yes");
 
     // 插件版本控制
     g_hPluginVersion = CreateConVar("sm_mixmod_version", PLUGIN_VERSION, "满十插件版本", FCVAR_SS_ADDED|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
@@ -189,12 +189,6 @@ void Mix_OnMapEnd()
 
     g_bIsRecording = false;
     g_bIsRecordManual = false;
-
-    // 为防止换图后玩家数量变化，重置相关变量
-    if (g_bHasVoteMap == false && g_bTenVoted == true) {
-        g_bHasVoteMap = false;
-        g_bTenVoted = false;
-    }
 }
 
 /**
