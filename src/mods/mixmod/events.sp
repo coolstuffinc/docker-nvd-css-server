@@ -905,6 +905,7 @@ void Mix_HudUpdate()
         g_hHudTimer = INVALID_HANDLE;
     }
 
+    Mix_CreateReadyPanel();
     g_hHudTimer = CreateTimer(1.0, Mix_HudTimer, _, TIMER_REPEAT);
 }
 
@@ -925,6 +926,7 @@ public Action Mix_HudTimer(Handle timer)
             // Auto ready bots
             if (IsFakeClient(i) && !g_bReadyPlayers[i] && GetConVarInt(g_hCvarBotAutoReady) == 1 && g_bAllowReady && !g_bHasMixStarted) {
                 Mix_Command_Ready(i, 0); // Force the bot to issue the ready command
+                Mix_CreateReadyPanel(); // Refresh panel immediately
             }
         }
     }

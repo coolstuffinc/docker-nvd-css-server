@@ -107,6 +107,7 @@ public Action Mix_Command_Ready(int client, int args)
         if (!g_bReadyPlayers[client]) {
             g_bReadyPlayers[client] = true;
             g_iReadyCount++;
+            Mix_CreateReadyPanel();
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
             for (int i = 1; i <= MaxClients; i++) {
@@ -217,6 +218,7 @@ public Action Mix_Command_NotReady(int client, int args)
             if (g_iReadyCount > 0) {
                 g_iReadyCount--;
             }
+            Mix_CreateReadyPanel();
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
             for (int i = 1; i <= MaxClients; i++) {

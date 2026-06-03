@@ -1,0 +1,45 @@
+"Phrases"
+{
+    "Ready Panel Title"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1} - Ready System"
+        "pt"        "{1} - Sistema de Pronto"
+    }
+
+    "Ready Label"
+    {
+        "en"        "Ready"
+        "pt"        "Pronto"
+    }
+
+    "Ready Category Ready"
+    {
+        "en"        "--- Ready ---"
+        "pt"        "--- Prontos ---"
+    }
+
+    "Ready Category Not Ready"
+    {
+        "en"        "--- Not Ready ---"
+        "pt"        "--- Nao Prontos ---"
+    }
+
+    "Ready Cmd Ready"
+    {
+        "en"        "!r = Ready"
+        "pt"        "!r = Pronto"
+    }
+
+    "Ready Cmd NotReady"
+    {
+        "en"        "!nr = Not ready"
+        "pt"        "!nr = Cancelar"
+    }
+
+    "Ready Cmd Toggle"
+    {
+        "en"        "!sp = Show/Hide panel"
+        "pt"        "!sp = Ocultar painel"
+    }
+}

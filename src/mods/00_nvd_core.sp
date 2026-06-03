@@ -100,8 +100,31 @@ public int Native_AskAI(Handle plugin, int numParams)
     else { payload.SetString("prompt", prompt); payload.SetString("system", system); }
     payload.SetBool("stream", false);
     g_HttpClient.Post(url, payload, OnOllamaResponse, slot);
+    
+    // Timer de segurança: força a liberação do slot se demorar mais que 10s
+    CreateTimer(10.0, Timer_SafetyTimeout, slot, TIMER_FLAG_NO_MAPCHANGE);
+    
     delete payload;
     return 1;
+}
+
+public Action Timer_SafetyTimeout(Handle timer, any slotId)
+{
+    Function callback; any cbData; Handle callerPlugin;
+    if (FreeSlot(slotId, callback, cbData, callerPlugin))
+    {
+        LogError("NVD Core: Request timed out for slot %d", slotId);
+        // Notifica o plugin chamador que houve timeout
+        if (callback != null && callerPlugin != INVALID_HANDLE)
+        {
+            Call_StartFunction(callerPlugin, callback);
+            Call_PushString("ERROR_TIMEOUT");
+            Call_PushCell(cbData);
+            Call_Finish();
+        }
+        if (callerPlugin != INVALID_HANDLE) CloseHandle(callerPlugin);
+    }
+    return Plugin_Stop;
 }
 
 public void OnOllamaResponse(HTTPResponse response, any slotId)

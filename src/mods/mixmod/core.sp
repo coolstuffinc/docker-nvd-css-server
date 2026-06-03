@@ -53,7 +53,6 @@ void Mix_InitConVars()
     g_hFogDelete = CreateConVar("sm_mixmod_delete_fog", "1", "Remove map fog? 0 - Off, 1 - On");
     g_hCvarOpenAutoKick = CreateConVar("sm_mixmod_auto_kick", "0", "Auto-kick unready players when 10 players are in? 0 - Off, 1 - On");
     g_hCvarBotAutoReady = CreateConVar("sm_mixmod_bot_auto_ready", "1", "Bots auto-ready? 0 - Off, 1 - On");
-    g_hCvarBotAutoReady = CreateConVar("sm_mixmod_bot_auto_ready", "1", "Bots give ready automatically? 0 - No, 1 - Yes");
 
     // 插件版本控制
     g_hPluginVersion = CreateConVar("sm_mixmod_version", PLUGIN_VERSION, "满十插件版本", FCVAR_SS_ADDED|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);

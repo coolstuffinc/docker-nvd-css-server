@@ -866,16 +866,34 @@
         "pt"        "--- Nao Prontos ---"
     }
 
-    "Ready Category Spectators"
-    {
-        "en"        "--- Spectators ---"
-        "pt"        "--- Espectadores ---"
-    }
-
     "Ready Nobody"
     {
         "en"        "(None)"
         "pt"        "(Ninguem)"
+    }
+
+    "Ready Label"
+    {
+        "en"        "Ready"
+        "pt"        "Pronto"
+    }
+
+    "Ready Cmd Ready"
+    {
+        "en"        "!r = Ready"
+        "pt"        "!r = Pronto"
+    }
+
+    "Ready Cmd NotReady"
+    {
+        "en"        "!nr = Not ready"
+        "pt"        "!nr = Cancelar"
+    }
+
+    "Ready Cmd Toggle"
+    {
+        "en"        "!sp = Show/Hide panel"
+        "pt"        "!sp = Ocultar painel"
     }
 
     "Kicked Not Ready"
