@@ -317,6 +317,7 @@ public void OnPluginStart()
     Mix_InitConVars();       // 创建ConVars（在命令和事件之前初始化）
     // 加载翻译文件
     LoadTranslations("mixmod.phrases");
+    LoadTranslations("mixmod_ready.phrases");
     Mix_InitStats();         // 初始化统计系统
     Mix_InitAPI();           // 初始化API接口
     Mix_InitCommands();      // 注册命令

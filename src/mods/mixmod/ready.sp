@@ -56,12 +56,8 @@ Action Mix_CreateReadyPanel()
         return Plugin_Continue;
     }
 
-    char hintMsg[1024];
-    char title[64];
     char name[MAX_NAME_LENGTH];
-    Format(title, sizeof(title), "%t", "Ready Panel Title", MODNAME);
-
-    char readyBuf[512], unreadyBuf[512];
+    char readyBuf[1024], unreadyBuf[1024];
     readyBuf[0] = '\0';
     unreadyBuf[0] = '\0';
     int readyCount = 0, unreadyCount = 0;
@@ -94,18 +90,39 @@ Action Mix_CreateReadyPanel()
     }
 
     int total = readyCount + unreadyCount;
-    Format(hintMsg, sizeof(hintMsg), "%s\nPronto: %d/%d", title, readyCount, total);
-    if (readyCount > 0) {
-        Format(hintMsg, sizeof(hintMsg), "%s\n  %s", hintMsg, readyBuf);
-    }
-    if (unreadyCount > 0) {
-        Format(hintMsg, sizeof(hintMsg), "%s\n%s", hintMsg, unreadyBuf);
-    }
-    Format(hintMsg, sizeof(hintMsg), "%s\n!r = Pronto | !nr = Cancelar | !sp = Ocultar", hintMsg);
 
     for (int i = 1; i <= MaxClients; i++) {
         if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
-            SetHudTextParams(0.3, 0.2, 60.0, 200, 200, 50, 255);
+            char hintMsg[1024];
+            char title[128], countLine[128], cmdLine[128], countLabel[64];
+
+            Format(title, sizeof(title), "%t", "Ready Panel Title", MODNAME);
+
+            Format(countLabel, sizeof(countLabel), "%t", "Ready Label");
+            Format(countLine, sizeof(countLine), "%s: %d/%d", countLabel, readyCount, total);
+
+            Format(hintMsg, sizeof(hintMsg), "%s\n%s", title, countLine);
+
+            if (readyCount > 0) {
+                char cat[64];
+                Format(cat, sizeof(cat), "%t", "Ready Category Ready");
+                Format(hintMsg, sizeof(hintMsg), "%s\n%s\n%s", hintMsg, cat, readyBuf);
+            }
+            if (unreadyCount > 0) {
+                char cat[64];
+                Format(cat, sizeof(cat), "%t", "Ready Category Not Ready");
+                Format(hintMsg, sizeof(hintMsg), "%s\n%s\n%s", hintMsg, cat, unreadyBuf);
+            }
+
+            char c1[64], c2[64], c3[64];
+            Format(c1, sizeof(c1), "%t", "Ready Cmd Ready");
+            Format(c2, sizeof(c2), "%t", "Ready Cmd NotReady");
+            Format(c3, sizeof(c3), "%t", "Ready Cmd Toggle");
+            Format(cmdLine, sizeof(cmdLine), "%s\n%s\n%s", c1, c2, c3);
+            Format(hintMsg, sizeof(hintMsg), "%s\n%s", hintMsg, cmdLine);
+
+            ShowHudText(i, 4, "");
+            SetHudTextParams(0.75, 0.2, 60.0, 200, 200, 50, 255);
             ShowHudText(i, 4, "%s", hintMsg);
         }
     }
@@ -194,7 +211,7 @@ public Action Mix_ReadyCountdownTimer(Handle timer, any data)
         return Plugin_Stop;
     } else {
         char msg[128];
-        Format(msg, sizeof(msg), "%t", "Unready Kick Warning", g_iSecond);
+        Format(msg, sizeof(msg), "%t", "Unready Kick Warning", g_iSecond, "");
         PrintCenterTextAll(msg);
         g_iSecond--;
     }
