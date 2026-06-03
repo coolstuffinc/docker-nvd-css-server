@@ -337,6 +337,18 @@ public void OnPluginStart()
             PrintToChat(i, "\x04[%s]:\x03 %t", MODNAME, "Plugin Loaded", PLUGIN_VERSION);
         }
     }
+
+    // Mostra o painel de ready para jogadores já conectados (com delay 0 pra garantir o sistema de msgs)
+    if (!g_bHasMixStarted && g_bAllowReady) {
+        CreateTimer(0.0, Timer_ShowPanelOnLoad);
+        Mix_HudUpdate();
+    }
+}
+
+public Action Timer_ShowPanelOnLoad(Handle timer)
+{
+    Mix_CreateReadyPanel();
+    return Plugin_Continue;
 }
 
 /**
@@ -370,6 +382,18 @@ public void OnMapStart()
 public void OnClientAuthorized(int client, const char[] auth)
 {
     Mix_OnClientAuthorized(client);
+}
+
+/**
+ * 当客户端完全加入游戏时
+ *
+ * 此函数在玩家完全加入服务器后调用，用于显示准备面板等。
+ *
+ * @param client 客户端索引
+ */
+public void OnClientPutInServer(int client)
+{
+    Mix_OnClientPutInServer(client);
 }
 
 /**

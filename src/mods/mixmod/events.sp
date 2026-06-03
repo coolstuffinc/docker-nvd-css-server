@@ -909,7 +909,31 @@ void Mix_HudUpdate()
 }
 
 /**
- * HUD定时器回调
+ * HUD定时器 callback (1s)
+ */
+public Action Mix_HudTimer(Handle timer)
+{
+    if (!g_bHasMixStarted) {
+        Mix_CreateReadyPanel();
+    }
+
+    g_hHudTimer = CreateTimer(1.0, Mix_HudTimer, _, TIMER_REPEAT);
+}
+
+/**
+ * Mostra o painel de ready (HintText) para todos os jogadores.
+ * Chamado a cada 1s pelo Mix_HudTimer para manter a info visível.
+ */
+void Mix_ShowHintPanel()
+{
+    if (!g_bHasMixStarted) {
+        Mix_CreateReadyPanel();
+    }
+}
+}
+
+/**
+ * HUD定时器 callback (1s)
  */
 public Action Mix_HudTimer(Handle timer)
 {
@@ -953,6 +977,16 @@ public Action Mix_HudTimer(Handle timer)
     }
 
     return Plugin_Continue;
+}
+
+/**
+ * 当客户端加入服务器时 — 显示准备面板
+ */
+void Mix_OnClientPutInServer(int client)
+{
+    if (!IsFakeClient(client) && !g_bHasMixStarted && g_bAllowReady) {
+        Mix_CreateReadyPanel();
+    }
 }
 
 /**

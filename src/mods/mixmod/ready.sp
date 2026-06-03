@@ -55,115 +55,34 @@ Action Mix_CreateReadyPanel()
     if (!g_bReadyPanelVisible) {
         return Plugin_Continue;
     }
-    if (g_hReadyStatus != INVALID_HANDLE) {
-        CloseHandle(g_hReadyStatus);
-        g_hReadyStatus = INVALID_HANDLE;
-    }
-    g_hReadyStatus = CreatePanel();
 
+    char hintMsg[256];
     char title[64];
     Format(title, sizeof(title), "%t", "Ready Panel Title", MODNAME);
-    SetPanelTitle(g_hReadyStatus, title);
-    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
-    // 换图之后显示
-    if (g_bTenVoted) {
-        Format(title, sizeof(title), "%t", "Map Changed Ready");
-        PrintCenterTextAll(title);
-    }
-    // 可用指令 (整合并扩展自 UpdateReadyPanel 和 Mix_CreateReadyPanel)
-    DrawPanelText(g_hReadyStatus, "=====<- 指令与状态 ->=====");
-    DrawPanelText(g_hReadyStatus, "Digite !ready ou !r para pronto");
-    DrawPanelText(g_hReadyStatus, "Digite !notready ou !nr para cancelar");
-    DrawPanelText(g_hReadyStatus, "Digite !sp para alternar menu");
-    DrawPanelText(g_hReadyStatus, "Dica: 10 prontos = votacao de mapa");
-    DrawPanelText(g_hReadyStatus, "Sem RTV / Nominate");
 
-    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
+    int readyCount = 0;
+    int unreadyCount = 0;
 
-    char readyLine[128];
-
-    DrawPanelText(g_hReadyStatus, readyLine);
-    DrawPanelText(g_hReadyStatus, "\n"); // 添加一些间隔
-
-
-    decl String:sReadyPlayersList[512];     // 存储已准备玩家列表的字符串
-    decl String:sNotReadyPlayersList[512];  // 存储未准备玩家列表的字符串
-    decl String:sSpectatorsList[512];       // 存储观察者列表的字符串
-    decl String:sPlayerName[MAX_NAME_LENGTH]; // 存储单个玩家名称
-
-    // 初始化列表字符串为空
-    Format(sReadyPlayersList, sizeof(sReadyPlayersList), "");
-    Format(sNotReadyPlayersList, sizeof(sNotReadyPlayersList), "");
-    Format(sSpectatorsList, sizeof(sSpectatorsList), "");
-
-
-    for (new i = 1; i <= MaxClients; i++)
+    for (int i = 1; i <= MaxClients; i++)
     {
         if (IsClientInGame(i) && !IsClientSourceTV(i) && !IsClientReplay(i))
         {
-            GetClientName(i, sPlayerName, sizeof(sPlayerName));
-
-            if (GetClientTeam(i) == CS_TEAM_SPECTATOR) {
-                Format(sSpectatorsList, sizeof(sSpectatorsList), "%s%s\n", sSpectatorsList, sPlayerName);
-            } else {
+            if (GetClientTeam(i) == CS_TEAM_T || GetClientTeam(i) == CS_TEAM_CT) 
+            {
                 if (g_bReadyPlayers[i])
-                {
-                    Format(sReadyPlayersList, sizeof(sReadyPlayersList), "%s%s\n", sReadyPlayersList, sPlayerName);
-                    // actualReadyCount++;
-                }
+                    readyCount++;
                 else
-                {
-                    Format(sNotReadyPlayersList, sizeof(sNotReadyPlayersList), "%s%s\n", sNotReadyPlayersList, sPlayerName);
-                }
+                    unreadyCount++;
             }
         }
     }
 
+    int total = readyCount + unreadyCount;
+    Format(hintMsg, sizeof(hintMsg), "%s\nPronto: %d/%d\n!r / !nr / !sp (Ocultar)", title, readyCount, total);
 
-    // 显示已准备玩家列表
-    char buffer[128];
-    Format(buffer, sizeof(buffer), "%t", "Ready Category Ready");
-    DrawPanelText(g_hReadyStatus, buffer);
-    if (sReadyPlayersList[0] == '\0') {
-        Format(buffer, sizeof(buffer), "%t", "Ready Nobody");
-        DrawPanelText(g_hReadyStatus, buffer);
-    } else {
-        DrawPanelText(g_hReadyStatus, sReadyPlayersList);
-    }
-    DrawPanelText(g_hReadyStatus, "\n");
-
-    // 显示未准备玩家列表
-    Format(buffer, sizeof(buffer), "%t", "Ready Category Not Ready");
-    DrawPanelText(g_hReadyStatus, buffer);
-    if (sNotReadyPlayersList[0] == '\0') {
-        Format(buffer, sizeof(buffer), "%t", "Ready Nobody");
-        DrawPanelText(g_hReadyStatus, buffer);
-    } else {
-        DrawPanelText(g_hReadyStatus, sNotReadyPlayersList);
-    }
-    DrawPanelText(g_hReadyStatus, "\n");
-
-    // 显示观察者列表
-    Format(buffer, sizeof(buffer), "%t", "Ready Category Spectators");
-    DrawPanelText(g_hReadyStatus, buffer);
-    if (sSpectatorsList[0] == '\0') {
-        Format(buffer, sizeof(buffer), "%t", "Ready Nobody");
-        DrawPanelText(g_hReadyStatus, buffer);
-    } else {
-        DrawPanelText(g_hReadyStatus, sSpectatorsList);
-    }
-
-    DrawPanelItem(g_hReadyStatus, "", ITEMDRAW_SPACER);
-
-    // Permitir que o painel não bloqueie as teclas de troca de arma (1-9, 0)
-    SetPanelKeys(g_hReadyStatus, 0);
-
-    // 将面板显示给所有符合条件的客户端
     for (int i = 1; i <= MaxClients; i++) {
         if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
-            if (GetClientMenu(i) == MenuSource_None) {
-                SendPanelToClient(g_hReadyStatus, i, Mix_HandleDoNothing, 1);
-            }
+            PrintHintText(i, "%s", hintMsg);
         }
     }
 
