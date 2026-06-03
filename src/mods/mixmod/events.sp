@@ -916,30 +916,6 @@ public Action Mix_HudTimer(Handle timer)
     if (!g_bHasMixStarted) {
         Mix_CreateReadyPanel();
     }
-
-    g_hHudTimer = CreateTimer(1.0, Mix_HudTimer, _, TIMER_REPEAT);
-}
-
-/**
- * Mostra o painel de ready (HintText) para todos os jogadores.
- * Chamado a cada 1s pelo Mix_HudTimer para manter a info visível.
- */
-void Mix_ShowHintPanel()
-{
-    if (!g_bHasMixStarted) {
-        Mix_CreateReadyPanel();
-    }
-}
-}
-
-/**
- * HUD定时器 callback (1s)
- */
-public Action Mix_HudTimer(Handle timer)
-{
-    if (!g_bHasMixStarted) {
-        Mix_CreateReadyPanel();
-    }
     // 检查玩家数量和准备状态
     int playerCount = 0;
     for (int i = 1; i <= MaxClients; i++) {
@@ -957,7 +933,7 @@ public Action Mix_HudTimer(Handle timer)
     if (playerCount >= 10 && g_iReadyCount < 10 && !g_bKickCountdownActive && GetConVarInt(g_hCvarOpenAutoKick) == 1)
     {
         // 启动T人流程
-        g_bKickCountdownActive = true;      // 设置状态为“进行中”
+        g_bKickCountdownActive = true;
 
         if (g_hKickUnreadyTimer != INVALID_HANDLE) {
             KillTimer(g_hKickUnreadyTimer);
@@ -967,10 +943,8 @@ public Action Mix_HudTimer(Handle timer)
         g_iSecond = 30;
         g_bIsKicked = false;
 
-        // 创建新的专用计时器
         g_hKickUnreadyTimer = CreateTimer(1.0, Mix_ReadyCountdownTimer, _, TIMER_REPEAT);
 
-        // 向所有玩家广播一次开始信息
         char msg[128];
         Format(msg, sizeof(msg), "%t", "Ten Players Auto", g_iSecond);
         PrintHintTextToAll(msg);

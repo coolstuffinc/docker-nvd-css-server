@@ -56,12 +56,16 @@ Action Mix_CreateReadyPanel()
         return Plugin_Continue;
     }
 
-    char hintMsg[256];
+    char hintMsg[1024];
     char title[64];
+    char name[MAX_NAME_LENGTH];
     Format(title, sizeof(title), "%t", "Ready Panel Title", MODNAME);
 
-    int readyCount = 0;
-    int unreadyCount = 0;
+    char readyBuf[512], unreadyBuf[512];
+    readyBuf[0] = '\0';
+    unreadyBuf[0] = '\0';
+    int readyCount = 0, unreadyCount = 0;
+    int rLineCount = 0, uLineCount = 0;
 
     for (int i = 1; i <= MaxClients; i++)
     {
@@ -69,20 +73,40 @@ Action Mix_CreateReadyPanel()
         {
             if (GetClientTeam(i) == CS_TEAM_T || GetClientTeam(i) == CS_TEAM_CT) 
             {
-                if (g_bReadyPlayers[i])
+                GetClientName(i, name, sizeof(name));
+                if (g_bReadyPlayers[i]) {
+                    if (rLineCount > 0)
+                        StrCat(readyBuf, sizeof(readyBuf), "\n");
+                    StrCat(readyBuf, sizeof(readyBuf), "  ");
+                    StrCat(readyBuf, sizeof(readyBuf), name);
+                    rLineCount++;
                     readyCount++;
-                else
+                } else {
+                    if (uLineCount > 0)
+                        StrCat(unreadyBuf, sizeof(unreadyBuf), "\n");
+                    StrCat(unreadyBuf, sizeof(unreadyBuf), "  ");
+                    StrCat(unreadyBuf, sizeof(unreadyBuf), name);
+                    uLineCount++;
                     unreadyCount++;
+                }
             }
         }
     }
 
     int total = readyCount + unreadyCount;
-    Format(hintMsg, sizeof(hintMsg), "%s\nPronto: %d/%d\n!r / !nr / !sp (Ocultar)", title, readyCount, total);
+    Format(hintMsg, sizeof(hintMsg), "%s\nPronto: %d/%d", title, readyCount, total);
+    if (readyCount > 0) {
+        Format(hintMsg, sizeof(hintMsg), "%s\n  %s", hintMsg, readyBuf);
+    }
+    if (unreadyCount > 0) {
+        Format(hintMsg, sizeof(hintMsg), "%s\n%s", hintMsg, unreadyBuf);
+    }
+    Format(hintMsg, sizeof(hintMsg), "%s\n!r = Pronto | !nr = Cancelar | !sp = Ocultar", hintMsg);
 
     for (int i = 1; i <= MaxClients; i++) {
         if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
-            PrintHintText(i, "%s", hintMsg);
+            SetHudTextParams(0.3, 0.2, 60.0, 200, 200, 50, 255);
+            ShowHudText(i, 4, "%s", hintMsg);
         }
     }
 
