@@ -3,23 +3,29 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define QR_SPEC_VERSION 1
-#define QR_SIZE 21
-#define QR_DATA_CODEWORDS 19
-#define QR_ECC_CODEWORDS 7
-#define QR_TOTAL_CODEWORDS 26
-#define QR_MAX_TEXT_BYTES 17
-#define QR_MASK 0
+#define QR_MAX_VERSION 12
+#define QR_MAX_SIZE ((QR_MAX_VERSION * 4) + 17)
+#define QR_MAX_RAW_CODEWORDS 466
+#define QR_MAX_DATA_CODEWORDS 370
+#define QR_MAX_ECC_CODEWORDS 30
+#define QR_MAX_ALIGNMENT_POSITIONS 7
 #define QR_QUIET_ZONE 2
-#define QR_PRINT_LINE_LEN (((QR_SIZE + (QR_QUIET_ZONE * 2)) * 2) + 1)
-#define QR_INPUT_BUFFER_SIZE 256
+#define QR_PRINT_LINE_LEN (((QR_MAX_SIZE + (QR_QUIET_ZONE * 2)) * 2) + 1)
+#define QR_INPUT_BUFFER_SIZE 1024
 #define QR_GF256_PRIMITIVE 0x11D
 #define QR_FORMAT_POLYNOMIAL 0x537
 #define QR_FORMAT_MASK 0x5412
+#define QR_VERSION_POLYNOMIAL 0x1F25
 #define QR_PAD_BYTE_A 0xEC
 #define QR_PAD_BYTE_B 0x11
 #define QR_DEFAULT_REQUIRED_FLAG "b"
-#define QR_PLUGIN_VERSION "1.1.0"
+#define QR_PLUGIN_VERSION "1.2.0"
+#define QR_MASK 0
+#define QR_ECC_LEVEL_LOW_FORMAT_BITS 1
+#define QR_MODE_ALPHANUMERIC 0x2
+#define QR_MODE_BYTE 0x4
+#define QR_MAX_PIX_ALPHANUMERIC_CHARS 512
+#define QR_MAX_BYTE_CHARS 367
 
 enum QRCommand
 {
@@ -33,10 +39,23 @@ ConVar g_CvarRequiredFlag;
 ConVar g_CvarMainEnabled;
 ConVar g_CvarAliasEnabled;
 
+int g_QrModules[QR_MAX_SIZE][QR_MAX_SIZE];
+bool g_QrFunctionModules[QR_MAX_SIZE][QR_MAX_SIZE];
+
+static const int QR_ECC_CODEWORDS_PER_BLOCK_LOW[QR_MAX_VERSION + 1] = {
+    -1,
+    7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24
+};
+
+static const int QR_NUM_ERROR_CORRECTION_BLOCKS_LOW[QR_MAX_VERSION + 1] = {
+    -1,
+    1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4
+};
+
 public Plugin myinfo = {
     name = "Console QR Code",
     author = "coolstuffinc",
-    description = "Generates version-1 QR codes in console with command controls",
+    description = "Generates console QR codes with support for long PIX payloads",
     version = QR_PLUGIN_VERSION
 };
 
@@ -55,7 +74,7 @@ public void OnPluginStart()
     RegAdminCmd("sm_qrcode_disallowcmd", Command_QRCodeDisallowCmd, ADMFLAG_GENERIC, "sm_qrcode_disallowcmd <sm_qrcode|sm_qr|all>");
     RegAdminCmd("sm_qrcode_listcmd", Command_QRCodeListCmd, ADMFLAG_GENERIC, "Show qrcode command allow/disallow status");
 
-    AutoExecConfig(true, "plugin.qrcode_console"); // Generates plugin.qrcode_console.cfg under cfg/sourcemod/
+    AutoExecConfig(true, "plugin.qrcode_console");
 }
 
 public Action Command_QRCodeMain(int client, int args)
@@ -100,25 +119,21 @@ public Action Command_QRCode(int client, int args, QRCommand command)
         return Plugin_Handled;
     }
 
-    if (textLen > QR_MAX_TEXT_BYTES)
+    int codewords[QR_MAX_RAW_CODEWORDS];
+    int version;
+    int qrSize;
+    bool usedAlphanumeric;
+
+    if (!EncodeQrPayload(text, textLen, codewords, version, qrSize, usedAlphanumeric))
     {
-        ReplyToCommand(client, "[QR] Version 1-L supports up to %d bytes in byte mode.", QR_MAX_TEXT_BYTES);
+        ReplyToCommand(client, "[QR] Payload too large (max: %d alphanumeric or %d bytes).", QR_MAX_PIX_ALPHANUMERIC_CHARS, QR_MAX_BYTE_CHARS);
         return Plugin_Handled;
     }
 
-    int codewords[QR_TOTAL_CODEWORDS];
-    if (!EncodeQrVersion1(text, textLen, codewords))
-    {
-        ReplyToCommand(client, "[QR] Failed to encode payload.");
-        return Plugin_Handled;
-    }
+    BuildMatrix(codewords, version, qrSize, g_QrModules, g_QrFunctionModules);
+    PrintMatrixToConsole(client, qrSize, g_QrModules);
 
-    int modules[QR_SIZE][QR_SIZE];
-    bool functionModules[QR_SIZE][QR_SIZE];
-    BuildMatrix(codewords, modules, functionModules);
-    PrintMatrixToConsole(client, modules);
-
-    ReplyToCommand(client, "[QR] Printed QR code for: %s", text);
+    ReplyToCommand(client, "[QR] Printed QR code for: %s (v%d, mode=%s)", text, version, usedAlphanumeric ? "alphanumeric" : "byte");
     return Plugin_Handled;
 }
 
@@ -256,54 +271,213 @@ int GetRequiredFlagsBits()
     return bits;
 }
 
-bool EncodeQrVersion1(const char[] text, int textLen, int codewords[QR_TOTAL_CODEWORDS])
+bool EncodeQrPayload(const char[] text, int textLen, int codewords[QR_MAX_RAW_CODEWORDS], int &version, int &qrSize, bool &usedAlphanumeric)
 {
-    int data[QR_DATA_CODEWORDS];
-    for (int i = 0; i < QR_DATA_CODEWORDS; i++)
+    int mode = QR_MODE_BYTE;
+    usedAlphanumeric = IsAlphanumericText(text);
+    if (usedAlphanumeric)
+        mode = QR_MODE_ALPHANUMERIC;
+
+    if (usedAlphanumeric && textLen > QR_MAX_PIX_ALPHANUMERIC_CHARS)
+        return false;
+
+    if (!usedAlphanumeric && textLen > QR_MAX_BYTE_CHARS)
+        return false;
+
+    int dataCodewords = 0;
+    int rawCodewords = 0;
+    for (version = 1; version <= QR_MAX_VERSION; version++)
+    {
+        int charCountBits = NumCharCountBits(mode, version);
+        if (textLen >= (1 << charCountBits))
+            continue;
+
+        int payloadBits = usedAlphanumeric ? ((textLen * 11 + 1) / 2) : (textLen * 8);
+        int totalBits = 4 + charCountBits + payloadBits;
+
+        dataCodewords = GetNumDataCodewords(version);
+        int capacityBits = dataCodewords * 8;
+        if (totalBits <= capacityBits)
+        {
+            rawCodewords = GetNumRawDataModules(version) / 8;
+            break;
+        }
+    }
+
+    if (version > QR_MAX_VERSION)
+        return false;
+
+    qrSize = version * 4 + 17;
+
+    int data[QR_MAX_DATA_CODEWORDS];
+    for (int i = 0; i < dataCodewords; i++)
         data[i] = 0;
 
     int bitLen = 0;
-    AppendBitsToBuffer(0x4, 4, data, bitLen);
-    AppendBitsToBuffer(textLen, 8, data, bitLen);
+    AppendBitsToBuffer(mode, 4, data, dataCodewords, bitLen);
+    AppendBitsToBuffer(textLen, NumCharCountBits(mode, version), data, dataCodewords, bitLen);
 
-    for (int i = 0; i < textLen; i++)
-        AppendBitsToBuffer(text[i] & 0xFF, 8, data, bitLen);
+    if (usedAlphanumeric)
+    {
+        int accumData = 0;
+        int accumCount = 0;
 
-    int dataCapacityBits = QR_DATA_CODEWORDS * 8;
+        for (int i = 0; i < textLen; i++)
+        {
+            int val = AlphanumericValue(text[i]);
+            if (val < 0)
+                return false;
+
+            accumData = (accumData * 45) + val;
+            accumCount++;
+            if (accumCount == 2)
+            {
+                AppendBitsToBuffer(accumData, 11, data, dataCodewords, bitLen);
+                accumData = 0;
+                accumCount = 0;
+            }
+        }
+
+        if (accumCount > 0)
+            AppendBitsToBuffer(accumData, 6, data, dataCodewords, bitLen);
+    }
+    else
+    {
+        for (int i = 0; i < textLen; i++)
+            AppendBitsToBuffer(text[i] & 0xFF, 8, data, dataCodewords, bitLen);
+    }
+
+    int dataCapacityBits = dataCodewords * 8;
     int terminatorBits = dataCapacityBits - bitLen;
     if (terminatorBits > 4)
         terminatorBits = 4;
 
-    AppendBitsToBuffer(0, terminatorBits, data, bitLen);
-    AppendBitsToBuffer(0, (8 - (bitLen % 8)) % 8, data, bitLen);
+    AppendBitsToBuffer(0, terminatorBits, data, dataCodewords, bitLen);
+    AppendBitsToBuffer(0, (8 - (bitLen % 8)) % 8, data, dataCodewords, bitLen);
 
     for (int padByte = QR_PAD_BYTE_A; bitLen < dataCapacityBits; padByte ^= QR_PAD_BYTE_A ^ QR_PAD_BYTE_B)
-        AppendBitsToBuffer(padByte, 8, data, bitLen);
+        AppendBitsToBuffer(padByte, 8, data, dataCodewords, bitLen);
 
-    int generator[QR_ECC_CODEWORDS];
-    int ecc[QR_ECC_CODEWORDS];
-    ReedSolomonComputeDivisor(QR_ECC_CODEWORDS, generator);
-    ReedSolomonComputeRemainder(data, QR_DATA_CODEWORDS, generator, QR_ECC_CODEWORDS, ecc);
-
-    for (int i = 0; i < QR_DATA_CODEWORDS; i++)
-        codewords[i] = data[i];
-    for (int i = 0; i < QR_ECC_CODEWORDS; i++)
-        codewords[QR_DATA_CODEWORDS + i] = ecc[i];
-
+    AddEccAndInterleave(data, dataCodewords, rawCodewords, version, codewords);
     return true;
 }
 
-void AppendBitsToBuffer(int value, int numBits, int buffer[QR_DATA_CODEWORDS], int &bitLen)
+bool IsAlphanumericText(const char[] text)
+{
+    int len = strlen(text);
+    for (int i = 0; i < len; i++)
+    {
+        if (AlphanumericValue(text[i]) < 0)
+            return false;
+    }
+    return true;
+}
+
+int AlphanumericValue(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'A' && c <= 'Z')
+        return c - 'A' + 10;
+
+    switch (c)
+    {
+        case ' ': return 36;
+        case '$': return 37;
+        case '%': return 38;
+        case '*': return 39;
+        case '+': return 40;
+        case '-': return 41;
+        case '.': return 42;
+        case '/': return 43;
+        case ':': return 44;
+    }
+
+    return -1;
+}
+
+int NumCharCountBits(int mode, int version)
+{
+    int group = (version + 7) / 17;
+
+    if (mode == QR_MODE_ALPHANUMERIC)
+    {
+        static const int bits[3] = {9, 11, 13};
+        return bits[group];
+    }
+
+    static const int bits[3] = {8, 16, 16};
+    return bits[group];
+}
+
+int GetNumRawDataModules(int version)
+{
+    int result = (16 * version + 128) * version + 64;
+    if (version >= 2)
+    {
+        int numAlign = version / 7 + 2;
+        result -= (25 * numAlign - 10) * numAlign - 55;
+        if (version >= 7)
+            result -= 36;
+    }
+
+    return result;
+}
+
+int GetNumDataCodewords(int version)
+{
+    return GetNumRawDataModules(version) / 8 - (QR_ECC_CODEWORDS_PER_BLOCK_LOW[version] * QR_NUM_ERROR_CORRECTION_BLOCKS_LOW[version]);
+}
+
+void AppendBitsToBuffer(int value, int numBits, int buffer[QR_MAX_DATA_CODEWORDS], int maxBytes, int &bitLen)
 {
     for (int i = numBits - 1; i >= 0; i--)
     {
+        if (bitLen >= maxBytes * 8)
+            return;
+
         if (((value >> i) & 1) != 0)
             buffer[bitLen >> 3] |= 1 << (7 - (bitLen & 7));
+
         bitLen++;
     }
 }
 
-void ReedSolomonComputeDivisor(int degree, int result[QR_ECC_CODEWORDS])
+void AddEccAndInterleave(const int data[QR_MAX_DATA_CODEWORDS], int dataLen, int rawCodewords, int version, int result[QR_MAX_RAW_CODEWORDS])
+{
+    int numBlocks = QR_NUM_ERROR_CORRECTION_BLOCKS_LOW[version];
+    int blockEccLen = QR_ECC_CODEWORDS_PER_BLOCK_LOW[version];
+    int numShortBlocks = numBlocks - (rawCodewords % numBlocks);
+    int shortBlockDataLen = rawCodewords / numBlocks - blockEccLen;
+
+    for (int i = 0; i < rawCodewords; i++)
+        result[i] = 0;
+
+    int generator[QR_MAX_ECC_CODEWORDS];
+    ReedSolomonComputeDivisor(blockEccLen, generator);
+
+    int dataOffset = 0;
+    for (int i = 0; i < numBlocks; i++)
+    {
+        int dataBlockLen = shortBlockDataLen + (i < numShortBlocks ? 0 : 1);
+        int ecc[QR_MAX_ECC_CODEWORDS];
+        ReedSolomonComputeRemainder(data, dataOffset, dataBlockLen, generator, blockEccLen, ecc);
+
+        for (int j = 0, k = i; j < dataBlockLen; j++, k += numBlocks)
+        {
+            if (j == shortBlockDataLen)
+                k -= numShortBlocks;
+            result[k] = data[dataOffset + j];
+        }
+
+        for (int j = 0, k = dataLen + i; j < blockEccLen; j++, k += numBlocks)
+            result[k] = ecc[j];
+
+        dataOffset += dataBlockLen;
+    }
+}
+
+void ReedSolomonComputeDivisor(int degree, int result[QR_MAX_ECC_CODEWORDS])
 {
     for (int i = 0; i < degree; i++)
         result[i] = 0;
@@ -323,14 +497,15 @@ void ReedSolomonComputeDivisor(int degree, int result[QR_ECC_CODEWORDS])
     }
 }
 
-void ReedSolomonComputeRemainder(const int data[QR_DATA_CODEWORDS], int dataLen, const int generator[QR_ECC_CODEWORDS], int degree, int result[QR_ECC_CODEWORDS])
+void ReedSolomonComputeRemainder(const int data[QR_MAX_DATA_CODEWORDS], int dataOffset, int dataLen, const int generator[QR_MAX_ECC_CODEWORDS], int degree, int result[QR_MAX_ECC_CODEWORDS])
 {
     for (int i = 0; i < degree; i++)
         result[i] = 0;
 
     for (int i = 0; i < dataLen; i++)
     {
-        int factor = data[i] ^ result[0];
+        int factor = data[dataOffset + i] ^ result[0];
+
         for (int j = 0; j < degree - 1; j++)
             result[j] = result[j + 1];
 
@@ -351,51 +526,77 @@ int ReedSolomonMultiply(int x, int y)
     return z & 0xFF;
 }
 
-void BuildMatrix(const int codewords[QR_TOTAL_CODEWORDS], int modules[QR_SIZE][QR_SIZE], bool functionModules[QR_SIZE][QR_SIZE])
+void BuildMatrix(const int codewords[QR_MAX_RAW_CODEWORDS], int version, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
-    InitializeFunctionModules(modules, functionModules);
-    DrawCodewords(codewords, modules, functionModules);
-    DrawFormatBits(QR_MASK, modules, functionModules);
+    InitializeFunctionModules(version, qrSize, modules, functionModules);
+    DrawCodewords(codewords, GetNumRawDataModules(version) / 8, qrSize, modules, functionModules);
+    DrawFormatBits(QR_MASK, qrSize, modules, functionModules);
+    if (version >= 7)
+        DrawVersionBits(version, qrSize, modules, functionModules);
 }
 
-void InitializeFunctionModules(int modules[QR_SIZE][QR_SIZE], bool functionModules[QR_SIZE][QR_SIZE])
+void InitializeFunctionModules(int version, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
-    for (int y = 0; y < QR_SIZE; y++)
+    for (int y = 0; y < qrSize; y++)
     {
-        for (int x = 0; x < QR_SIZE; x++)
+        for (int x = 0; x < qrSize; x++)
         {
             modules[y][x] = 0;
             functionModules[y][x] = false;
         }
     }
 
-    DrawFinderPattern(3, 3, modules, functionModules);
-    DrawFinderPattern(QR_SIZE - 4, 3, modules, functionModules);
-    DrawFinderPattern(3, QR_SIZE - 4, modules, functionModules);
+    DrawFinderPattern(3, 3, qrSize, modules, functionModules);
+    DrawFinderPattern(qrSize - 4, 3, qrSize, modules, functionModules);
+    DrawFinderPattern(3, qrSize - 4, qrSize, modules, functionModules);
 
-    for (int i = 0; i < QR_SIZE; i++)
+    for (int i = 0; i < qrSize; i++)
     {
-        SetFunctionModule(6, i, (i % 2) == 0, modules, functionModules);
-        SetFunctionModule(i, 6, (i % 2) == 0, modules, functionModules);
+        SetFunctionModule(6, i, (i % 2) == 0, qrSize, modules, functionModules);
+        SetFunctionModule(i, 6, (i % 2) == 0, qrSize, modules, functionModules);
     }
 
-    SetFunctionModule(8, QR_SIZE - 8, true, modules, functionModules);
+    int alignPos[QR_MAX_ALIGNMENT_POSITIONS];
+    int numAlign = GetAlignmentPatternPositions(version, alignPos);
+    for (int i = 0; i < numAlign; i++)
+    {
+        for (int j = 0; j < numAlign; j++)
+        {
+            if ((i == 0 && j == 0) || (i == 0 && j == numAlign - 1) || (i == numAlign - 1 && j == 0))
+                continue;
+            DrawAlignmentPattern(alignPos[i], alignPos[j], qrSize, modules, functionModules);
+        }
+    }
+
+    SetFunctionModule(8, qrSize - 8, true, qrSize, modules, functionModules);
 
     for (int i = 0; i <= 5; i++)
-        SetFunctionModule(8, i, false, modules, functionModules);
-    SetFunctionModule(8, 7, false, modules, functionModules);
-    SetFunctionModule(8, 8, false, modules, functionModules);
-    SetFunctionModule(7, 8, false, modules, functionModules);
+        SetFunctionModule(8, i, false, qrSize, modules, functionModules);
+    SetFunctionModule(8, 7, false, qrSize, modules, functionModules);
+    SetFunctionModule(8, 8, false, qrSize, modules, functionModules);
+    SetFunctionModule(7, 8, false, qrSize, modules, functionModules);
     for (int i = 9; i < 15; i++)
-        SetFunctionModule(14 - i, 8, false, modules, functionModules);
+        SetFunctionModule(14 - i, 8, false, qrSize, modules, functionModules);
 
     for (int i = 0; i < 8; i++)
-        SetFunctionModule(QR_SIZE - 1 - i, 8, false, modules, functionModules);
+        SetFunctionModule(qrSize - 1 - i, 8, false, qrSize, modules, functionModules);
     for (int i = 8; i < 15; i++)
-        SetFunctionModule(8, QR_SIZE - 15 + i, false, modules, functionModules);
+        SetFunctionModule(8, qrSize - 15 + i, false, qrSize, modules, functionModules);
+
+    if (version >= 7)
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                SetFunctionModule(qrSize - 11 + j, i, false, qrSize, modules, functionModules);
+                SetFunctionModule(i, qrSize - 11 + j, false, qrSize, modules, functionModules);
+            }
+        }
+    }
 }
 
-void DrawFinderPattern(int centerX, int centerY, int modules[QR_SIZE][QR_SIZE], bool functionModules[QR_SIZE][QR_SIZE])
+void DrawFinderPattern(int centerX, int centerY, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
     for (int dy = -4; dy <= 4; dy++)
     {
@@ -403,7 +604,7 @@ void DrawFinderPattern(int centerX, int centerY, int modules[QR_SIZE][QR_SIZE], 
         {
             int x = centerX + dx;
             int y = centerY + dy;
-            if (x < 0 || x >= QR_SIZE || y < 0 || y >= QR_SIZE)
+            if (x < 0 || x >= qrSize || y < 0 || y >= qrSize)
                 continue;
 
             int dist = IntAbs(dx);
@@ -411,25 +612,60 @@ void DrawFinderPattern(int centerX, int centerY, int modules[QR_SIZE][QR_SIZE], 
                 dist = IntAbs(dy);
 
             bool dark = (dist != 2 && dist != 4);
-            SetFunctionModule(x, y, dark, modules, functionModules);
+            SetFunctionModule(x, y, dark, qrSize, modules, functionModules);
         }
     }
 }
 
-void DrawCodewords(const int codewords[QR_TOTAL_CODEWORDS], int modules[QR_SIZE][QR_SIZE], bool functionModules[QR_SIZE][QR_SIZE])
+void DrawAlignmentPattern(int centerX, int centerY, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
+{
+    for (int dy = -2; dy <= 2; dy++)
+    {
+        for (int dx = -2; dx <= 2; dx++)
+        {
+            int dist = IntAbs(dx);
+            if (IntAbs(dy) > dist)
+                dist = IntAbs(dy);
+
+            bool dark = (dist != 1);
+            SetFunctionModule(centerX + dx, centerY + dy, dark, qrSize, modules, functionModules);
+        }
+    }
+}
+
+int GetAlignmentPatternPositions(int version, int result[QR_MAX_ALIGNMENT_POSITIONS])
+{
+    if (version == 1)
+        return 0;
+
+    int numAlign = version / 7 + 2;
+    int step = ((version * 8 + numAlign * 3 + 5) / (numAlign * 4 - 4)) * 2;
+
+    int pos = version * 4 + 10;
+    for (int i = numAlign - 1; i >= 1; i--)
+    {
+        result[i] = pos;
+        pos -= step;
+    }
+
+    result[0] = 6;
+    return numAlign;
+}
+
+void DrawCodewords(const int codewords[QR_MAX_RAW_CODEWORDS], int rawCodewords, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
     int bitIndex = 0;
-    int bitLen = QR_TOTAL_CODEWORDS * 8;
+    int bitLen = rawCodewords * 8;
 
-    for (int right = QR_SIZE - 1; right >= 1; right -= 2)
+    for (int right = qrSize - 1; right >= 1; right -= 2)
     {
         if (right == 6)
             right = 5;
 
-        for (int vert = 0; vert < QR_SIZE; vert++)
+        for (int vert = 0; vert < qrSize; vert++)
         {
             bool upward = ((right + 1) & 2) == 0;
-            int y = upward ? (QR_SIZE - 1 - vert) : vert;
+            int y = upward ? (qrSize - 1 - vert) : vert;
 
             for (int j = 0; j < 2; j++)
             {
@@ -451,9 +687,9 @@ void DrawCodewords(const int codewords[QR_TOTAL_CODEWORDS], int modules[QR_SIZE]
     }
 }
 
-void DrawFormatBits(int mask, int modules[QR_SIZE][QR_SIZE], bool functionModules[QR_SIZE][QR_SIZE])
+void DrawFormatBits(int mask, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
-    int data = (1 << 3) | (mask & 0x7);
+    int data = (QR_ECC_LEVEL_LOW_FORMAT_BITS << 3) | (mask & 0x7);
     int rem = data;
     for (int i = 0; i < 10; i++)
         rem = (rem << 1) ^ ((rem >> 9) * QR_FORMAT_POLYNOMIAL);
@@ -461,19 +697,39 @@ void DrawFormatBits(int mask, int modules[QR_SIZE][QR_SIZE], bool functionModule
     int bits = ((data << 10) | rem) ^ QR_FORMAT_MASK;
 
     for (int i = 0; i <= 5; i++)
-        SetFunctionModule(8, i, GetBit(bits, i), modules, functionModules);
-    SetFunctionModule(8, 7, GetBit(bits, 6), modules, functionModules);
-    SetFunctionModule(8, 8, GetBit(bits, 7), modules, functionModules);
-    SetFunctionModule(7, 8, GetBit(bits, 8), modules, functionModules);
+        SetFunctionModule(8, i, GetBit(bits, i), qrSize, modules, functionModules);
+    SetFunctionModule(8, 7, GetBit(bits, 6), qrSize, modules, functionModules);
+    SetFunctionModule(8, 8, GetBit(bits, 7), qrSize, modules, functionModules);
+    SetFunctionModule(7, 8, GetBit(bits, 8), qrSize, modules, functionModules);
     for (int i = 9; i < 15; i++)
-        SetFunctionModule(14 - i, 8, GetBit(bits, i), modules, functionModules);
+        SetFunctionModule(14 - i, 8, GetBit(bits, i), qrSize, modules, functionModules);
 
     for (int i = 0; i < 8; i++)
-        SetFunctionModule(QR_SIZE - 1 - i, 8, GetBit(bits, i), modules, functionModules);
+        SetFunctionModule(qrSize - 1 - i, 8, GetBit(bits, i), qrSize, modules, functionModules);
     for (int i = 8; i < 15; i++)
-        SetFunctionModule(8, QR_SIZE - 15 + i, GetBit(bits, i), modules, functionModules);
+        SetFunctionModule(8, qrSize - 15 + i, GetBit(bits, i), qrSize, modules, functionModules);
 
-    SetFunctionModule(8, QR_SIZE - 8, true, modules, functionModules);
+    SetFunctionModule(8, qrSize - 8, true, qrSize, modules, functionModules);
+}
+
+void DrawVersionBits(int version, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
+{
+    int rem = version;
+    for (int i = 0; i < 12; i++)
+        rem = (rem << 1) ^ ((rem >> 11) * QR_VERSION_POLYNOMIAL);
+
+    int bits = (version << 12) | rem;
+
+    for (int i = 0; i < 6; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            bool dark = (bits & 1) != 0;
+            SetFunctionModule(qrSize - 11 + j, i, dark, qrSize, modules, functionModules);
+            SetFunctionModule(i, qrSize - 11 + j, dark, qrSize, modules, functionModules);
+            bits >>= 1;
+        }
+    }
 }
 
 bool GetBit(int value, int i)
@@ -486,9 +742,9 @@ bool IsMask0Inverted(int x, int y)
     return ((x + y) % 2) == 0;
 }
 
-void SetFunctionModule(int x, int y, bool dark, int modules[QR_SIZE][QR_SIZE], bool functionModules[QR_SIZE][QR_SIZE])
+void SetFunctionModule(int x, int y, bool dark, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE], bool functionModules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
-    if (x < 0 || x >= QR_SIZE || y < 0 || y >= QR_SIZE)
+    if (x < 0 || x >= qrSize || y < 0 || y >= qrSize)
         return;
 
     modules[y][x] = dark ? 1 : 0;
@@ -500,20 +756,20 @@ int IntAbs(int value)
     return value < 0 ? -value : value;
 }
 
-void PrintMatrixToConsole(int client, int modules[QR_SIZE][QR_SIZE])
+void PrintMatrixToConsole(int client, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
     int quiet = QR_QUIET_ZONE;
     char line[QR_PRINT_LINE_LEN];
 
     PrintConsoleLine(client, "");
 
-    for (int y = -quiet; y < QR_SIZE + quiet; y++)
+    for (int y = -quiet; y < qrSize + quiet; y++)
     {
         int pos = 0;
 
-        for (int x = -quiet; x < QR_SIZE + quiet; x++)
+        for (int x = -quiet; x < qrSize + quiet; x++)
         {
-            bool dark = (x >= 0 && x < QR_SIZE && y >= 0 && y < QR_SIZE && modules[y][x] == 1);
+            bool dark = (x >= 0 && x < qrSize && y >= 0 && y < qrSize && modules[y][x] == 1);
             for (int i = 0; i < 2; i++)
                 line[pos++] = dark ? '#' : ' ';
         }
