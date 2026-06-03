@@ -14,6 +14,7 @@ RUN git clone --branch 1.12.0.7236 --depth 1 https://github.com/alliedmodders/so
     pip3 install ./ambuild
 
 # Compile plugins and extensions
+COPY src/ /src/
 RUN mkdir /output && \
     git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
     mkdir /ripext/build && \
