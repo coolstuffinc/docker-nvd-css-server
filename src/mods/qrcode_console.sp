@@ -3,7 +3,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define QR_VERSION 1
+#define QR_SPEC_VERSION 1
 #define QR_SIZE 21
 #define QR_DATA_CODEWORDS 19
 #define QR_ECC_CODEWORDS 7
@@ -18,6 +18,8 @@
 #define QR_FORMAT_MASK 0x5412
 #define QR_PAD_BYTE_A 0xEC
 #define QR_PAD_BYTE_B 0x11
+#define QR_DEFAULT_REQUIRED_FLAG "b"
+#define QR_PLUGIN_VERSION "1.1.0"
 
 enum QRCommand
 {
@@ -35,15 +37,15 @@ public Plugin myinfo = {
     name = "Console QR Code",
     author = "coolstuffinc",
     description = "Generates version-1 QR codes in console with command controls",
-    version = "1.1.0"
+    version = QR_PLUGIN_VERSION
 };
 
 public void OnPluginStart()
 {
-    CreateConVar("sm_qrcode_version", "1.1.0", "qrcode_console version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
+    CreateConVar("sm_qrcode_version", QR_PLUGIN_VERSION, "qrcode_console version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
     g_CvarEnabled = CreateConVar("sm_qrcode_enable", "1", "Enable qrcode_console plugin command handling (1=on, 0=off)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
     g_CvarAllowPublic = CreateConVar("sm_qrcode_allow_public", "1", "Allow all players to use QR commands (1=all, 0=admins only)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-    g_CvarRequiredFlag = CreateConVar("sm_qrcode_required_flag", "b", "Admin flag(s) required when sm_qrcode_allow_public is 0", FCVAR_PLUGIN);
+    g_CvarRequiredFlag = CreateConVar("sm_qrcode_required_flag", QR_DEFAULT_REQUIRED_FLAG, "Admin flag(s) required when sm_qrcode_allow_public is 0", FCVAR_PLUGIN);
     g_CvarMainEnabled = CreateConVar("sm_qrcode_cmd_qrcode", "1", "Enable sm_qrcode command (1=enabled, 0=disabled)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
     g_CvarAliasEnabled = CreateConVar("sm_qrcode_cmd_qr", "1", "Enable sm_qr alias command (1=enabled, 0=disabled)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 
@@ -53,7 +55,7 @@ public void OnPluginStart()
     RegAdminCmd("sm_qrcode_disallowcmd", Command_QRCodeDisallowCmd, ADMFLAG_GENERIC, "sm_qrcode_disallowcmd <sm_qrcode|sm_qr|all>");
     RegAdminCmd("sm_qrcode_listcmd", Command_QRCodeListCmd, ADMFLAG_GENERIC, "Show qrcode command allow/disallow status");
 
-    AutoExecConfig(true, "plugin.qrcode_console");
+    AutoExecConfig(true, "plugin.qrcode_console"); // Generates plugin.qrcode_console.cfg under cfg/sourcemod/
 }
 
 public Action Command_QRCodeMain(int client, int args)
@@ -140,9 +142,8 @@ public Action Command_QRCodeListCmd(int client, int args)
     else
     {
         char flags[32];
-        g_CvarRequiredFlag.GetString(flags, sizeof(flags));
-        TrimString(flags);
-        ReplyToCommand(client, "[QR] Access mode: admins only (flags: %s)", flags[0] == '\0' ? "b" : flags);
+        GetRequiredFlagsString(flags, sizeof(flags));
+        ReplyToCommand(client, "[QR] Access mode: admins only (flags: %s)", flags);
     }
     return Plugin_Handled;
 }
@@ -166,18 +167,7 @@ bool CanClientUseQrCommand(int client)
     if (g_CvarAllowPublic.BoolValue)
         return true;
 
-    char flags[32];
-    g_CvarRequiredFlag.GetString(flags, sizeof(flags));
-    TrimString(flags);
-    if (flags[0] == '\0')
-        strcopy(flags, sizeof(flags), "b");
-
-    int bits = 0;
-    ReadFlagString(flags, bits);
-    if (bits == 0)
-        bits = ADMFLAG_GENERIC;
-
-    return CheckCommandAccess(client, "sm_qrcode_access", bits);
+    return CheckCommandAccess(client, "sm_qrcode_access", GetRequiredFlagsBits());
 }
 
 Action SetCommandState(int client, int args, bool enabled)
@@ -206,10 +196,17 @@ Action SetCommandState(int client, int args, bool enabled)
         g_CvarAliasEnabled.SetBool(enabled);
 
     char actor[64];
-    if (client > 0 && IsClientInGame(client))
-        GetClientName(client, actor, sizeof(actor));
+    if (client > 0)
+    {
+        if (IsClientInGame(client))
+            GetClientName(client, actor, sizeof(actor));
+        else
+            Format(actor, sizeof(actor), "Client#%d", client);
+    }
     else
+    {
         strcopy(actor, sizeof(actor), "Console");
+    }
 
     LogAction(client, -1, "[QR] %s set command state %s => %d", actor, target, enabled ? 1 : 0);
     ReplyToCommand(client, "[QR] Updated %s to %s", target, enabled ? "enabled" : "disabled");
@@ -235,6 +232,28 @@ bool ParseCommandTarget(const char[] target, bool &changeMain, bool &changeAlias
         return true;
     }
     return false;
+}
+
+void GetRequiredFlagsString(char[] buffer, int maxlen)
+{
+    g_CvarRequiredFlag.GetString(buffer, maxlen);
+    TrimString(buffer);
+    if (buffer[0] == '\0')
+        strcopy(buffer, maxlen, QR_DEFAULT_REQUIRED_FLAG);
+}
+
+int GetRequiredFlagsBits()
+{
+    char flags[32];
+    GetRequiredFlagsString(flags, sizeof(flags));
+
+    int bits = 0;
+    if (!ReadFlagString(flags, bits) || bits == 0)
+        ReadFlagString(QR_DEFAULT_REQUIRED_FLAG, bits);
+    if (bits == 0)
+        bits = ADMFLAG_GENERIC;
+
+    return bits;
 }
 
 bool EncodeQrVersion1(const char[] text, int textLen, int codewords[QR_TOTAL_CODEWORDS])
