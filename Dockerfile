@@ -22,7 +22,7 @@ RUN mkdir /output && \
     python3 ../configure.py --enable-optimize --sm-path=/sourcemod --targets=x86 && \
     ambuild && \
     find . -name "rip.ext.so" -exec cp {} /output/ \; && \
-    printf '"Extensions"\n{\n    "rip"\n    {\n        "file"    "rip.ext"\n    }\n}\n' > /output/rip.ext.txt && \
+    printf '"Extensions"\n{\n    "rip"\n    {\n        "file"    "rip.ext"\n        "autoload"    "1"\n    }\n}\n' > /output/rip.ext.txt && \
     find /src/mods/ -name "*.sp" ! -path "*/mixmod/*" | while read spfile; do \
         smxname=$(basename "${spfile%.sp}.smx"); \
         echo "Compiling $smxname..."; \
