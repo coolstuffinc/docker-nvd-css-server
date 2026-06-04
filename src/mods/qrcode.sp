@@ -199,7 +199,8 @@ void PrintMatrixToConsole(int client, int qrSize, const int modules[][QR_MAX_SIZ
 	WritePackCell(g_QrStreamPack, client);
 
 	int quiet = 2;
-	int termRows = (qrSize + quiet * 2 + 1) / 2;
+	int qlen = qrSize + quiet * 2;
+	int termRows = (qlen + 1) / 2;
 	for (int ty = 0; ty < termRows; ty++) {
 		char row[QR_MAX_SIZE * 8 + 16];
 		int pos = 0;
@@ -217,12 +218,10 @@ void PrintMatrixToConsole(int client, int qrSize, const int modules[][QR_MAX_SIZ
 			bool topDark = (x >= 0 && x < qrSize && yTop >= 0 && yTop < qrSize && modules[yTop][x] == 1);
 			bool botDark = (x >= 0 && x < qrSize && yBot >= 0 && yBot < qrSize && modules[yBot][x] == 1);
 			if (invert) { topDark = !topDark; botDark = !botDark; }
-			for (int c = 0; c < 2; c++) {
-				if (topDark && botDark) { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x88; }
-				else if (topDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x80; }
-				else if (botDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x84; }
-				else                    { row[pos++] = ' '; }
-			}
+			if (topDark && botDark) { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x88; }
+			else if (topDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x80; }
+			else if (botDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x84; }
+			else                    { row[pos++] = ' '; }
 		}
 		row[pos] = '\0';
 		WritePackString(g_QrStreamPack, row);
