@@ -234,6 +234,13 @@ public Action Command_QRHud(int client, int args, QRCommand command)
         return Plugin_Handled;
     }
 
+    // CSS (OrangeBox) has a 219-byte ShowHudText limit — QR buffer is ~5KB, won't work
+    if (GetEngineVersion() != Engine_CSGO)
+    {
+        ReplyToCommand(client, "[QR] HUD display is not supported on this engine (ShowHudText buffer too small). Use !qr for console output instead.");
+        return Plugin_Handled;
+    }
+
     if (args < 1)
     {
         ReplyToCommand(client, "Usage: sm_qrhud [@all|@ct|@t|@me] <text>  (HUD targets require admin)");
@@ -1081,13 +1088,19 @@ int IntAbs(int value)
 void PrintMatrixToConsole(int client, int qrSize, int modules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
     int quiet = QR_QUIET_ZONE;
-    char line[QR_PRINT_LINE_LEN];
-
-    PrintConsoleLine(client, "");
+    char batch[QR_BATCH_SIZE];
+    int batchPos = 0;
 
     for (int y = -quiet; y < qrSize + quiet; y++)
     {
-        int pos = 0;
+        // Check if this row fits; if not flush the batch first
+        int rowLen = ((qrSize + quiet * 2) * QR_CONSOLE_MODULE_WIDTH * 3) + 1;
+        if (batchPos + rowLen >= sizeof(batch))
+        {
+            batch[batchPos] = '\0';
+            PrintConsoleLine(client, batch);
+            batchPos = 0;
+        }
 
         for (int x = -quiet; x < qrSize + quiet; x++)
         {
@@ -1096,23 +1109,25 @@ void PrintMatrixToConsole(int client, int qrSize, int modules[QR_MAX_SIZE][QR_MA
             {
                 if (dark)
                 {
-                    // U+2588 FULL BLOCK (█), UTF-8: 0xE2 0x96 0x88
-                    line[pos++] = 0xE2;
-                    line[pos++] = 0x96;
-                    line[pos++] = 0x88;
+                    batch[batchPos++] = 0xE2;
+                    batch[batchPos++] = 0x96;
+                    batch[batchPos++] = 0x88;
                 }
                 else
                 {
-                    line[pos++] = ' ';
+                    batch[batchPos++] = ' ';
                 }
             }
         }
 
-        line[pos] = '\0';
-        PrintConsoleLine(client, line);
+        batch[batchPos++] = '\n';
     }
 
-    PrintConsoleLine(client, "");
+    if (batchPos > 0)
+    {
+        batch[batchPos] = '\0';
+        PrintConsoleLine(client, batch);
+    }
 }
 
 void PrintConsoleLine(int client, const char[] message)
