@@ -52,7 +52,10 @@ void Mix_InitConVars()
     g_hCvarEnableVoiceCommands = CreateConVar("sm_mixmod_enable_voice_commands", "1", "Enable sm_mmute/sm_mgag? 0 - Off, 1 - On");
     g_hFogDelete = CreateConVar("sm_mixmod_delete_fog", "1", "Remove map fog? 0 - Off, 1 - On");
     g_hCvarOpenAutoKick = CreateConVar("sm_mixmod_auto_kick", "0", "Auto-kick unready players when 10 players are in? 0 - Off, 1 - On");
+    g_hCvarAutoMixRandomize = CreateConVar("sm_mixmod_auto_randomize", "1", "Randomize teams after map vote? 0 - Off, 1 - On");
     g_hCvarBotAutoReady = CreateConVar("sm_mixmod_bot_auto_ready", "1", "Bots give ready automatically? 0 - No, 1 - Yes");
+    g_hCvarCustomLiveCfg = CreateConVar("sm_mixmod_custom_live_cfg", "live.cfg", "Custom config file name for live");
+    g_hCvarCustomMr3Cfg = CreateConVar("sm_mixmod_custom_mr3_cfg", "mr3.cfg", "Custom config file name for MR3 overtime");
 
     // 插件版本控制
     g_hPluginVersion = CreateConVar("sm_mixmod_version", PLUGIN_VERSION, "满十插件版本", FCVAR_SS_ADDED|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);

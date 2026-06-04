@@ -104,6 +104,11 @@ public Action Mix_Command_Ready(int client, int args)
             PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Match In Progress");
             return Plugin_Handled;
         }
+        if (g_bHasVoteMap) {
+            SetGlobalTransTarget(client);
+            PrintToChat(client, "\x04[%s]:\x03 Aguardando troca de mapa...", MODNAME);
+            return Plugin_Handled;
+        }
         if (!g_bReadyPlayers[client]) {
             g_bReadyPlayers[client] = true;
             g_iReadyCount++;

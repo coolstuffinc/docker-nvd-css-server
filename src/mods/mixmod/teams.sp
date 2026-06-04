@@ -181,7 +181,7 @@ int Mix_GetRandomPlayer(int team)
     int playerCount = 0;
 
     for (int i = 1; i <= MaxClients; i++) {
-        if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == team) {
+        if (IsClientInGame(i) && GetClientTeam(i) == team) {
             players[playerCount++] = i;
         }
     }
@@ -311,7 +311,7 @@ void Mix_RandomizeTeams()
 {
     // 将所有人移至T队伍
     for(int i = 1; i <= MaxClients; i++) {
-        if(IsClientInGame(i) && !IsFakeClient(i)) {
+        if(IsClientInGame(i)) {
             Mix_SwitchPlayerTeam(i, CS_TEAM_T);
         }
     }

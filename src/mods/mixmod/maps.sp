@@ -342,6 +342,7 @@ public int Mix_HandleMapVoteMenu(Handle menu, MenuAction action, int param1, int
 void Mix_OnVoteMapEnd()
 {
     Mix_ResetReadySystem();
+    g_bAllowReady = false;
     g_bTenVoted = true;
     PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Map Vote Over");
 }
