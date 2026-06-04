@@ -36,12 +36,13 @@
 #define QR_BATCH_SIZE 2900
 
 // HUD on-screen QR: uses two overlapping channels (white background + dark foreground)
-// Limit to version 5 so each channel's string stays under ~1750 bytes (fits SM buffer)
+// Limit to version 5; each cell is U+2588 FULL BLOCK (3 UTF-8 bytes) or 3 spaces.
+// Per row: 41 cells * 3 bytes + 1 newline = 124 bytes; 41 rows = 5084 bytes per channel.
 #define QR_HUD_MAX_VERSION 5
-#define QR_HUD_MAX_SIZE ((QR_HUD_MAX_VERSION * 4) + 17)                    // 37
-#define QR_HUD_CONTENT_SIZE (QR_HUD_MAX_SIZE + (QR_QUIET_ZONE * 2))        // 41
-// Buffer: (41 cols + newline) * 41 rows + null = 42*41+1 = 1723
-#define QR_HUD_BUFFER_SIZE ((QR_HUD_CONTENT_SIZE + 1) * QR_HUD_CONTENT_SIZE + 4)
+#define QR_HUD_MAX_SIZE ((QR_HUD_MAX_VERSION * 4) + 17)                       // 37
+#define QR_HUD_CONTENT_SIZE (QR_HUD_MAX_SIZE + (QR_QUIET_ZONE * 2))           // 41
+// Buffer: (41 cols * 3 bytes + 1 newline) * 41 rows + null terminator
+#define QR_HUD_BUFFER_SIZE ((QR_HUD_CONTENT_SIZE * 3 + 1) * QR_HUD_CONTENT_SIZE + 4)
 #define QR_HUD_BG_CHANNEL 2   // white fill background
 #define QR_HUD_FG_CHANNEL 3   // dark module foreground (renders on top)
 #define QR_HUD_HOLD_TIME  10.0
@@ -392,13 +393,16 @@ public Action Command_QRHud(int client, int args, QRCommand command)
 
 /**
  * Builds g_HudQrBg (white fill) and g_HudQrFg (dark module overlay) for the
- * already-rendered g_QrModules matrix. Both strings use '#' as the block
- * character (1 byte, ASCII) so that font-width differences do not shift the
- * overlay relative to the background.
+ * already-rendered g_QrModules matrix.
+ *
+ * Each cell is encoded as U+2588 FULL BLOCK (UTF-8: 0xE2 0x96 0x88, 3 bytes),
+ * matching the console renderer. Light cells in the FG channel use 3 ASCII
+ * spaces so both channels are byte-for-byte equal in width per row, keeping
+ * the two HUD layers aligned.
  *
  * Layout (per cell):
- *   g_HudQrBg : '#' for every cell  → solid white rectangle when shown in white
- *   g_HudQrFg : '#' for dark cells, ' ' for light cells → dark pattern on top
+ *   g_HudQrBg : '█' for every cell  → solid white rectangle when shown in white
+ *   g_HudQrFg : '█' for dark cells, '   ' (3 spaces) for light cells → dark pattern on top
  */
 void BuildHudBuffers(int qrSize, const int modules[QR_MAX_SIZE][QR_MAX_SIZE])
 {
@@ -412,8 +416,30 @@ void BuildHudBuffers(int qrSize, const int modules[QR_MAX_SIZE][QR_MAX_SIZE])
         {
             bool dark = (x >= 0 && x < qrSize && y >= 0 && y < qrSize && modules[y][x] == 1);
 
-            if (bgPos + 1 < QR_HUD_BUFFER_SIZE - 1) g_HudQrBg[bgPos++] = '#';
-            if (fgPos + 1 < QR_HUD_BUFFER_SIZE - 1) g_HudQrFg[fgPos++] = dark ? '#' : ' ';
+            // Background: always a full block (white)
+            if (bgPos + 3 < QR_HUD_BUFFER_SIZE - 1)
+            {
+                g_HudQrBg[bgPos++] = 0xE2;
+                g_HudQrBg[bgPos++] = 0x96;
+                g_HudQrBg[bgPos++] = 0x88;
+            }
+
+            // Foreground: full block for dark modules, 3 spaces for light modules
+            if (fgPos + 3 < QR_HUD_BUFFER_SIZE - 1)
+            {
+                if (dark)
+                {
+                    g_HudQrFg[fgPos++] = 0xE2;
+                    g_HudQrFg[fgPos++] = 0x96;
+                    g_HudQrFg[fgPos++] = 0x88;
+                }
+                else
+                {
+                    g_HudQrFg[fgPos++] = ' ';
+                    g_HudQrFg[fgPos++] = ' ';
+                    g_HudQrFg[fgPos++] = ' ';
+                }
+            }
         }
 
         if (bgPos + 1 < QR_HUD_BUFFER_SIZE - 1) g_HudQrBg[bgPos++] = '\n';
