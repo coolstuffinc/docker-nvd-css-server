@@ -108,7 +108,7 @@ stock int NQ_EncodeSegs(const int[] modes, const int[] nchars, const int[] blens
 	return ver;
 }
 
-stock bool Nayuki_QrEncode(const char[] text, int modules[][NQ_MODULE_MAX], int &versionOut) {
+stock bool Nayuki_QrEncodeEx(const char[] text, int modules[][NQ_MODULE_MAX], int &versionOut, int &modeOut, int &eclOut, int minVer=0, int forceEcl=-1) {
 	int len = strlen(text);
 	if (len == 0)
 		return false;
@@ -169,9 +169,21 @@ stock bool Nayuki_QrEncode(const char[] text, int modules[][NQ_MODULE_MAX], int 
 	int[] qrbuf = new int[512];
 	int[] tempbuf = new int[512];
 
-	int ver = NQ_EncodeSegs(modes, nchars, blens, segData, 1, 0, 1, NQ_VERSION_MAX, qrbuf, tempbuf);
+	int startVer = (minVer > 0) ? minVer : 1;
+	int startEcl = (forceEcl >= 0 && forceEcl <= 3) ? forceEcl : 0;
+	int ver = NQ_EncodeSegs(modes, nchars, blens, segData, 1, startEcl, startVer, NQ_VERSION_MAX, qrbuf, tempbuf);
 	if (ver == 0)
 		return false;
+
+	eclOut = startEcl;
+	if (forceEcl < 0) {
+		int du = NQ_TotalBits(modes, nchars, blens, 1, ver);
+		for (int e = 1; e <= 3; e++) {
+			if (du <= NQ_DataCodewords(ver, e) * 8)
+				eclOut = e;
+		}
+	}
+	modeOut = mode;
 
 	int sz = NQ_Size(qrbuf);
 	for (int y = 0; y < sz && y < NQ_MODULE_MAX; y++)
@@ -180,4 +192,9 @@ stock bool Nayuki_QrEncode(const char[] text, int modules[][NQ_MODULE_MAX], int 
 
 	versionOut = ver;
 	return true;
+}
+
+stock bool Nayuki_QrEncode(const char[] text, int modules[][NQ_MODULE_MAX], int &versionOut) {
+	int dummyMode, dummyEcl;
+	return Nayuki_QrEncodeEx(text, modules, versionOut, dummyMode, dummyEcl, 0, -1);
 }

@@ -39,6 +39,8 @@ ConVar g_CvarAliasEnabled;
 ConVar g_CvarHudEnabled;
 ConVar g_CvarHudAliasEnabled;
 ConVar g_CvarInvert;
+ConVar g_CvarMinVer;
+ConVar g_CvarEcl;
 
 int g_QrModules[QR_MAX_SIZE][QR_MAX_SIZE];
 
@@ -69,6 +71,8 @@ public void OnPluginStart()
 	g_CvarHudEnabled = CreateConVar("sm_qrcode_cmd_qrhud", "1", "Enable sm_qrhud", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_CvarHudAliasEnabled = CreateConVar("sm_qrcode_cmd_qr_hud", "1", "Enable sm_qr_hud", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_CvarInvert = CreateConVar("sm_qr_invert_setting", "0", "Invert QR (0=normal, 1=inverted)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_CvarMinVer = CreateConVar("sm_qr_minver", "0", "Minimum QR version (0=auto, 1-12)", FCVAR_PLUGIN, true, 0.0, true, 12.0);
+	g_CvarEcl = CreateConVar("sm_qr_ecl", "0", "Error correction (0=auto, 1=L, 2=M, 3=Q, 4=H)", FCVAR_PLUGIN, true, 0.0, true, 4.0);
 
 	RegConsoleCmd("sm_qrcode", Command_QRCodeMain, "Print QR code in console");
 	RegConsoleCmd("sm_qr", Command_QRCodeAlias, "Alias for sm_qrcode");
@@ -87,15 +91,16 @@ public void OnPluginStart()
 
 public Action Command_QRInvert(int client, int args)
 {
+	bool cur = GetConVarBool(g_CvarInvert);
 	if (args < 1) {
-		bool cur = GetConVarBool(g_CvarInvert);
-		ReplyToCommand(client, "[QR] Invert is %s. Usage: sm_qr_invert [0|1]", cur ? "ON" : "OFF");
-		return Plugin_Handled;
+		SetConVarBool(g_CvarInvert, !cur);
+		ReplyToCommand(client, "[QR] Invert toggled %s", !cur ? "ON" : "OFF");
+	} else {
+		char arg[8]; GetCmdArg(1, arg, sizeof(arg));
+		int val = StringToInt(arg);
+		SetConVarBool(g_CvarInvert, val != 0);
+		ReplyToCommand(client, "[QR] Invert is now %s", val != 0 ? "ON" : "OFF");
 	}
-	char arg[8]; GetCmdArg(1, arg, sizeof(arg));
-	int val = StringToInt(arg);
-	SetConVarBool(g_CvarInvert, val != 0);
-	ReplyToCommand(client, "[QR] Invert is now %s", val != 0 ? "ON" : "OFF");
 	return Plugin_Handled;
 }
 
@@ -135,14 +140,24 @@ public Action Command_QRCode(int client, int args, QRCommand cmd)
 	TrimString(text);
 	StripQuotes(text);
 
-	int ver;
-	if (!Nayuki_QrEncode(text, g_QrModules, ver)) {
+	int minVer = GetConVarInt(g_CvarMinVer);
+	int eclCvar = GetConVarInt(g_CvarEcl);
+	int forceEcl = (eclCvar >= 1 && eclCvar <= 4) ? eclCvar - 1 : -1;
+	if (forceEcl == -1 && eclCvar != 0) {
+		ReplyToCommand(client, "[QR] Invalid ECC. Use 0=auto, 1=L, 2=M, 3=Q, 4=H.");
+		return Plugin_Handled;
+	}
+
+	int ver, mode, ecl;
+	if (!Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl)) {
 		ReplyToCommand(client, "[QR] Payload too large.");
 		return Plugin_Handled;
 	}
 
+	static const char MODE_NAMES[][] = {"", "numeric", "alpha", "", "byte"};
+	static const char ECL_NAMES[][] = {"L", "M", "Q", "H"};
 	char status[256];
-	Format(status, sizeof(status), "[QR] Printed QR code for: %s (v%d)", text, ver);
+	Format(status, sizeof(status), "[QR] %s (v%d %s %s)", text, ver, MODE_NAMES[mode], ECL_NAMES[ecl]);
 	int actualSize = ver * 4 + 17;
 	PrintMatrixToConsole(client, actualSize, g_QrModules, status);
 	return Plugin_Handled;
