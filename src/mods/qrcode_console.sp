@@ -10,6 +10,7 @@
 #define QR_MAX_ECC_CODEWORDS 30
 #define QR_MAX_ALIGNMENT_POSITIONS 7
 #define QR_QUIET_ZONE 2
+#define QR_CONSOLE_MODULE_WIDTH 2
 #define QR_PRINT_LINE_LEN (((QR_MAX_SIZE + (QR_QUIET_ZONE * 2)) * 2) + 1)
 #define QR_INPUT_BUFFER_SIZE 1024
 #define QR_GF256_PRIMITIVE 0x11D
@@ -292,7 +293,7 @@ bool EncodeQrPayload(const char[] text, int textLen, int codewords[QR_MAX_RAW_CO
         if (textLen >= (1 << charCountBits))
             continue;
 
-        int payloadBits = usedAlphanumeric ? ((textLen * 11 + 1) / 2) : (textLen * 8);
+        int payloadBits = SegmentPayloadBits(mode, textLen);
         int totalBits = 4 + charCountBits + payloadBits;
 
         dataCodewords = GetNumDataCodewords(version);
@@ -319,27 +320,25 @@ bool EncodeQrPayload(const char[] text, int textLen, int codewords[QR_MAX_RAW_CO
 
     if (usedAlphanumeric)
     {
-        int accumData = 0;
-        int accumCount = 0;
+        int firstValue = -1;
 
         for (int i = 0; i < textLen; i++)
         {
             int val = AlphanumericValue(text[i]);
-            if (val < 0)
-                return false;
 
-            accumData = (accumData * 45) + val;
-            accumCount++;
-            if (accumCount == 2)
+            if (firstValue < 0)
             {
-                AppendBitsToBuffer(accumData, 11, data, dataCodewords, bitLen);
-                accumData = 0;
-                accumCount = 0;
+                firstValue = val;
+            }
+            else
+            {
+                AppendBitsToBuffer((firstValue * 45) + val, 11, data, dataCodewords, bitLen);
+                firstValue = -1;
             }
         }
 
-        if (accumCount > 0)
-            AppendBitsToBuffer(accumData, 6, data, dataCodewords, bitLen);
+        if (firstValue >= 0)
+            AppendBitsToBuffer(firstValue, 6, data, dataCodewords, bitLen);
     }
     else
     {
@@ -355,8 +354,12 @@ bool EncodeQrPayload(const char[] text, int textLen, int codewords[QR_MAX_RAW_CO
     AppendBitsToBuffer(0, terminatorBits, data, dataCodewords, bitLen);
     AppendBitsToBuffer(0, (8 - (bitLen % 8)) % 8, data, dataCodewords, bitLen);
 
-    for (int padByte = QR_PAD_BYTE_A; bitLen < dataCapacityBits; padByte ^= QR_PAD_BYTE_A ^ QR_PAD_BYTE_B)
+    int padByte = QR_PAD_BYTE_A;
+    while (bitLen < dataCapacityBits)
+    {
         AppendBitsToBuffer(padByte, 8, data, dataCodewords, bitLen);
+        padByte = (padByte == QR_PAD_BYTE_A) ? QR_PAD_BYTE_B : QR_PAD_BYTE_A;
+    }
 
     AddEccAndInterleave(data, dataCodewords, rawCodewords, version, codewords);
     return true;
@@ -398,16 +401,24 @@ int AlphanumericValue(char c)
 
 int NumCharCountBits(int mode, int version)
 {
-    int group = (version + 7) / 17;
+    int group = (version <= 9) ? 0 : 1;
 
     if (mode == QR_MODE_ALPHANUMERIC)
     {
-        static const int bits[3] = {9, 11, 13};
-        return bits[group];
+        static const int alphanumericBits[2] = {9, 11};
+        return alphanumericBits[group];
     }
 
-    static const int bits[3] = {8, 16, 16};
-    return bits[group];
+    static const int byteBits[2] = {8, 16};
+    return byteBits[group];
+}
+
+int SegmentPayloadBits(int mode, int length)
+{
+    if (mode == QR_MODE_ALPHANUMERIC)
+        return (length / 2) * 11 + (length % 2) * 6;
+
+    return length * 8;
 }
 
 int GetNumRawDataModules(int version)
@@ -447,7 +458,7 @@ void AddEccAndInterleave(const int data[QR_MAX_DATA_CODEWORDS], int dataLen, int
 {
     int numBlocks = QR_NUM_ERROR_CORRECTION_BLOCKS_LOW[version];
     int blockEccLen = QR_ECC_CODEWORDS_PER_BLOCK_LOW[version];
-    int numShortBlocks = numBlocks - (rawCodewords % numBlocks);
+    int numShorterBlocks = numBlocks - (rawCodewords % numBlocks);
     int shortBlockDataLen = rawCodewords / numBlocks - blockEccLen;
 
     for (int i = 0; i < rawCodewords; i++)
@@ -459,14 +470,14 @@ void AddEccAndInterleave(const int data[QR_MAX_DATA_CODEWORDS], int dataLen, int
     int dataOffset = 0;
     for (int i = 0; i < numBlocks; i++)
     {
-        int dataBlockLen = shortBlockDataLen + (i < numShortBlocks ? 0 : 1);
+        int dataBlockLen = shortBlockDataLen + (i < numShorterBlocks ? 0 : 1);
         int ecc[QR_MAX_ECC_CODEWORDS];
         ReedSolomonComputeRemainder(data, dataOffset, dataBlockLen, generator, blockEccLen, ecc);
 
         for (int j = 0, k = i; j < dataBlockLen; j++, k += numBlocks)
         {
             if (j == shortBlockDataLen)
-                k -= numShortBlocks;
+                k -= numShorterBlocks;
             result[k] = data[dataOffset + j];
         }
 
@@ -770,7 +781,7 @@ void PrintMatrixToConsole(int client, int qrSize, int modules[QR_MAX_SIZE][QR_MA
         for (int x = -quiet; x < qrSize + quiet; x++)
         {
             bool dark = (x >= 0 && x < qrSize && y >= 0 && y < qrSize && modules[y][x] == 1);
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < QR_CONSOLE_MODULE_WIDTH; i++)
                 line[pos++] = dark ? '#' : ' ';
         }
 
