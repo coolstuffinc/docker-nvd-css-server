@@ -785,6 +785,7 @@ void PrintMatrixToConsole(int client, int qrSize, int modules[QR_MAX_SIZE][QR_MA
             {
                 if (dark)
                 {
+                    // U+2588 FULL BLOCK (█), UTF-8: 0xE2 0x96 0x88
                     line[pos++] = 0xE2;
                     line[pos++] = 0x96;
                     line[pos++] = 0x88;
