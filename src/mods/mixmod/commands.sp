@@ -19,7 +19,6 @@ void Mix_InitCommands()
     RegConsoleCmd("sm_r", Mix_Command_Ready, "Set ready state (shortcut)");
     RegConsoleCmd("sm_notready", Mix_Command_NotReady, "Set unready state");
     RegConsoleCmd("sm_nr", Mix_Command_NotReady, "Set unready state (shortcut)");
-    RegConsoleCmd("sm_sp", Mix_Command_ShowHidePanel, "Toggle help panel");
     RegConsoleCmd("sm_help", Mix_Command_Help, "Show help");
 
     // 管理员命令
@@ -247,22 +246,6 @@ public Action Mix_Command_NotReady(int client, int args)
 /**
  * 显示/隐藏面板命令
  */
-public Action Mix_Command_ShowHidePanel(int client, int args)
-{
-    if (GetConVarInt(g_hCvarEnabled) == 1) {
-        g_bHidePanel[client] = !g_bHidePanel[client];
-
-        if (g_bHidePanel[client]) {
-            SetGlobalTransTarget(client);
-            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Panel Hidden");
-        } else {
-            SetGlobalTransTarget(client);
-            PrintToChat(client, "\x04[%s]:\x03 %t", MODNAME, "Panel Shown");
-        }
-    }
-    return Plugin_Handled;
-}
-
 /**
  * 显示帮助命令
  */

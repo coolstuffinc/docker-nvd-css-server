@@ -92,7 +92,7 @@ Action Mix_CreateReadyPanel()
     int total = readyCount + unreadyCount;
 
     for (int i = 1; i <= MaxClients; i++) {
-        if (IsClientInGame(i) && !IsFakeClient(i) && !g_bHidePanel[i]) {
+        if (IsClientInGame(i) && !IsFakeClient(i)) {
             char hintMsg[1024];
             char title[128], countLine[128], cmdLine[128], countLabel[64];
 

@@ -840,7 +840,6 @@ void Mix_HandleClientLeaving(int client, int userid)
     }
 
     Mix_ClearClientReadyState(client);
-    g_bHidePanel[client] = false;
     g_bGaggedPlayers[client] = false;
     g_bMutedPlayers[client] = false;
     g_iLastKnownHealth[client] = 0;

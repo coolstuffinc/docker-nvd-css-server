@@ -184,7 +184,6 @@ bool g_bKickCountdownActive = false;
 // =============================================================================
 Handle g_hHudTimer = INVALID_HANDLE;
 Handle g_hKickUnreadyTimer = INVALID_HANDLE;
-bool g_bHidePanel[MAXPLAYERS+1] = {false, ...};
 
 // =============================================================================
 // 统计口径相关
@@ -265,7 +264,6 @@ void Mix_ResetMatchState()
         g_iDeathsOfTheGame[i] = 0;
         g_bMutedPlayers[i] = false;
         g_bGaggedPlayers[i] = false;
-        g_bHidePanel[i] = false;
         g_iLastKnownHealth[i] = 0;
     }
 }
