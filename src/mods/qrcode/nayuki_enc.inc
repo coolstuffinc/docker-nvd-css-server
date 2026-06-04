@@ -108,7 +108,7 @@ stock int NQ_EncodeSegs(const int[] modes, const int[] nchars, const int[] blens
 	return ver;
 }
 
-stock bool Nayuki_QrEncodeEx(const char[] text, int modules[][NQ_MODULE_MAX], int &versionOut, int &modeOut, int &eclOut, int minVer=0, int forceEcl=-1) {
+stock bool Nayuki_QrEncodeEx(const char[] text, int modules[][NQ_MODULE_MAX], int &versionOut, int &modeOut, int &eclOut, int minVer=0, int forceEcl=-1, bool forceByte=false) {
 	int len = strlen(text);
 	if (len == 0)
 		return false;
@@ -116,7 +116,16 @@ stock bool Nayuki_QrEncodeEx(const char[] text, int modules[][NQ_MODULE_MAX], in
 	int mode, segNumChars, segBitLen;
 	int[] segData = new int[512];
 
-	if (NQ_IsNum(text)) {
+	if (forceByte) {
+		mode = 4;
+		segNumChars = len;
+		segBitLen = NQ_SegBitLen(mode, len);
+		if (segBitLen == -1)
+			return false;
+		int bl = 0;
+		for (int i = 0; i < len; i++)
+			NQ_AppendBits(text[i], 8, segData, bl);
+	} else if (NQ_IsNum(text)) {
 		mode = 1;
 		segNumChars = len;
 		segBitLen = NQ_SegBitLen(mode, len);

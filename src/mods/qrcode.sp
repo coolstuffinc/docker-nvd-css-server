@@ -41,6 +41,7 @@ ConVar g_CvarHudAliasEnabled;
 ConVar g_CvarInvert;
 ConVar g_CvarMinVer;
 ConVar g_CvarEcl;
+ConVar g_CvarForceByte;
 
 int g_QrModules[QR_MAX_SIZE][QR_MAX_SIZE];
 
@@ -52,6 +53,7 @@ Handle g_QrStreamPack = INVALID_HANDLE;
 Handle g_QrStreamTimer = INVALID_HANDLE;
 int g_QrStreamClient;
 bool g_QrStreamFirstRead = true;
+int g_QrStreamRowsLeft = 0;
 
 public Plugin myinfo = {
 	name = "QR Code",
@@ -73,6 +75,7 @@ public void OnPluginStart()
 	g_CvarInvert = CreateConVar("sm_qr_invert_setting", "0", "Invert QR (0=normal, 1=inverted)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	g_CvarMinVer = CreateConVar("sm_qr_minver", "0", "Minimum QR version (0=auto, 1-12)", FCVAR_PLUGIN, true, 0.0, true, 12.0);
 	g_CvarEcl = CreateConVar("sm_qr_ecl", "0", "Error correction (0=auto, 1=L, 2=M, 3=Q, 4=H)", FCVAR_PLUGIN, true, 0.0, true, 4.0);
+	g_CvarForceByte = CreateConVar("sm_qr_byte", "0", "Force byte mode (0=auto, 1=force byte)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 
 	RegConsoleCmd("sm_qrcode", Command_QRCodeMain, "Print QR code in console");
 	RegConsoleCmd("sm_qr", Command_QRCodeAlias, "Alias for sm_qrcode");
@@ -83,6 +86,8 @@ public void OnPluginStart()
 
 	RegConsoleCmd("sm_qrhud", Command_QRHudMain, "Show QR on HUD");
 	RegConsoleCmd("sm_qr_hud", Command_QRHudAlias, "Alias for sm_qrhud");
+
+	RegConsoleCmd("sm_qrdump", Command_QRDump, "Dump raw QR module grid to console");
 
 	AutoExecConfig(true, "plugin.qrcode");
 }
@@ -149,7 +154,8 @@ public Action Command_QRCode(int client, int args, QRCommand cmd)
 	}
 
 	int ver, mode, ecl;
-	if (!Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl)) {
+	bool forceByte = GetConVarBool(g_CvarForceByte);
+	if (!Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl, forceByte)) {
 		ReplyToCommand(client, "[QR] Payload too large.");
 		return Plugin_Handled;
 	}
@@ -157,9 +163,44 @@ public Action Command_QRCode(int client, int args, QRCommand cmd)
 	static const char MODE_NAMES[][] = {"", "numeric", "alpha", "", "byte"};
 	static const char ECL_NAMES[][] = {"L", "M", "Q", "H"};
 	char status[256];
-	Format(status, sizeof(status), "[QR] %s (v%d %s %s)", text, ver, MODE_NAMES[mode], ECL_NAMES[ecl]);
+	Format(status, sizeof(status), "[QR] v%d %s ECC %s", ver, MODE_NAMES[mode], ECL_NAMES[ecl]);
 	int actualSize = ver * 4 + 17;
 	PrintMatrixToConsole(client, actualSize, g_QrModules, status);
+	return Plugin_Handled;
+}
+
+public Action Command_QRDump(int client, int args)
+{
+	if (args < 1) { ReplyToCommand(client, "Usage: sm_qrdump <text>"); return Plugin_Handled; }
+	char text[QR_INPUT_BUFFER_SIZE];
+	GetCmdArgString(text, sizeof(text));
+	TrimString(text);
+	StripQuotes(text);
+
+	int minVer = GetConVarInt(g_CvarMinVer);
+	int eclCvar = GetConVarInt(g_CvarEcl);
+	int forceEcl = (eclCvar >= 1 && eclCvar <= 4) ? eclCvar - 1 : -1;
+	int ver, mode, ecl;
+	bool forceByte = GetConVarBool(g_CvarForceByte);
+	if (!Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl, forceByte)) {
+		ReplyToCommand(client, "[QR] Payload too large.");
+		return Plugin_Handled;
+	}
+
+	static const char MODE_NAMES[][] = {"", "numeric", "alpha", "", "byte"};
+	static const char ECL_NAMES[][] = {"L", "M", "Q", "H"};
+	ReplyToCommand(client, "[DUMP] v%d %s ECC %s size=%d", ver, MODE_NAMES[mode], ECL_NAMES[ecl], ver*4+17);
+
+	int sz = ver * 4 + 17;
+	for (int y = 0; y < sz; y++) {
+		char line[128];
+		int pos = 0;
+		for (int x = 0; x < sz; x++) {
+			line[pos++] = (g_QrModules[y][x] != 0) ? 'X' : '.';
+		}
+		line[pos] = '\0';
+		PrintToServer(line);
+	}
 	return Plugin_Handled;
 }
 
@@ -216,6 +257,10 @@ void PrintMatrixToConsole(int client, int qrSize, const int modules[][QR_MAX_SIZ
 	int quiet = 2;
 	int qlen = qrSize + quiet * 2;
 	int termRows = (qlen + 1) / 2;
+	
+	int numStatus = (strlen(status) > 0) ? 1 : 0;
+	WritePackCell(g_QrStreamPack, termRows + numStatus);
+
 	for (int ty = 0; ty < termRows; ty++) {
 		char row[QR_MAX_SIZE * 8 + 16];
 		int pos = 0;
@@ -255,15 +300,19 @@ public Action Timer_PrintQrRow(Handle timer)
 
 	if (g_QrStreamFirstRead) {
 		g_QrStreamClient = ReadPackCell(g_QrStreamPack);
+		g_QrStreamRowsLeft = ReadPackCell(g_QrStreamPack);
 		g_QrStreamFirstRead = false;
 	}
 
-	char row[QR_MAX_SIZE * 4 + 64];
-	if (!ReadPackString(g_QrStreamPack, row, sizeof(row))) {
+	if (g_QrStreamRowsLeft <= 0) {
 		CloseHandle(g_QrStreamPack); g_QrStreamPack = INVALID_HANDLE;
 		g_QrStreamTimer = INVALID_HANDLE;
 		return Plugin_Stop;
 	}
+
+	char row[QR_MAX_SIZE * 4 + 64];
+	ReadPackString(g_QrStreamPack, row, sizeof(row));
+	g_QrStreamRowsLeft--;
 
 	if (g_QrStreamClient > 0 && IsClientInGame(g_QrStreamClient))
 		PrintToConsole(g_QrStreamClient, "%s", row);
