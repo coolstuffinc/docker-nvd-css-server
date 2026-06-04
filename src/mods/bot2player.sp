@@ -234,10 +234,28 @@ public Action:OnPlayerRunCmd(iClient, &buttons, &impulse, Float:vel[3], Float:an
 		new Handle:NoEndRoundHandle = FindConVar("mp_ignore_round_win_conditions")
 		if (TeamMatesAlive == 1)
 		{
-			SetConVarInt(NoEndRoundHandle, 1)
+		SetConVarInt(NoEndRoundHandle, 1)
+	}
+	// Switch bot away from grenades before killing it to prevent dropped live nades
+	decl String:activeWeapon[32];
+	Client_GetActiveWeaponName(iTarget, activeWeapon, sizeof(activeWeapon));
+	if (StrContains(activeWeapon, "weapon_hegrenade") != -1
+		|| StrContains(activeWeapon, "weapon_flashbang") != -1
+		|| StrContains(activeWeapon, "weapon_smokegrenade") != -1)
+	{
+		if (iTargetWeapon[0] > 0 && IsValidEntity(iTargetWeapon[0]))
+			Client_SetActiveWeapon(iTarget, iTargetWeapon[0]);
+		else if (iTargetWeapon[1] > 0 && IsValidEntity(iTargetWeapon[1]))
+			Client_SetActiveWeapon(iTarget, iTargetWeapon[1]);
+		else
+		{
+			new knife = GetPlayerWeaponSlot(iTarget, 2);
+			if (knife > 0 && IsValidEntity(knife))
+				Client_SetActiveWeapon(iTarget, knife);
 		}
-		ForcePlayerSuicide(iTarget)
-		CS_RespawnPlayer(iClient)
+	}
+	ForcePlayerSuicide(iTarget)
+	CS_RespawnPlayer(iClient)
 		
 		new Handle:pack;
 		CreateDataTimer(0.1, Timer_TeleportPlayer, pack);
