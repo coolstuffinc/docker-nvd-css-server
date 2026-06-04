@@ -11,7 +11,7 @@
 #define QR_MAX_ALIGNMENT_POSITIONS 7
 #define QR_QUIET_ZONE 2
 #define QR_CONSOLE_MODULE_WIDTH 2
-#define QR_PRINT_LINE_LEN (((QR_MAX_SIZE + (QR_QUIET_ZONE * 2)) * 2) + 1)
+#define QR_PRINT_LINE_LEN (((QR_MAX_SIZE + (QR_QUIET_ZONE * 2)) * QR_CONSOLE_MODULE_WIDTH * 3) + 1)
 #define QR_INPUT_BUFFER_SIZE 1024
 #define QR_GF256_PRIMITIVE 0x11D
 #define QR_FORMAT_POLYNOMIAL 0x537
@@ -20,7 +20,7 @@
 #define QR_PAD_BYTE_A 0xEC
 #define QR_PAD_BYTE_B 0x11
 #define QR_DEFAULT_REQUIRED_FLAG "b"
-#define QR_PLUGIN_VERSION "1.2.0"
+#define QR_PLUGIN_VERSION "1.2.1"
 #define QR_MASK 0
 #define QR_ECC_LEVEL_LOW_FORMAT_BITS 1
 #define QR_MODE_ALPHANUMERIC 0x2
@@ -782,7 +782,18 @@ void PrintMatrixToConsole(int client, int qrSize, int modules[QR_MAX_SIZE][QR_MA
         {
             bool dark = (x >= 0 && x < qrSize && y >= 0 && y < qrSize && modules[y][x] == 1);
             for (int i = 0; i < QR_CONSOLE_MODULE_WIDTH; i++)
-                line[pos++] = dark ? '#' : ' ';
+            {
+                if (dark)
+                {
+                    line[pos++] = 0xE2;
+                    line[pos++] = 0x96;
+                    line[pos++] = 0x88;
+                }
+                else
+                {
+                    line[pos++] = ' ';
+                }
+            }
         }
 
         line[pos] = '\0';
