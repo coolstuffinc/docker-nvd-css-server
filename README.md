@@ -43,7 +43,21 @@ docker run -d --name css-server \
 This server includes an AI Admin assistant powered by Ollama. For detailed setup and troubleshooting, see [AI_ADMIN.md](AI_ADMIN.md).
 
 Compiled from `src/` during build:
-- bot2player, botdropbomb, enemies_left, forceroundend, givecash, llama_admin, mixmod, playerstacker
+- bot2player, botdropbomb, enemies_left, forceroundend, givecash, llama_admin, mixmod, playerstacker, qrcode_console
+
+## QR Code Plugin
+
+`qrcode_console` adds:
+- `sm_qrcode <text>`
+- `sm_qr <text>`
+- Admin controls:
+  - `sm_qrcode_allowcmd <sm_qrcode|sm_qr|all>`
+  - `sm_qrcode_disallowcmd <sm_qrcode|sm_qr|all>`
+  - `sm_qrcode_listcmd`
+
+The plugin prints an ASCII QR code into the caller's console (or server console) using a pure SourcePawn QR implementation inspired by Nayuki's QR generator.
+It now auto-selects QR versions 1-12 (ECC level L), supports up to 512 alphanumeric characters (PIX-friendly), and up to 367 bytes in byte mode.
+It is now configurable as a standalone-ready module through auto-generated cvars in `cfg/sourcemod/plugin.qrcode_console.cfg` (global enable, per-command enable, and public/admin access mode).
 
 Pre-compiled from the `assets` branch:
 - voicecomm, rankme, save_scores
