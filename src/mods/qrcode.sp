@@ -87,8 +87,6 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_qrhud", Command_QRHudMain, "Show QR on HUD");
 	RegConsoleCmd("sm_qr_hud", Command_QRHudAlias, "Alias for sm_qrhud");
 
-	RegConsoleCmd("sm_qrdump", Command_QRDump, "Dump raw QR module grid to console");
-
 	AutoExecConfig(true, "plugin.qrcode");
 }
 
@@ -155,8 +153,13 @@ public Action Command_QRCode(int client, int args, QRCommand cmd)
 
 	int ver, mode, ecl;
 	bool forceByte = GetConVarBool(g_CvarForceByte);
-	if (!Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl, forceByte)) {
-		ReplyToCommand(client, "[QR] Payload too large.");
+    
+    // Explicitly test encoding first
+    bool success = Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl, forceByte);
+    PrintToServer("[QR DEBUG] Encode success: %d, Ver: %d", success, ver);
+    
+	if (!success) {
+		ReplyToCommand(client, "[QR] Encode fail.");
 		return Plugin_Handled;
 	}
 
@@ -169,40 +172,6 @@ public Action Command_QRCode(int client, int args, QRCommand cmd)
 	return Plugin_Handled;
 }
 
-public Action Command_QRDump(int client, int args)
-{
-	if (args < 1) { ReplyToCommand(client, "Usage: sm_qrdump <text>"); return Plugin_Handled; }
-	char text[QR_INPUT_BUFFER_SIZE];
-	GetCmdArgString(text, sizeof(text));
-	TrimString(text);
-	StripQuotes(text);
-
-	int minVer = GetConVarInt(g_CvarMinVer);
-	int eclCvar = GetConVarInt(g_CvarEcl);
-	int forceEcl = (eclCvar >= 1 && eclCvar <= 4) ? eclCvar - 1 : -1;
-	int ver, mode, ecl;
-	bool forceByte = GetConVarBool(g_CvarForceByte);
-	if (!Nayuki_QrEncodeEx(text, g_QrModules, ver, mode, ecl, minVer, forceEcl, forceByte)) {
-		ReplyToCommand(client, "[QR] Payload too large.");
-		return Plugin_Handled;
-	}
-
-	static const char MODE_NAMES[][] = {"", "numeric", "alpha", "", "byte"};
-	static const char ECL_NAMES[][] = {"L", "M", "Q", "H"};
-	ReplyToCommand(client, "[DUMP] v%d %s ECC %s size=%d", ver, MODE_NAMES[mode], ECL_NAMES[ecl], ver*4+17);
-
-	int sz = ver * 4 + 17;
-	for (int y = 0; y < sz; y++) {
-		char line[128];
-		int pos = 0;
-		for (int x = 0; x < sz; x++) {
-			line[pos++] = (g_QrModules[y][x] != 0) ? 'X' : '.';
-		}
-		line[pos] = '\0';
-		PrintToServer(line);
-	}
-	return Plugin_Handled;
-}
 
 public Action Command_QRHud(int client, int args, QRCommand cmd)
 {

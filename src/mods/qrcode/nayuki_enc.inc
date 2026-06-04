@@ -74,6 +74,7 @@ stock int NQ_EncodeSegs(const int[] modes, const int[] nchars, const int[] blens
 	for (int i = 0; i < nsegs; i++) {
 		NQ_AppendBits(modes[i], 4, tempbuf, bitLen);
 		NQ_AppendBits(nchars[i], NQ_CharCountBits(modes[i], ver), tempbuf, bitLen);
+		// Copy bits directly from segData
 		for (int j = 0; j < blens[i]; j++) {
 			int b = (segData[j >> 3] >> (7 - (j & 7))) & 1;
 			NQ_AppendBits(b, 1, tempbuf, bitLen);

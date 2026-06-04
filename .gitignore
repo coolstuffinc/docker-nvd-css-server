@@ -1,3 +1,10 @@
 .vagrant/machines/
 test/
 build.log
+IDEAS.md
+ambuild/
+extension/
+sourcemod/
+*.smx
+*.png
+tools/
