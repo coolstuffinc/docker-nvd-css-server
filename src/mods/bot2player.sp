@@ -254,6 +254,16 @@ public Action:OnPlayerRunCmd(iClient, &buttons, &impulse, Float:vel[3], Float:an
 				Client_SetActiveWeapon(iTarget, knife);
 		}
 	}
+	// Remove grenade weapons from bot before killing to prevent cooked nade drops
+	for (new slot = 3; slot <= 4; slot++)
+	{
+		new nade = GetPlayerWeaponSlot(iTarget, slot);
+		if (nade > 0 && IsValidEntity(nade))
+		{
+			RemovePlayerItem(iTarget, nade);
+			AcceptEntityInput(nade, "kill");
+		}
+	}
 	ForcePlayerSuicide(iTarget)
 	CS_RespawnPlayer(iClient)
 		
@@ -514,6 +524,39 @@ public Action:Timer_TeleportPlayer(Handle:timer, any:pack)
 		iTargetAngles[2] = ReadPackFloat(pack);
 		
 		TeleportEntity(iClient, iTargetOrigin, iTargetAngles, NULL_VECTOR);
+
+		// Quick 1-2-1 weapon switch to fix spectator crosshair/view
+		CreateTimer(0.05, Timer_QuickSwitch, iClient);
 	}
+}
+
+public Action:Timer_QuickSwitch(Handle:timer, any:iClient)
+{
+	if (!IsClientInGame(iClient) || !IsPlayerAlive(iClient)) return Plugin_Continue;
+	new knife = GetPlayerWeaponSlot(iClient, 2);
+	if (knife > 0 && IsValidEntity(knife))
+	{
+		Client_SetActiveWeapon(iClient, knife);
+	}
+	CreateTimer(0.05, Timer_RestoreWeapon, iClient);
+	return Plugin_Continue;
+}
+
+public Action:Timer_RestoreWeapon(Handle:timer, any:iClient)
+{
+	if (!IsClientInGame(iClient) || !IsPlayerAlive(iClient)) return Plugin_Continue;
+	// Restore the best weapon: primary first, then secondary
+	new weapon = GetPlayerWeaponSlot(iClient, 0);
+	if (weapon > 0 && IsValidEntity(weapon))
+	{
+		Client_SetActiveWeapon(iClient, weapon);
+		return Plugin_Continue;
+	}
+	weapon = GetPlayerWeaponSlot(iClient, 1);
+	if (weapon > 0 && IsValidEntity(weapon))
+	{
+		Client_SetActiveWeapon(iClient, weapon);
+	}
+	return Plugin_Continue;
 }
 
