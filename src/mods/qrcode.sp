@@ -42,6 +42,7 @@ ConVar g_CvarInvert;
 ConVar g_CvarMinVer;
 ConVar g_CvarEcl;
 ConVar g_CvarForceByte;
+ConVar g_CvarRenderMode;
 
 int g_QrModules[QR_MAX_SIZE][QR_MAX_SIZE];
 
@@ -76,6 +77,7 @@ public void OnPluginStart()
 	g_CvarMinVer = CreateConVar("sm_qr_minver", "0", "Minimum QR version (0=auto, 1-12)", FCVAR_PLUGIN, true, 0.0, true, 12.0);
 	g_CvarEcl = CreateConVar("sm_qr_ecl", "0", "Error correction (0=auto, 1=L, 2=M, 3=Q, 4=H)", FCVAR_PLUGIN, true, 0.0, true, 4.0);
 	g_CvarForceByte = CreateConVar("sm_qr_byte", "0", "Force byte mode (0=auto, 1=force byte)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	g_CvarRenderMode = CreateConVar("sm_qr_render_mode", "1", "Render mode: 0=Half-block (█▀▄), 1=Full-block (██)", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 
 	RegConsoleCmd("sm_qrcode", Command_QRCodeMain, "Print QR code in console");
 	RegConsoleCmd("sm_qr", Command_QRCodeAlias, "Alias for sm_qrcode");
@@ -224,36 +226,65 @@ void PrintMatrixToConsole(int client, int qrSize, const int modules[][QR_MAX_SIZ
 	WritePackCell(g_QrStreamPack, client);
 
 	int quiet = 2;
-	int qlen = qrSize + quiet * 2;
-	int termRows = (qlen + 1) / 2;
+	bool fullBlock = GetConVarBool(g_CvarRenderMode);
 	
-	int numStatus = (strlen(status) > 0) ? 1 : 0;
-	WritePackCell(g_QrStreamPack, termRows + numStatus);
+	if (fullBlock) {
+		int qlen = qrSize + quiet * 2;
+		int numStatus = (strlen(status) > 0) ? 1 : 0;
+		WritePackCell(g_QrStreamPack, qlen + numStatus);
 
-	for (int ty = 0; ty < termRows; ty++) {
-		char row[QR_MAX_SIZE * 8 + 16];
-		int pos = 0;
+		for (int y = -quiet; y < qrSize + quiet; y++) {
+			char row[QR_MAX_SIZE * 4 + 32];
+			int pos = 0;
 
-		int rowNum = ty + 1;
-		char prefix[8];
-		Format(prefix, sizeof(prefix), "R%02d ", rowNum);
-		for (int i = 0; prefix[i] != '\0'; i++)
-			row[pos++] = prefix[i];
+			int rowNum = y + quiet + 1;
+			char prefix[8];
+			Format(prefix, sizeof(prefix), "R%02d ", rowNum);
+			for (int i = 0; prefix[i] != '\0'; i++)
+				row[pos++] = prefix[i];
 
-		bool invert = GetConVarBool(g_CvarInvert);
-		for (int x = -quiet; x < qrSize + quiet; x++) {
-			int yTop = ty * 2 - quiet;
-			int yBot = ty * 2 + 1 - quiet;
-			bool topDark = (x >= 0 && x < qrSize && yTop >= 0 && yTop < qrSize && modules[yTop][x] == 1);
-			bool botDark = (x >= 0 && x < qrSize && yBot >= 0 && yBot < qrSize && modules[yBot][x] == 1);
-			if (invert) { topDark = !topDark; botDark = !botDark; }
-			if (topDark && botDark) { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x88; }
-			else if (topDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x80; }
-			else if (botDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x84; }
-			else                    { row[pos++] = ' '; }
+			bool invert = GetConVarBool(g_CvarInvert);
+			for (int x = -quiet; x < qrSize + quiet; x++) {
+				bool dark = (x >= 0 && x < qrSize && y >= 0 && y < qrSize && modules[y][x] == 1);
+				if (invert) dark = !dark;
+				if (dark) { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x88; }
+				else      { row[pos++] = ' '; row[pos++] = ' '; }
+			}
+			row[pos] = '\0';
+			WritePackString(g_QrStreamPack, row);
 		}
-		row[pos] = '\0';
-		WritePackString(g_QrStreamPack, row);
+	} else {
+		int qlen = qrSize + quiet * 2;
+		int termRows = (qlen + 1) / 2;
+		
+		int numStatus = (strlen(status) > 0) ? 1 : 0;
+		WritePackCell(g_QrStreamPack, termRows + numStatus);
+
+		for (int ty = 0; ty < termRows; ty++) {
+			char row[QR_MAX_SIZE * 8 + 16];
+			int pos = 0;
+
+			int rowNum = ty + 1;
+			char prefix[8];
+			Format(prefix, sizeof(prefix), "R%02d ", rowNum);
+			for (int i = 0; prefix[i] != '\0'; i++)
+				row[pos++] = prefix[i];
+
+			bool invert = GetConVarBool(g_CvarInvert);
+			for (int x = -quiet; x < qrSize + quiet; x++) {
+				int yTop = ty * 2 - quiet;
+				int yBot = ty * 2 + 1 - quiet;
+				bool topDark = (x >= 0 && x < qrSize && yTop >= 0 && yTop < qrSize && modules[yTop][x] == 1);
+				bool botDark = (x >= 0 && x < qrSize && yBot >= 0 && yBot < qrSize && modules[yBot][x] == 1);
+				if (invert) { topDark = !topDark; botDark = !botDark; }
+				if (topDark && botDark) { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x88; }
+				else if (topDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x80; }
+				else if (botDark)       { row[pos++] = 0xE2; row[pos++] = 0x96; row[pos++] = 0x84; }
+				else                    { row[pos++] = ' '; }
+			}
+			row[pos] = '\0';
+			WritePackString(g_QrStreamPack, row);
+		}
 	}
 
 	if (strlen(status) > 0)
