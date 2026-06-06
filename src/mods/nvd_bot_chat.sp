@@ -649,15 +649,23 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         eventOnly[mapaPos] = '\0';
     
     // User: apenas instrucao simples
-    char fullPrompt[128];
-    strcopy(fullPrompt, sizeof(fullPrompt), "Reaja como jogador");
+    char fullPrompt[256];
+    if (targetMention[0])
+        Format(fullPrompt, sizeof(fullPrompt), "Fale como %s sobre %s.", botName, targetMention);
+    else
+        Format(fullPrompt, sizeof(fullPrompt), "Fale como %s.", botName);
     
     // System: tudo (estado + evento + instrucoes)
     char mapName[64];
     GetCurrentMap(mapName, sizeof(mapName));
     
     char gameState[64];
-    if (scoreStatus[0] != '\0')
+    // Round events: usa o mood em vez do placar geral
+    if (StrContains(mood, "Comemore") != -1)
+        strcopy(gameState, sizeof(gameState), "Acabou de vencer o round");
+    else if (StrContains(mood, "Reclame") != -1)
+        strcopy(gameState, sizeof(gameState), "Acabou de perder o round");
+    else if (scoreStatus[0] != '\0')
         strcopy(gameState, sizeof(gameState), scoreStatus[1]);
     else
         gameState[0] = '\0';
@@ -671,7 +679,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     
     char sysPrompt[1024];
     Format(sysPrompt, sizeof(sysPrompt),
-        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s %s This is a GAME - act like a real CS player. ONE short sentence. Use @ for others. Never @ yourself. No hashtags. No filter. BR Portuguese slang.",
+        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s %s This is a GAME - act like a real CS player. ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky - act like you know youll win. No filter. BR Portuguese slang.",
         botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState, eventStr);
 
     char timeBuf[32];
