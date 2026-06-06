@@ -101,8 +101,9 @@ public int Native_AskAI(Handle plugin, int numParams)
     payload.SetBool("stream", false);
     g_HttpClient.Post(url, payload, OnOllamaResponse, slot);
     
-    // Timer de segurança: força a liberação do slot se demorar mais que 10s
-    CreateTimer(10.0, Timer_SafetyTimeout, slot, TIMER_FLAG_NO_MAPCHANGE);
+    // Timer de segurança: força a liberação do slot se demorar mais que 30s
+    // (modelos pequenos podem levar ~10s para carregar na VRAM)
+    CreateTimer(30.0, Timer_SafetyTimeout, slot, TIMER_FLAG_NO_MAPCHANGE);
     
     delete payload;
     return 1;
@@ -113,7 +114,8 @@ public Action Timer_SafetyTimeout(Handle timer, any slotId)
     Function callback; any cbData; Handle callerPlugin;
     if (FreeSlot(slotId, callback, cbData, callerPlugin))
     {
-        LogError("NVD Core: Request timed out for slot %d", slotId);
+        LogError("NVD Core: Request timed out for slot %d after 30s", slotId);
+        PrintToServer("[NVD] ⚠️ Ollama request timed out (30s). Check if model is loaded: curl http://127.0.0.1:11433/api/tags");
         // Notifica o plugin chamador que houve timeout
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
