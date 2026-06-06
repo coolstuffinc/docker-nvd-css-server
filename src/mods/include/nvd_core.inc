@@ -22,6 +22,12 @@ native void NVD_AskAI(const char[] prompt, const char[] systemPrompt, NVD_Respon
  */
 native bool NVD_CanRequest(int client);
 
+/**
+ * Polls for a pending AI response.
+ * Returns true if a response was available, false otherwise.
+ */
+native bool NVD_PollResponse(char[] reply, int maxlen, any &cbData);
+
 public SharedPlugin __pl_nvd_core = 
 {
 	name = "nvd_core",
