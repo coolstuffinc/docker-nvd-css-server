@@ -633,9 +633,9 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     else if (StrContains(localContext, "eliminado") != -1)
     {
         if (targetMention[0])
-            Format(mood, sizeof(mood), "Brigue de brincadeira com %s", targetMention);
+            Format(mood, sizeof(mood), "Finja insultar %s", targetMention);
         else
-            strcopy(mood, sizeof(mood), "Brigue de brincadeira");
+            strcopy(mood, sizeof(mood), "Finja insultar");
     }
     else if (StrContains(localContext, "venceu") != -1)
     {
@@ -673,9 +673,9 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     // Evento (sem estado duplicado)
     char eventStr[768];
     if (eventOnly[0])
-        Format(eventStr, sizeof(eventStr), "%s%s %s.", eventOnly, scoreStatus, mood);
+        Format(eventStr, sizeof(eventStr), "%s%s", eventOnly, scoreStatus);
     else
-        Format(eventStr, sizeof(eventStr), "%s%s %s.", localContext, scoreStatus, mood);
+        Format(eventStr, sizeof(eventStr), "%s%s", localContext, scoreStatus);
     
     // Determina tipo de evento para o template
     char eventType[32];
@@ -691,6 +691,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     char sysPrompt[1024];
     char fullPrompt[256];
     
+
     if (GetPromptTemplate(eventType, "system", sysPrompt, sizeof(sysPrompt),
         botName, botTeamName, targetMention, gameState, eventStr, mood,
         g_CurrentRound, tScore, ctScore))
@@ -930,6 +931,7 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
     if (template[0] == '\0')
         return false;
     
+
     ReplaceString(template, sizeof(template), "{bot}", bot);
     ReplaceString(template, sizeof(template), "{team}", team);
     ReplaceString(template, sizeof(template), "{target}", target);
