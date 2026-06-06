@@ -24,8 +24,8 @@
         "ump45"     { "name" "UMP" }
         "mp5navy"   { "name" "MP5" }
         "p90"       { "name" "P90" }
-        "m3"        { "name" "doze" }
-        "xm1014"    { "name" "doze" }
+        "m3"        { "name" "doze punhetera" }
+        "xm1014"    { "name" "doze automatica" }
         "g3sg1"     { "name" "teco-teco" }
     }
 
