@@ -68,62 +68,65 @@ public void OnMapStart()
 // Mapa de armas para nomes mais amigaveis
 void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
 {
-	char base[32];
-	strcopy(base, sizeof(base), weapon);
-	
-	bool headshot = false;
-	int hsPos = StrContains(base, " HS");
-	if (hsPos != -1)
-	{
-		base[hsPos] = '\0';
-		headshot = true;
-	}
-	
-	if (StrEqual(base, "ak47")) strcopy(output, maxlen, "AK");
-	else if (StrEqual(base, "m4a1")) strcopy(output, maxlen, "M4");
-	else if (StrEqual(base, "awp")) strcopy(output, maxlen, "AWP");
-	else if (StrEqual(base, "deagle")) strcopy(output, maxlen, "deagle");
-	else if (StrEqual(base, "glock")) strcopy(output, maxlen, "glock");
-	else if (StrEqual(base, "usp")) strcopy(output, maxlen, "usp");
-	else if (StrEqual(base, "p228")) strcopy(output, maxlen, "p228");
-	else if (StrEqual(base, "hegrenade")) strcopy(output, maxlen, "granada");
-	else if (StrEqual(base, "flashbang")) strcopy(output, maxlen, "flash");
-	else if (StrEqual(base, "smokegrenade")) strcopy(output, maxlen, "smoke");
-	else if (StrEqual(base, "knife")) strcopy(output, maxlen, "faca");
-	else if (StrEqual(base, "scout")) strcopy(output, maxlen, "scout");
-	else if (StrEqual(base, "sg552")) strcopy(output, maxlen, "SG");
-	else if (StrEqual(base, "aug")) strcopy(output, maxlen, "AUG");
-	else if (StrEqual(base, "m249")) strcopy(output, maxlen, "M249");
-	else if (StrEqual(base, "tmp")) strcopy(output, maxlen, "TMP");
-	else if (StrEqual(base, "mac10")) strcopy(output, maxlen, "MAC10");
-	else if (StrEqual(base, "ump45")) strcopy(output, maxlen, "UMP");
-	else if (StrEqual(base, "mp5navy")) strcopy(output, maxlen, "MP5");
-	else if (StrEqual(base, "p90")) strcopy(output, maxlen, "P90");
-	else if (StrEqual(base, "famas")) strcopy(output, maxlen, "famas");
-	else if (StrEqual(base, "galil")) strcopy(output, maxlen, "galil");
-	else if (StrEqual(base, "m3")) strcopy(output, maxlen, "doze");
-	else if (StrEqual(base, "xm1014")) strcopy(output, maxlen, "doze");
-	else strcopy(output, maxlen, base);
-	
-	if (headshot)
-		Format(output, maxlen, "%s HS", output); // Mantem HS dentro, fica "M4 HS"
+    char base[32];
+    strcopy(base, sizeof(base), weapon);
+    
+    bool headshot = false;
+    int hsPos = StrContains(base, " HS");
+    if (hsPos != -1)
+    {
+        base[hsPos] = '\0';
+        headshot = true;
+    }
+    
+    // Tenta ler do config weapons primeiro
+    if (g_PromptKV != null)
+    {
+        char kvName[32];
+        g_PromptKV.Rewind();
+        if (g_PromptKV.JumpToKey("weapons") && g_PromptKV.JumpToKey(base))
+        {
+            g_PromptKV.GetString("name", kvName, sizeof(kvName));
+            if (kvName[0] != '\0')
+            {
+                strcopy(output, maxlen, kvName);
+                if (headshot)
+                    Format(output, maxlen, "%s HS", output);
+                return;
+            }
+        }
+    }
+    
+    // Fallback hardcoded
+    if (StrEqual(base, "ak47")) strcopy(output, maxlen, "AK");
+    else if (StrEqual(base, "m4a1")) strcopy(output, maxlen, "M4");
+    else if (StrEqual(base, "awp")) strcopy(output, maxlen, "AWP");
+    else if (StrEqual(base, "deagle")) strcopy(output, maxlen, "deagle");
+    else if (StrEqual(base, "glock")) strcopy(output, maxlen, "glock");
+    else if (StrEqual(base, "usp")) strcopy(output, maxlen, "usp");
+    else if (StrEqual(base, "p228")) strcopy(output, maxlen, "p228");
+    else if (StrEqual(base, "hegrenade")) strcopy(output, maxlen, "granada");
+    else if (StrEqual(base, "flashbang")) strcopy(output, maxlen, "flash");
+    else if (StrEqual(base, "smokegrenade")) strcopy(output, maxlen, "smoke");
+    else if (StrEqual(base, "knife")) strcopy(output, maxlen, "faca");
+    else if (StrEqual(base, "scout")) strcopy(output, maxlen, "scout");
+    else if (StrEqual(base, "sg552")) strcopy(output, maxlen, "SG");
+    else if (StrEqual(base, "aug")) strcopy(output, maxlen, "AUG");
+    else if (StrEqual(base, "m249")) strcopy(output, maxlen, "M249");
+    else if (StrEqual(base, "tmp")) strcopy(output, maxlen, "TMP");
+    else if (StrEqual(base, "mac10")) strcopy(output, maxlen, "MAC10");
+    else if (StrEqual(base, "ump45")) strcopy(output, maxlen, "UMP");
+    else if (StrEqual(base, "mp5navy")) strcopy(output, maxlen, "MP5");
+    else if (StrEqual(base, "p90")) strcopy(output, maxlen, "P90");
+    else if (StrEqual(base, "famas")) strcopy(output, maxlen, "famas");
+    else if (StrEqual(base, "galil")) strcopy(output, maxlen, "galil");
+    else if (StrEqual(base, "m3")) strcopy(output, maxlen, "doze");
+    else if (StrEqual(base, "xm1014")) strcopy(output, maxlen, "doze");
+    else strcopy(output, maxlen, base);
+    
+    if (headshot)
+        Format(output, maxlen, "%s HS", output);
 }
-
-// Pega o nome da area/andar do mapa onde o jogador esta
-void GetPlayerLocation(int client, char[] buffer, int maxlen)
-{
-	if (client > 0 && IsClientInGame(client))
-	{
-		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", buffer, maxlen);
-		if (buffer[0] == '\0')
-			strcopy(buffer, maxlen, "");
-	}
-	else
-	{
-		buffer[0] = '\0';
-	}
-}
-
 void BuildContext(char[] buffer, int maxlen, const char[] event, 
 	int mainClient = -1, int targetClient = -1, const char[] weapon = "")
 {
@@ -253,6 +256,20 @@ void BuildContext(char[] buffer, int maxlen, const char[] event,
 		pos += Format(buffer[pos], maxlen - pos, ", bomba plantada");
 	
 	pos += Format(buffer[pos], maxlen - pos, "%s.", clutchTag);
+}
+
+void GetPlayerLocation(int client, char[] buffer, int maxlen)
+{
+	if (client > 0 && IsClientInGame(client))
+	{
+		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", buffer, maxlen);
+		if (buffer[0] == '\0')
+			strcopy(buffer, maxlen, "");
+	}
+	else
+	{
+		buffer[0] = '\0';
+	}
 }
 
 // ============================================================================

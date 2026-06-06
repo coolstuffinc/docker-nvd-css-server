@@ -1,13 +1,42 @@
 "BotChatPrompts"
 {
+    "weapons"
+    {
+        "ak47"      { "name" "AK" }
+        "m4a1"      { "name" "M4" }
+        "awp"       { "name" "AWP" }
+        "deagle"    { "name" "deagle" }
+        "glock"     { "name" "glock" }
+        "usp"       { "name" "usp" }
+        "p228"      { "name" "p228" }
+        "hegrenade" { "name" "granada" }
+        "flashbang" { "name" "flash" }
+        "smokegrenade" { "name" "smoke" }
+        "knife"     { "name" "faca" }
+        "scout"     { "name" "scout" }
+        "sg552"     { "name" "SG" }
+        "famas"     { "name" "famas" }
+        "galil"     { "name" "galil" }
+        "aug"       { "name" "AUG" }
+        "m249"      { "name" "M249" }
+        "tmp"       { "name" "TMP" }
+        "mac10"     { "name" "MAC10" }
+        "ump45"     { "name" "UMP" }
+        "mp5navy"   { "name" "MP5" }
+        "p90"       { "name" "P90" }
+        "m3"        { "name" "doze" }
+        "xm1014"    { "name" "doze" }
+        "g3sg1"     { "name" "teco-teco" }
+    }
+
     "kill"
     {
-        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky. No filter. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky - act like you know youll win. No filter. BR Portuguese slang."
         "user" "Fale como {bot} sobre {target}."
     }
     "death"
     {
-        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky. No filter. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky - act like you know youll win. No filter. BR Portuguese slang."
         "user" "Fale como {bot} sobre {target}."
     }
     "round_start"
