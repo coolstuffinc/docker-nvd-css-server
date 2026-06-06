@@ -632,7 +632,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     
     char sysPrompt[640];
     Format(sysPrompt, sizeof(sysPrompt),
-        "You are %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. ALWAYS use @Nome to address the person. PORTUGUESE only.",
+        "You are %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. ALWAYS use @Nome for OTHERS. Never yourself. PORTUGUESE only.",
         botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState);
 
     char timeBuf[32];
