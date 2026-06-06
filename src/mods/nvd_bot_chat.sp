@@ -378,6 +378,9 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	char weapon[32];
 	event.GetString("weapon", weapon, sizeof(weapon));
 
+	if (headshot)
+		Format(weapon, sizeof(weapon), "%s HS", weapon);
+
 	if (killer < 1 || (!IsFakeClient(killer) && !IsFakeClient(victim)))
 		return;
 
@@ -392,11 +395,15 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	
 	if (GetRandomInt(1, 100) > chance) return;
 
-	char ctx[512];
-	if (headshot)
-		Format(weapon, sizeof(weapon), "%s HS", weapon);
+	int dominated = event.GetInt("dominated");
+	int revenge = event.GetInt("revenge");
 
-	if (IsFakeClient(killer) && !IsFakeClient(victim))
+	char ctx[512];
+	if (revenge)
+		BuildContext(ctx, sizeof(ctx), "se vingou de", killer, victim, weapon);
+	else if (dominated)
+		BuildContext(ctx, sizeof(ctx), "domina", killer, victim, weapon);
+	else if (IsFakeClient(killer) && !IsFakeClient(victim))
 		BuildContext(ctx, sizeof(ctx), "matou", killer, victim, weapon);
 	else if (IsFakeClient(victim) && !IsFakeClient(killer))
 		BuildContext(ctx, sizeof(ctx), "morreu para", victim, killer, weapon);
@@ -517,7 +524,14 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         searchPos = endPos;
     }
     
-    if (StrContains(localContext, "matou") != -1)
+    if (StrContains(localContext, "friendly fire") != -1)
+    {
+        if (StrContains(localContext, "deu friendly fire") != -1)
+            strcopy(mood, sizeof(mood), "Foi mal, foi sem querer");
+        else
+            strcopy(mood, sizeof(mood), "Reclama do colega de time");
+    }
+    else if (StrContains(localContext, "matou") != -1)
     {
         if (targetMention[0])
             Format(mood, sizeof(mood), "Provoque %s", targetMention);
@@ -569,7 +583,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     
     char sysPrompt[640];
     Format(sysPrompt, sizeof(sysPrompt),
-        "You are %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence in PORTUGUESE. Dont mention yourself.",
+        "You are %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. ALWAYS use @Nome to address the person. PORTUGUESE only.",
         botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState);
 
     char timeBuf[32];
