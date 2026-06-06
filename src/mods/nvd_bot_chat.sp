@@ -796,7 +796,7 @@ void PollBotResponses()
                 char replyBotName[32];
                 GetClientName(replyBot, replyBotName, sizeof(replyBotName));
                 char replyCtx[640];
-                Format(replyCtx, sizeof(replyCtx), "%s disse: \"%s\" Mood: Reaja.", botName, cleanMsg);
+                Format(replyCtx, sizeof(replyCtx), "%s disse: \"%s\"", botName, cleanMsg);
                 // Forca rate limit manual
                 g_LastBotChat = 0.0;
                 AskBotChat(replyCtx, replyBot);
