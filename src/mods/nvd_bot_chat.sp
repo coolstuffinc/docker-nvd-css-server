@@ -222,12 +222,15 @@ void BuildContext(char[] buffer, int maxlen, const char[] event,
 			if (hsPos != -1)
 			{
 				friendlyWeapon[hsPos] = '\0';
-				pos += Format(buffer[pos], maxlen - pos, " com \"%s\"", friendlyWeapon);
+				pos += Format(buffer[pos], maxlen - pos, " com tiro de \"%s\"", friendlyWeapon);
 				pos += Format(buffer[pos], maxlen - pos, " na cabeca");
 			}
 			else
 			{
-				pos += Format(buffer[pos], maxlen - pos, " com \"%s\"", friendlyWeapon);
+				if (StrEqual(friendlyWeapon, "faca"))
+					pos += Format(buffer[pos], maxlen - pos, " com faca");
+				else
+					pos += Format(buffer[pos], maxlen - pos, " com tiro de \"%s\"", friendlyWeapon);
 			}
 		}
 		pos += Format(buffer[pos], maxlen - pos, ". ");
@@ -837,6 +840,10 @@ void PollBotResponses()
             PrintToServer("[BOT_CHAT] ⏭ Dropped (empty after clean): \"%s\"", reply);
             continue;
         }
+
+        // Trunca mensagens longas (limite do comando say)
+        if (strlen(cleanMsg) > 100)
+            cleanMsg[100] = '\0';
 
         PrintToServer("[BOT_CHAT] [%s] ✅ Sent: [BOT %s] %s", ts, botName, cleanMsg);
 
