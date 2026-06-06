@@ -185,9 +185,26 @@ void BuildContext(char[] buffer, int maxlen, const char[] event,
 	// Evento (quem fez o que) vem primeiro
 	if (mainName[0])
 	{
-		pos += Format(buffer[pos], maxlen - pos, "@%s %s", mainName, event);
+		char mainTag[16];
+		if (mainClient > 0 && IsFakeClient(mainClient))
+			strcopy(mainTag, sizeof(mainTag), " BOT");
+		else if (mainClient > 0)
+			strcopy(mainTag, sizeof(mainTag), " Player");
+		else
+			mainTag[0] = '\0';
+		
+		pos += Format(buffer[pos], maxlen - pos, "@%s%s %s", mainName, mainTag, event);
 		if (targetName[0] && targetClient != mainClient)
-			pos += Format(buffer[pos], maxlen - pos, " @%s", targetName);
+		{
+			char targetTag[16];
+			if (targetClient > 0 && IsFakeClient(targetClient))
+				strcopy(targetTag, sizeof(targetTag), " BOT");
+			else if (targetClient > 0)
+				strcopy(targetTag, sizeof(targetTag), " Player");
+			else
+				targetTag[0] = '\0';
+			pos += Format(buffer[pos], maxlen - pos, " @%s%s", targetName, targetTag);
+		}
 		if (weapon[0])
 		{
 			char friendlyWeapon[32];
@@ -631,28 +648,31 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     if (mapaPos != -1)
         eventOnly[mapaPos] = '\0';
     
-    char fullPrompt[1024];
-    if (eventOnly[0])
-        Format(fullPrompt, sizeof(fullPrompt),
-            "%s%s %s.", eventOnly, scoreStatus, mood);
-    else
-        Format(fullPrompt, sizeof(fullPrompt),
-            "%s%s %s.", localContext, scoreStatus, mood);
+    // User: apenas instrucao simples
+    char fullPrompt[128];
+    strcopy(fullPrompt, sizeof(fullPrompt), "Reaja como jogador");
     
-    // System: inclui estado da partida
+    // System: tudo (estado + evento + instrucoes)
     char mapName[64];
     GetCurrentMap(mapName, sizeof(mapName));
     
     char gameState[64];
     if (scoreStatus[0] != '\0')
-        strcopy(gameState, sizeof(gameState), scoreStatus[1]); // Pula espaco inicial
+        strcopy(gameState, sizeof(gameState), scoreStatus[1]);
     else
         gameState[0] = '\0';
     
-    char sysPrompt[640];
+    // Evento (sem estado duplicado)
+    char eventStr[768];
+    if (eventOnly[0])
+        Format(eventStr, sizeof(eventStr), "%s%s %s.", eventOnly, scoreStatus, mood);
+    else
+        Format(eventStr, sizeof(eventStr), "%s%s %s.", localContext, scoreStatus, mood);
+    
+    char sysPrompt[1024];
     Format(sysPrompt, sizeof(sysPrompt),
-        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s This is a GAME. You are roleplaying a CS player. Reply with ONE short sentence as ingame chat. Use @ for others. Never @ yourself. No filter. Be confident. BR Portuguese game slang.",
-        botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState);
+        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s %s This is a GAME - act like a real CS player. ONE short sentence. Use @ for others. Never @ yourself. No hashtags. No filter. BR Portuguese slang.",
+        botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState, eventStr);
 
     char timeBuf[32];
     FormatTime(timeBuf, sizeof(timeBuf), "%H:%M:%S");
