@@ -102,6 +102,21 @@ void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
 		Format(output, maxlen, "%s na cabeca", output);
 }
 
+// Pega o nome da area/andar do mapa onde o jogador esta
+void GetPlayerLocation(int client, char[] buffer, int maxlen)
+{
+	if (client > 0 && IsClientInGame(client))
+	{
+		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", buffer, maxlen);
+		if (buffer[0] == '\0')
+			strcopy(buffer, maxlen, "");
+	}
+	else
+	{
+		buffer[0] = '\0';
+	}
+}
+
 void BuildContext(char[] buffer, int maxlen, const char[] event, 
 	int mainClient = -1, int targetClient = -1, const char[] weapon = "")
 {
@@ -261,6 +276,14 @@ public void Event_BombPlanted(Event event, const char[] name, bool dontBroadcast
 		
 		char ctx[512];
 		BuildContext(ctx, sizeof(ctx), "plantou a bomba!", client);
+		char loc[64];
+		GetPlayerLocation(client, loc, sizeof(loc));
+		if (loc[0])
+		{
+			char tmp[640];
+			Format(tmp, sizeof(tmp), "%s Local: %s.", ctx, loc);
+			strcopy(ctx, sizeof(ctx), tmp);
+		}
 		AskBotChat(ctx, client);
 	}
 }
@@ -276,6 +299,14 @@ public void Event_BombDefused(Event event, const char[] name, bool dontBroadcast
 		
 		char ctx[512];
 		BuildContext(ctx, sizeof(ctx), "desarmou a bomba!", client);
+		char loc[64];
+		GetPlayerLocation(client, loc, sizeof(loc));
+		if (loc[0])
+		{
+			char tmp[640];
+			Format(tmp, sizeof(tmp), "%s Local: %s.", ctx, loc);
+			strcopy(ctx, sizeof(ctx), tmp);
+		}
 		AskBotChat(ctx, client);
 	}
 }
@@ -411,6 +442,16 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 		BuildContext(ctx, sizeof(ctx), "matou", killer, victim, weapon);
 	else
 		return;
+
+	// Adiciona localizacao do assassino
+	char location[64];
+	GetPlayerLocation(killer, location, sizeof(location));
+	if (location[0] != '\0')
+	{
+		char withLoc[640];
+		Format(withLoc, sizeof(withLoc), "%s Local: %s.", ctx, location);
+		strcopy(ctx, sizeof(ctx), withLoc);
+	}
 
 	AskBotChat(ctx, IsFakeClient(killer) ? killer : victim);
 }
@@ -626,13 +667,6 @@ void PollBotResponses()
 
         if (reply[0] == '\0') continue;
         if (!g_CvarEnabled.BoolValue) continue;
-
-        float delay = g_CvarCooldown.FloatValue;
-        if (GetGameTime() - g_LastBotChat < delay)
-        {
-            PrintToServer("[BOT_CHAT] ⏱ Dropped (cooldown active): \"%s\"", reply);
-            continue;
-        }
 
         char botName[32];
 
