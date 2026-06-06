@@ -452,7 +452,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	else if (IsFakeClient(killer) && !IsFakeClient(victim))
 		BuildContext(ctx, sizeof(ctx), "eliminou", killer, victim, weapon);
 	else if (IsFakeClient(victim) && !IsFakeClient(killer))
-		BuildContext(ctx, sizeof(ctx), "morreu para", victim, killer, weapon);
+		BuildContext(ctx, sizeof(ctx), "foi eliminado por", victim, killer, weapon);
 	else if (IsFakeClient(killer) && IsFakeClient(victim))
 		BuildContext(ctx, sizeof(ctx), "eliminou", killer, victim, weapon);
 	else
@@ -594,7 +594,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         else
             strcopy(mood, sizeof(mood), "Provoque o inimigo");
     }
-    else if (StrContains(localContext, "morreu") != -1)
+    else if (StrContains(localContext, "eliminado") != -1)
     {
         if (targetMention[0])
             Format(mood, sizeof(mood), "Brigue de brincadeira com %s", targetMention);
@@ -622,7 +622,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     char fullPrompt[1024];
     if (eventOnly[0])
         Format(fullPrompt, sizeof(fullPrompt),
-            "Use @Nome: %s%s Mood: %s.", eventOnly, scoreStatus, mood);
+            "%s%s Mood: %s.", eventOnly, scoreStatus, mood);
     else
         Format(fullPrompt, sizeof(fullPrompt),
             "%s%s Mood: %s.", localContext, scoreStatus, mood);
@@ -639,7 +639,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     
     char sysPrompt[640];
     Format(sysPrompt, sizeof(sysPrompt),
-        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. Use @Name for others. Dont say your own name. PORTUGUESE only.",
+        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. Use @ for others. Never @ yourself. PORTUGUESE only.",
         botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState);
 
     char timeBuf[32];
