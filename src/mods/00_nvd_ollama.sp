@@ -74,6 +74,45 @@ public void OnConfigsExecuted()
     
     if (g_DebugCvar.BoolValue)
         PrintToServer("[NVD] Ollama v2.0 loaded → Ollama at %s, model: %s", g_BaseUrl, g_ModelCvar);
+    
+    // Warmup handshake: pre-loads the model so subsequent requests are fast
+    PrintToServer("[NVD] 🔥 Warmup handshake: loading model...");
+    WarmupModel();
+}
+
+void WarmupModel()
+{
+    // Send a minimal request to pre-load the model into memory
+    char model[64];
+    g_ModelCvar.GetString(model, sizeof(model));
+    
+    JSONObject payload = new JSONObject();
+    payload.SetString("model", model);
+    payload.SetBool("stream", false);
+    JSONObject sys = new JSONObject();
+    sys.SetString("role", "system");
+    sys.SetString("content", "Seja breve.");
+    JSONArray msgs = new JSONArray();
+    msgs.Push(sys);
+    delete sys;
+    JSONObject usr = new JSONObject();
+    usr.SetString("role", "user");
+    usr.SetString("content", "ping");
+    msgs.Push(usr);
+    delete usr;
+    payload.Set("messages", msgs);
+    delete msgs;
+    
+    g_HttpClient.Post("/api/chat", payload, OnWarmupResponse, 0);
+    delete payload;
+}
+
+public void OnWarmupResponse(HTTPResponse response, any data)
+{
+    if (response.Status == HTTPStatus_OK)
+        PrintToServer("[NVD] ✅ Warmup OK — modelo pronto!");
+    else
+        PrintToServer("[NVD] ⚠️ Warmup HTTP %d — modelo pode estar lento", response.Status);
 }
 
 // ============================================================================
@@ -415,7 +454,23 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
     
     if (response.Status != HTTPStatus_OK)
     {
-        LogError("[NVD] ❌ HTTP %d for %s", response.Status, playerInfo);
+        // Try to read the raw body even on errors (for debugging)
+        char rawBody[512];
+        if (response.Data != INVALID_HANDLE)
+        {
+            JSONObject errJson = view_as<JSONObject>(response.Data);
+            if (errJson != null)
+            {
+                char errMsg[256];
+                if (errJson.GetString("error", errMsg, sizeof(errMsg)))
+                    Format(rawBody, sizeof(rawBody), " | body: %s", errMsg);
+                else if (errJson.GetString("message", errMsg, sizeof(errMsg)))
+                    Format(rawBody, sizeof(rawBody), " | body: %s", errMsg);
+                delete errJson;
+            }
+        }
+        
+        LogError("[NVD] ❌ HTTP %d for %s%s", response.Status, playerInfo, rawBody);
         
         if (callback != null && callerPlugin != INVALID_HANDLE)
         {
