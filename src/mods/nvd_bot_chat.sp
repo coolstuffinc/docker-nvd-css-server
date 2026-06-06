@@ -12,6 +12,7 @@
 ConVar g_CvarEnabled;
 ConVar g_CvarCooldown;
 ConVar g_CvarChance;
+KeyValues g_PromptKV = null;
 
 float g_LastBotChat;
 Handle g_RoundStartTimer;
@@ -45,6 +46,12 @@ public void OnPluginStart()
 
 	// Polling timer for AI responses (every 500ms)
 	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT);
+	
+	// Carrega templates de prompt do arquivo
+	LoadPromptTemplates();
+	
+	// Comando para recarregar templates
+	RegAdminCmd("sm_botchat_reload", Command_ReloadPrompts, ADMFLAG_GENERIC);
 }
 
 public void OnMapStart()
@@ -648,13 +655,6 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     if (mapaPos != -1)
         eventOnly[mapaPos] = '\0';
     
-    // User: apenas instrucao simples
-    char fullPrompt[256];
-    if (targetMention[0])
-        Format(fullPrompt, sizeof(fullPrompt), "Fale como %s sobre %s.", botName, targetMention);
-    else
-        Format(fullPrompt, sizeof(fullPrompt), "Fale como %s.", botName);
-    
     // System: tudo (estado + evento + instrucoes)
     char mapName[64];
     GetCurrentMap(mapName, sizeof(mapName));
@@ -677,10 +677,41 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     else
         Format(eventStr, sizeof(eventStr), "%s%s %s.", localContext, scoreStatus, mood);
     
+    // Determina tipo de evento para o template
+    char eventType[32];
+    if (StrContains(localContext, "eliminou") != -1 || StrContains(localContext, "foi eliminado") != -1)
+        strcopy(eventType, sizeof(eventType), (StrContains(localContext, "eliminou") != -1) ? "kill" : "death");
+    else if (StrContains(localContext, "venceu") != -1)
+        strcopy(eventType, sizeof(eventType), "round_end");
+    else if (StrContains(localContext, "iniciou") != -1 || StrContains(localContext, "iniciou") != -1)
+        strcopy(eventType, sizeof(eventType), "round_start");
+    else
+        strcopy(eventType, sizeof(eventType), "default");
+    
     char sysPrompt[1024];
-    Format(sysPrompt, sizeof(sysPrompt),
-        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s %s This is a GAME - act like a real CS player. ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky - act like you know youll win. No filter. BR Portuguese slang.",
-        botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState, eventStr);
+    char fullPrompt[256];
+    
+    if (GetPromptTemplate(eventType, "system", sysPrompt, sizeof(sysPrompt),
+        botName, botTeamName, targetMention, gameState, eventStr, mood,
+        g_CurrentRound, tScore, ctScore))
+    {
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "{base_system}", sysPrompt);
+    }
+    else
+    {
+        Format(sysPrompt, sizeof(sysPrompt),
+            "Your name is %s (%s). %s %s. ONE short sentence. BR Portuguese.",
+            botName, botTeamName, gameState, eventStr);
+    }
+    
+    if (!GetPromptTemplate(eventType, "user", fullPrompt, sizeof(fullPrompt),
+        botName, botTeamName, targetMention))
+    {
+        if (targetMention[0])
+            Format(fullPrompt, sizeof(fullPrompt), "Fale como %s sobre %s.", botName, targetMention);
+        else
+            Format(fullPrompt, sizeof(fullPrompt), "Fale como %s.", botName);
+    }
 
     char timeBuf[32];
     FormatTime(timeBuf, sizeof(timeBuf), "%H:%M:%S");
@@ -835,4 +866,89 @@ void PollBotResponses()
         FakeClientCommand(botClient, "say %s", cleanMsg);
         g_LastBotChat = GetGameTime();
     }
+}
+
+// ============================================================================
+// PROMPT TEMPLATE SYSTEM
+// ============================================================================
+void LoadPromptTemplates()
+{
+    if (g_PromptKV != null)
+        delete g_PromptKV;
+    
+    g_PromptKV = new KeyValues("BotChatPrompts");
+    
+    char path[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_chat_prompts.txt");
+    
+    if (!FileExists(path))
+    {
+        LogError("[BOT_CHAT] Prompt file not found: %s", path);
+        delete g_PromptKV;
+        g_PromptKV = null;
+        return;
+    }
+    
+    if (!g_PromptKV.ImportFromFile(path))
+    {
+        LogError("[BOT_CHAT] Failed to load prompts from: %s", path);
+        delete g_PromptKV;
+        g_PromptKV = null;
+        return;
+    }
+    
+    PrintToServer("[BOT_CHAT] +- Prompt templates loaded from %s", path);
+}
+
+public Action Command_ReloadPrompts(int client, int args)
+{
+    LoadPromptTemplates();
+    ReplyToCommand(client, "[BOT_CHAT] +- Prompts recarregados");
+    return Plugin_Handled;
+}
+
+bool GetPromptTemplate(const char[] eventType, const char[] promptType,
+    char[] buffer, int maxlen,
+    const char[] bot = "", const char[] team = "",
+    const char[] target = "", const char[] state = "",
+    const char[] event = "", const char[] mood = "",
+    int round = 0, int tScore = 0, int ctScore = 0)
+{
+    if (g_PromptKV == null)
+        return false;
+    
+    g_PromptKV.Rewind();
+    if (!g_PromptKV.JumpToKey(eventType))
+    {
+        g_PromptKV.Rewind();
+        if (!g_PromptKV.JumpToKey("default"))
+            return false;
+    }
+    
+    char template[2048];
+    g_PromptKV.GetString(promptType, template, sizeof(template));
+    if (template[0] == '\0')
+        return false;
+    
+    ReplaceString(template, sizeof(template), "{bot}", bot);
+    ReplaceString(template, sizeof(template), "{team}", team);
+    ReplaceString(template, sizeof(template), "{target}", target);
+    ReplaceString(template, sizeof(template), "{state}", state);
+    ReplaceString(template, sizeof(template), "{event}", event);
+    ReplaceString(template, sizeof(template), "{mood}", mood);
+    
+    char mapName[64];
+    GetCurrentMap(mapName, sizeof(mapName));
+    ReplaceString(template, sizeof(template), "{map}", mapName);
+    
+    char roundStr[16];
+    IntToString(round, roundStr, sizeof(roundStr));
+    ReplaceString(template, sizeof(template), "{round}", roundStr);
+    
+    char scoreStr[32];
+    Format(scoreStr, sizeof(scoreStr), "%d a %d", tScore, ctScore);
+    ReplaceString(template, sizeof(template), "{score}", scoreStr);
+    
+    strcopy(buffer, maxlen, template);
+    return true;
 }
