@@ -33,6 +33,7 @@ RUN mkdir /output && \
             -i/tmp/addons/sourcemod/scripting/include \
             -i/src \
             -i/src/mods/include \
+            -i/ripext/pawn/scripting/include \
             "$spfile" \
             -o"/output/$smxname" || \
         { echo "ERROR: Failed to compile $spfile"; exit 1; }; \
