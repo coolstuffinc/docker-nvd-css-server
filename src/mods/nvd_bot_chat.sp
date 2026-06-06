@@ -443,11 +443,11 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	else if (dominated)
 		BuildContext(ctx, sizeof(ctx), "domina", killer, victim, weapon);
 	else if (IsFakeClient(killer) && !IsFakeClient(victim))
-		BuildContext(ctx, sizeof(ctx), "matou", killer, victim, weapon);
+		BuildContext(ctx, sizeof(ctx), "eliminou", killer, victim, weapon);
 	else if (IsFakeClient(victim) && !IsFakeClient(killer))
 		BuildContext(ctx, sizeof(ctx), "morreu para", victim, killer, weapon);
 	else if (IsFakeClient(killer) && IsFakeClient(victim))
-		BuildContext(ctx, sizeof(ctx), "matou", killer, victim, weapon);
+		BuildContext(ctx, sizeof(ctx), "eliminou", killer, victim, weapon);
 	else
 		return;
 
@@ -580,19 +580,19 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         else
             strcopy(mood, sizeof(mood), "Reclama do colega de time");
     }
-    else if (StrContains(localContext, "matou") != -1)
+    else if (StrContains(localContext, "eliminou") != -1)
     {
         if (targetMention[0])
-            Format(mood, sizeof(mood), "Provoque %s", targetMention);
+            Format(mood, sizeof(mood), "Zoe %s", targetMention);
         else
-            strcopy(mood, sizeof(mood), "Provoque o inimigo");
+            strcopy(mood, sizeof(mood), "Zoe o inimigo");
     }
     else if (StrContains(localContext, "morreu") != -1)
     {
         if (targetMention[0])
-            Format(mood, sizeof(mood), "Fique puto com %s", targetMention);
+            Format(mood, sizeof(mood), "Brigue de brincadeira com %s", targetMention);
         else
-            strcopy(mood, sizeof(mood), "Fique puto");
+            strcopy(mood, sizeof(mood), "Brigue de brincadeira");
     }
     else if (StrContains(localContext, "venceu") != -1)
     {
