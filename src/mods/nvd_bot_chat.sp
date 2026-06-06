@@ -346,7 +346,14 @@ public void Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
 	else if (StrContains(funfact, "grenade") != -1 || StrContains(funfact, "he") != -1)
 		Format(ctx, sizeof(ctx), "@%s matou com granada", playerName);
 	else
-		Format(ctx, sizeof(ctx), "@%s: %s (%d)", playerName, funfact, data1);
+	{
+		// Fallback: remove prefix e underscore, fica legivel
+		char readable[256];
+		strcopy(readable, sizeof(readable), funfact);
+		ReplaceString(readable, sizeof(readable), "#funfact_", "", false);
+		ReplaceString(readable, sizeof(readable), "_", " ", false);
+		Format(ctx, sizeof(ctx), "@%s: %s", playerName, readable);
+	}
 	
 	int preferred = IsFakeClient(player) ? player : -1;
 	AskBotChat(ctx, preferred);
@@ -583,9 +590,9 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     else if (StrContains(localContext, "eliminou") != -1)
     {
         if (targetMention[0])
-            Format(mood, sizeof(mood), "Zoe %s", targetMention);
+            Format(mood, sizeof(mood), "Provoque %s", targetMention);
         else
-            strcopy(mood, sizeof(mood), "Zoe o inimigo");
+            strcopy(mood, sizeof(mood), "Provoque o inimigo");
     }
     else if (StrContains(localContext, "morreu") != -1)
     {
@@ -615,7 +622,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     char fullPrompt[1024];
     if (eventOnly[0])
         Format(fullPrompt, sizeof(fullPrompt),
-            "%s%s Mood: %s.", eventOnly, scoreStatus, mood);
+            "Use @Nome: %s%s Mood: %s.", eventOnly, scoreStatus, mood);
     else
         Format(fullPrompt, sizeof(fullPrompt),
             "%s%s Mood: %s.", localContext, scoreStatus, mood);
@@ -632,7 +639,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     
     char sysPrompt[640];
     Format(sysPrompt, sizeof(sysPrompt),
-        "You are %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. ALWAYS use @Nome for OTHERS. Never yourself. PORTUGUESE only.",
+        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. Use @Name for others. Dont say your own name. PORTUGUESE only.",
         botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState);
 
     char timeBuf[32];
