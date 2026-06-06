@@ -622,7 +622,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
             strcopy(mood, sizeof(mood), "Reclame da derrota");
     }
     else
-        strcopy(mood, sizeof(mood), "Reaja");
+        strcopy(mood, sizeof(mood), "Reage");
     
     // Remove estado do jogo do user prompt (ja esta no system prompt)
     char eventOnly[768];
@@ -634,10 +634,10 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     char fullPrompt[1024];
     if (eventOnly[0])
         Format(fullPrompt, sizeof(fullPrompt),
-            "%s%s Mood: %s.", eventOnly, scoreStatus, mood);
+            "%s%s %s.", eventOnly, scoreStatus, mood);
     else
         Format(fullPrompt, sizeof(fullPrompt),
-            "%s%s Mood: %s.", localContext, scoreStatus, mood);
+            "%s%s %s.", localContext, scoreStatus, mood);
     
     // System: inclui estado da partida
     char mapName[64];
@@ -651,7 +651,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     
     char sysPrompt[640];
     Format(sysPrompt, sizeof(sysPrompt),
-        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s React with ONE short sentence. Use @ for others. Never @ yourself. Be confident. No hesitation. Sem vamos ver/talvez/acho. Fala igual brasileiro no CS: raiz, informal, xingamentos leves. PORTUGUESE only.",
+        "Your name is %s (%s) in CS:Source. Mapa %s. Round %d, placar %d a %d. %s This is a GAME. You are roleplaying a CS player. Reply with ONE short sentence as ingame chat. Use @ for others. Never @ yourself. No filter. Be confident. BR Portuguese game slang.",
         botName, botTeamName, mapName, g_CurrentRound, tScore, ctScore, gameState);
 
     char timeBuf[32];
