@@ -28,7 +28,7 @@ ConVar g_IpCvar, g_PortCvar, g_ModelCvar, g_EndpointCvar, g_DebugCvar;
 ConVar g_TimeoutCvar, g_ConcurrencyCvar;
 char g_BaseUrl[256];
 
-public Plugin myinfo = { name = "NVD Core", author = "OpenCode", description = "AI bridge with rate limiting", version = "2.0.0" };
+public Plugin myinfo = { name = "NVD Ollama", author = "OpenCode", description = "Ollama AI bridge with rate limiting", version = "2.0.0" };
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -73,7 +73,7 @@ public void OnConfigsExecuted()
     g_HttpClient.SetHeader("Content-Type", "application/json");
     
     if (g_DebugCvar.BoolValue)
-        PrintToServer("[NVD] Core v2.0 loaded → Ollama at %s, model: %s", g_BaseUrl, g_ModelCvar);
+        PrintToServer("[NVD] Ollama v2.0 loaded → Ollama at %s, model: %s", g_BaseUrl, g_ModelCvar);
 }
 
 // ============================================================================
@@ -92,7 +92,7 @@ public Action Command_OllamaStatus(int client, int args)
     for (int i = 0; i < MAX_PENDING; i++)
         if (g_PendingRequests[i].inUse) used++;
     
-    ReplyToCommand(client, "[NVD] ═══ Status ═══");
+    ReplyToCommand(client, "[NVD] ═══ Ollama Status ═══");
     ReplyToCommand(client, "[NVD] Model: %s", g_ModelCvar);
     ReplyToCommand(client, "[NVD] Endpoint: %s:%s", g_IpCvar, g_PortCvar);
     ReplyToCommand(client, "[NVD] Queue: %d/%d active", used, g_ConcurrencyCvar.IntValue);
