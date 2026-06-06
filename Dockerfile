@@ -21,8 +21,9 @@ RUN mkdir /output && \
     wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
     tar -C /tmp -zxf /tmp/sm.tar.gz && rm /tmp/sm.tar.gz && \
     git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
-    # Overwrite with local extension patches (GetRawBody, POSTREDIR, etc)
-    cp -r /extension/* /ripext/extension/ && \
+    # Overwrite with local extension patches (GetRawBody, POSTREDIR, etc)  
+    # Files go to /ripext/ (not /ripext/extension/) - configure.py lives at root
+    cp -r /extension/* /ripext/ && \
     mkdir /ripext/build && \
     cp /etc/ssl/certs/ca-certificates.crt /ripext/build/ca-bundle.crt && \
     cd /ripext/build && \
