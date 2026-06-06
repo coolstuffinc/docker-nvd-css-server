@@ -15,10 +15,14 @@ RUN git clone --branch 1.12.0.7236 --depth 1 https://github.com/alliedmodders/so
 
 # Compile plugins and extensions
 COPY src/ /src/
+# Copy extension source to apply local patches (GetRawBody, POSTREDIR)
+COPY extension/ /extension/
 RUN mkdir /output && \
     wget -q -O /tmp/sm.tar.gz https://github.com/alliedmodders/sourcemod/releases/download/1.12.0.7236/sourcemod-1.12.0-git7236-linux.tar.gz && \
     tar -C /tmp -zxf /tmp/sm.tar.gz && rm /tmp/sm.tar.gz && \
     git clone https://github.com/14NGiestas/sm-ripext.git /ripext && \
+    # Overwrite with local extension patches (GetRawBody, POSTREDIR, etc)
+    cp -r /extension/* /ripext/extension/ && \
     mkdir /ripext/build && \
     cp /etc/ssl/certs/ca-certificates.crt /ripext/build/ca-bundle.crt && \
     cd /ripext/build && \
