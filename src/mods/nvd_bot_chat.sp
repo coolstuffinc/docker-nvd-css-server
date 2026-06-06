@@ -337,6 +337,14 @@ public void Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
 		Format(ctx, sizeof(ctx), "@%s deu mais dano: %d", playerName, data1);
 	else if (StrContains(funfact, "Clutch") != -1)
 		Format(ctx, sizeof(ctx), "@%s clutchou: %d kills", playerName, data1);
+	else if (StrContains(funfact, "knife") != -1)
+		Format(ctx, sizeof(ctx), "@%s matou alguem com a faca", playerName);
+	else if (StrContains(funfact, "no_scope") != -1)
+		Format(ctx, sizeof(ctx), "@%s matou sem mirar (no scope)", playerName);
+	else if (StrContains(funfact, "one_shot") != -1)
+		Format(ctx, sizeof(ctx), "@%s matou com um tiro so", playerName);
+	else if (StrContains(funfact, "grenade") != -1 || StrContains(funfact, "he") != -1)
+		Format(ctx, sizeof(ctx), "@%s matou com granada", playerName);
 	else
 		Format(ctx, sizeof(ctx), "@%s: %s (%d)", playerName, funfact, data1);
 	
