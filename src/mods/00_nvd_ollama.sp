@@ -131,8 +131,32 @@ public void OnTestResponse(HTTPResponse response, DataPack pack)
     int client = pack.ReadCell();
     delete pack;
     
-    if (!IsClientInGame(client)) return;
+    if (client > 0 && !IsClientInGame(client)) return;
     
+    if (client == 0)
+    {
+        // RCON console
+        if (response.Status == HTTPStatus_OK)
+        {
+            JSONObject json = view_as<JSONObject>(response.Data);
+            JSONObject msg = view_as<JSONObject>(json.Get("message"));
+            if (msg != null)
+            {
+                char reply[256];
+                msg.GetString("content", reply, sizeof(reply));
+                PrintToServer("[NVD] ✅ Ollama OK: \"%s\"", reply);
+                delete msg;
+            }
+            else
+                PrintToServer("[NVD] ✅ Ollama connected (no message)");
+            delete json;
+        }
+        else
+            PrintToServer("[NVD] ❌ Ollama error: HTTP %d", response.Status);
+        return;
+    }
+    
+    // Client in-game - reply directly
     if (response.Status == HTTPStatus_OK)
     {
         JSONObject json = view_as<JSONObject>(response.Data);
