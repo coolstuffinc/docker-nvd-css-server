@@ -99,7 +99,7 @@ void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
 	else strcopy(output, maxlen, base);
 	
 	if (headshot)
-		Format(output, maxlen, "%s na cabeca", output);
+		Format(output, maxlen, "%s HS", output); // Mantem HS dentro, fica "M4 HS"
 }
 
 // Pega o nome da area/andar do mapa onde o jogador esta
@@ -192,7 +192,19 @@ void BuildContext(char[] buffer, int maxlen, const char[] event,
 		{
 			char friendlyWeapon[32];
 			FriendlyWeaponName(weapon, friendlyWeapon, sizeof(friendlyWeapon));
-			pos += Format(buffer[pos], maxlen - pos, " com \"%s\"", friendlyWeapon);
+			
+			// Separa headshot das aspas: "M4 HS" -> com "M4" na cabeca
+			int hsPos = StrContains(friendlyWeapon, " HS");
+			if (hsPos != -1)
+			{
+				friendlyWeapon[hsPos] = '\0';
+				pos += Format(buffer[pos], maxlen - pos, " com \"%s\"", friendlyWeapon);
+				pos += Format(buffer[pos], maxlen - pos, " na cabeca");
+			}
+			else
+			{
+				pos += Format(buffer[pos], maxlen - pos, " com \"%s\"", friendlyWeapon);
+			}
 		}
 		pos += Format(buffer[pos], maxlen - pos, ". ");
 	}
