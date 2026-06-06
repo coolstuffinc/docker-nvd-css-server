@@ -110,9 +110,24 @@ void WarmupModel()
 public void OnWarmupResponse(HTTPResponse response, any data)
 {
     if (response.Status == HTTPStatus_OK)
-        PrintToServer("[NVD] ✅ Warmup OK — modelo pronto!");
+    {
+        // Log raw body to check model stats
+        char raw[512];
+        response.GetRawBody(raw, sizeof(raw));
+        
+        // Try to extract useful info from the response
+        int len = strlen(raw);
+        if (len > 0 && len < 200)
+            PrintToServer("[NVD] ✅ Warmup OK — modelo pronto! (%s)", raw);
+        else
+            PrintToServer("[NVD] ✅ Warmup OK — modelo pronto! (body: %d bytes)", len);
+    }
     else
-        PrintToServer("[NVD] ⚠️ Warmup HTTP %d — modelo pode estar lento", response.Status);
+    {
+        char raw[512];
+        response.GetRawBody(raw, sizeof(raw));
+        PrintToServer("[NVD] ⚠️ Warmup HTTP %d: %s", response.Status, raw);
+    }
 }
 
 // ============================================================================
