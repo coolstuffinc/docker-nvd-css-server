@@ -843,7 +843,17 @@ void PollBotResponses()
 
         // Trunca mensagens longas (limite do comando say)
         if (strlen(cleanMsg) > 100)
+        {
             cleanMsg[100] = '\0';
+            // Volta ate encontrar pontuacao
+            int truncPos = 100;
+            while (truncPos > 80 && cleanMsg[truncPos] != '.' && cleanMsg[truncPos] != '!' && cleanMsg[truncPos] != '?' && cleanMsg[truncPos] != ',')
+                truncPos--;
+            if (truncPos > 80)
+                cleanMsg[truncPos + 1] = '\0';
+            else
+                cleanMsg[100] = '\0';
+        }
 
         PrintToServer("[BOT_CHAT] [%s] ✅ Sent: [BOT %s] %s", ts, botName, cleanMsg);
 
