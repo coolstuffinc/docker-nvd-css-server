@@ -13,26 +13,38 @@
 // Estado do agente por jogador
 float g_PlayerLastAgent[MAXPLAYERS + 1];
 
-// Comandos e permissões (SEGURANÇA: NUNCA remova sem saber o que faz)
+// Comandos e permissões (arrays paralelas, compatível com SourcePawn 1.12)
 enum AgentCmdLevel
 {
-    CmdLevel_All,       // Qualquer um pode votar
-    CmdLevel_Admin,     // Requer flag de admin
-    CmdLevel_Root,      // Requer flag de root
+    CmdLevel_All = 0,       // Qualquer um pode votar
+    CmdLevel_Admin = 1,     // Requer flag de admin
+    CmdLevel_Root = 2,      // Requer flag de root
 };
 
-static const struct {
-    char cmd[32];
-    AgentCmdLevel level;
-    char description[64];
-} g_CommandMap[] = {
-    { "sm_votemap",     CmdLevel_All,    "Iniciar votação de mapa" },
-    { "sm_votekick",    CmdLevel_Admin,  "Iniciar votação de kick" },
-    { "sm_voteban",     CmdLevel_Admin,  "Iniciar votação de ban" },
-    { "sm_cvar",        CmdLevel_Root,   "Alterar cvar do servidor" },
-    { "sm_plugins",     CmdLevel_Admin,  "Listar plugins" },
-    { "sm_reloadadmin", CmdLevel_Root,   "Recarregar admins" },
+static const char g_CommandNames[][] = {
+    "sm_votemap", "sm_votekick", "sm_voteban", 
+    "sm_cvar", "sm_plugins", "sm_reloadadmin"
 };
+
+static const AgentCmdLevel g_CommandLevels[] = {
+    CmdLevel_All,    // sm_votemap
+    CmdLevel_Admin,  // sm_votekick
+    CmdLevel_Admin,  // sm_voteban
+    CmdLevel_Root,   // sm_cvar
+    CmdLevel_Admin,  // sm_plugins
+    CmdLevel_Root,   // sm_reloadadmin
+};
+
+static const char g_CommandDescs[][] = {
+    "Iniciar votação de mapa",
+    "Iniciar votação de kick",
+    "Iniciar votação de ban",
+    "Alterar cvar do servidor",
+    "Listar plugins",
+    "Recarregar admins",
+};
+
+#define COMMAND_COUNT 6
 
 // Cache de mapas
 char g_MapList[MAX_MAPS][64];
@@ -59,13 +71,13 @@ public Action Command_AgentHelp(int client, int args)
     ReplyToCommand(client, "[\x04AGENT\x01] !agent <pedido> - Pergunte algo à IA");
     ReplyToCommand(client, "[\x04AGENT\x01] A IA pode sugerir comandos como:");
     
-    for (int i = 0; i < sizeof(g_CommandMap); i++)
+    for (int i = 0; i < COMMAND_COUNT; i++)
     {
-        int flags = GetCommandFlags(g_CommandMap[i].cmd);
-        bool hasAccess = (flags == INVALID_FCVAR_FLAGS) || CheckCommandAccess(client, g_CommandMap[i].cmd, 0);
+        int flags = GetCommandFlags(g_CommandNames[i]);
+        bool hasAccess = (flags == INVALID_FCVAR_FLAGS) || CheckCommandAccess(client, g_CommandNames[i], 0);
         
         if (hasAccess)
-            ReplyToCommand(client, "[\x04AGENT\x01]   • [%s] %s", g_CommandMap[i].cmd, g_CommandMap[i].description);
+            ReplyToCommand(client, "[\x04AGENT\x01]   • [%s] %s", g_CommandNames[i], g_CommandDescs[i]);
     }
     
     ReplyToCommand(client, "[\x04AGENT\x01] ════════════════════════════");
@@ -118,8 +130,7 @@ public Action Command_Agent(int client, int args)
 
     // 2. Chama IA (com client ID para rate limit)
     NVD_AskAI(context, 
-        "Você é um agente admin de CS:S. Use EXATAMENTE [CMD: comando] para ações ou [SAY: mensagem] para chat. "
-        "Máximo 2 linhas. Português ou Inglês. Seja breve e direto.", 
+        "Você é um agente admin de CS:S. Use [CMD:comando] para ações ou [SAY:mensagem] para chat. Máx 2 linhas. PT-BR ou EN. Seja breve.", 
         Agent_Callback, client, client);
         
     return Plugin_Handled;
@@ -156,7 +167,7 @@ void BuildContext(char[] buffer, int maxlen, const char[] request, int client)
         else if (team == 3) teamName = "CT";
         else teamName = "SPEC";
         
-        char isAdmin[4];
+        char isAdmin[12];
         if (CheckCommandAccess(i, "sm_kick", ADMFLAG_KICK))
             isAdmin = " [ADMIN]";
         else
@@ -180,18 +191,18 @@ void BuildContext(char[] buffer, int maxlen, const char[] request, int client)
     
     // 5. Comandos disponíveis para este jogador
     pos += Format(buffer[pos], maxlen - pos, "AVAILABLE COMMANDS for %s:\n", playerName);
-    for (int i = 0; i < sizeof(g_CommandMap); i++)
+    for (int i = 0; i < COMMAND_COUNT; i++)
     {
         bool canUse = false;
-        switch (g_CommandMap[i].level)
+        switch (g_CommandLevels[i])
         {
             case CmdLevel_All:   canUse = true;
-            case CmdLevel_Admin: canUse = client > 0 && CheckCommandAccess(client, g_CommandMap[i].cmd, ADMFLAG_KICK);
-            case CmdLevel_Root:  canUse = client > 0 && CheckCommandAccess(client, g_CommandMap[i].cmd, ADMFLAG_ROOT);
+            case CmdLevel_Admin: canUse = client > 0 && CheckCommandAccess(client, g_CommandNames[i], ADMFLAG_KICK);
+            case CmdLevel_Root:  canUse = client > 0 && CheckCommandAccess(client, g_CommandNames[i], ADMFLAG_ROOT);
         }
         
         if (canUse)
-            pos += Format(buffer[pos], maxlen - pos, "  - %s\n", g_CommandMap[i].cmd);
+            pos += Format(buffer[pos], maxlen - pos, "  - %s\n", g_CommandNames[i]);
     }
     
     // 6. Conexões SSH ativas (se aplicável)
@@ -275,9 +286,9 @@ public void Agent_Callback(const char[] response, any data)
                     
                     // Verifica se o comando é permitido e usuário tem acesso
                     int cmdIndex = -1;
-                    for (int i = 0; i < sizeof(g_CommandMap); i++)
+                    for (int i = 0; i < COMMAND_COUNT; i++)
                     {
-                        if (StrEqual(base, g_CommandMap[i].cmd, false))
+                        if (StrEqual(base, g_CommandNames[i], false))
                         {
                             cmdIndex = i;
                             break;
@@ -292,7 +303,7 @@ public void Agent_Callback(const char[] response, any data)
                     
                     // Verifica permissão
                     bool hasPerm = false;
-                    switch (g_CommandMap[cmdIndex].level)
+                    switch (g_CommandLevels[cmdIndex])
                     {
                         case CmdLevel_All:   hasPerm = true;
                         case CmdLevel_Admin: hasPerm = CheckCommandAccess(client, base, ADMFLAG_KICK);

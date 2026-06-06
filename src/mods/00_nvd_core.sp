@@ -303,9 +303,11 @@ int AllocateSlot(Function cb, any data, Handle plugin, int client = -1)
             g_PendingRequests[i].playerName[0] = '\0';
             
             if (client >= 1 && client <= MaxClients && IsClientInGame(client))
+            {
                 char pName[32];
-            GetClientName(client, pName, sizeof(pName));
-            strcopy(g_PendingRequests[i].playerName, sizeof(g_PendingRequests[i].playerName), pName);
+                GetClientName(client, pName, sizeof(pName));
+                strcopy(g_PendingRequests[i].playerName, sizeof(g_PendingRequests[i].playerName), pName);
+            }
             
             g_PendingRequests[i].inUse = true;
             
