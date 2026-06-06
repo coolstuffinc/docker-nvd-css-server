@@ -235,9 +235,6 @@ methodmap HTTPResponse
 		public native get();
 	}
 
-	// Retrieves the raw body of the response (without JSON parsing).
-	public native int GetRawBody(char[] buffer, int maxlength);
-
 	// Retrieves the HTTP status of the response.
 	property HTTPStatus Status {
 		public native get();

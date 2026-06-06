@@ -25,6 +25,6 @@ native bool NVD_CanRequest(int client);
 public SharedPlugin __pl_nvd_core = 
 {
 	name = "nvd_core",
-	file = "00_nvd_ollama.smx",
-	required = 0,
+	file = "nvd_ollama.smx",
+	required = 1,
 };
