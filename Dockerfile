@@ -128,3 +128,4 @@ ENV NVD_OLLAMA_ENDPOINT="chat"
 EXPOSE 27015/udp 27015 1200 27005/udp 27020/udp 26901/udp
 
 ENTRYPOINT ["./entrypoint.sh"]
+
