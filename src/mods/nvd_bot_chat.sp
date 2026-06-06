@@ -542,9 +542,20 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     else
         strcopy(mood, sizeof(mood), "Reaja");
     
+    // Remove estado do jogo do user prompt (ja esta no system prompt)
+    char eventOnly[768];
+    strcopy(eventOnly, sizeof(eventOnly), localContext);
+    int mapaPos = StrContains(eventOnly, ". Mapa");
+    if (mapaPos != -1)
+        eventOnly[mapaPos] = '\0';
+    
     char fullPrompt[1024];
-    Format(fullPrompt, sizeof(fullPrompt),
-        "%s%s Mood: %s.", localContext, scoreStatus, mood);
+    if (eventOnly[0])
+        Format(fullPrompt, sizeof(fullPrompt),
+            "%s%s Mood: %s.", eventOnly, scoreStatus, mood);
+    else
+        Format(fullPrompt, sizeof(fullPrompt),
+            "%s%s Mood: %s.", localContext, scoreStatus, mood);
     
     // System: inclui estado da partida
     char mapName[64];
