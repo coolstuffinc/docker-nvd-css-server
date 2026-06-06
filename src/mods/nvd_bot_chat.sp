@@ -337,7 +337,7 @@ public void Event_BombPlanted(Event event, const char[] name, bool dontBroadcast
 		if (loc[0])
 		{
 			char tmp[640];
-			Format(tmp, sizeof(tmp), "%s Local: %s.", ctx, loc);
+			Format(tmp, sizeof(tmp), "%s no %s.", ctx, loc);
 			strcopy(ctx, sizeof(ctx), tmp);
 		}
 		AskBotChat(ctx, client);
@@ -360,7 +360,7 @@ public void Event_BombDefused(Event event, const char[] name, bool dontBroadcast
 		if (loc[0])
 		{
 			char tmp[640];
-			Format(tmp, sizeof(tmp), "%s Local: %s.", ctx, loc);
+			Format(tmp, sizeof(tmp), "%s no %s.", ctx, loc);
 			strcopy(ctx, sizeof(ctx), tmp);
 		}
 		AskBotChat(ctx, client);
@@ -520,7 +520,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	if (location[0] != '\0')
 	{
 		char withLoc[640];
-		Format(withLoc, sizeof(withLoc), "%s Local: %s.", ctx, location);
+		Format(withLoc, sizeof(withLoc), "%s no %s.", ctx, location);
 		strcopy(ctx, sizeof(ctx), withLoc);
 	}
 
