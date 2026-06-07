@@ -102,11 +102,13 @@ void GenerateTeamNames()
 	int playerCount = 0;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && !IsFakeClient(i) && !IsClientSourceTV(i))
+		if (IsClientInGame(i) && !IsClientSourceTV(i))
 		{
 			char name[32];
 			GetClientName(i, name, sizeof(name));
-			if (pos < 400)
+			if (IsFakeClient(i))
+				pos += Format(playerContext[pos], sizeof(playerContext) - pos, "[BOT]%s, ", name);
+			else if (pos < 400)
 				pos += Format(playerContext[pos], sizeof(playerContext) - pos, "%s, ", name);
 			playerCount++;
 		}
