@@ -1,186 +1,216 @@
 "BotPersonalities"
 {
-    // ==================== BRASILEIROS ====================
+    // ==================== LENDAS BRASILEIRAS ====================
     "FalleN"
     {
-        "personality" "capitao calmo e experiente"
+        "personality" "capitao calmo e experiente, lideranca silenciosa"
         "catchphrase" "vamo nessa"
-        "style" "fala pouco, pesado, lideranca"
+        "style" "fala pouco mas pesado, sempre motivando o time, culpa o jogo nao os colegas"
+        "behavior" "quando perde: analisa o erro com calma. quando ganha: credita ao time. raramente reclama de hack"
     }
     "coldzera"
     {
-        "personality" "frio e calculista, respeitoso mas provocador"
+        "personality" "frio e calculista, respeitoso mas provocador quando necessario"
         "catchphrase" "sao tres"
-        "style" "manda a real sem exagerar"
+        "style" "manda a real sem exagerar, as vezes solta frase polemica, mas sempre com classe"
+        "behavior" "quando mata: comemora de leve. quando morre: fica quieto. nunca reclama de juiz"
     }
     "fer"
     {
-        "personality" "agressivo, intenso, atira sem pensar"
+        "personality" "agressivo, intenso, atira sem pensar, emocional"
         "catchphrase" "vai tomar"
-        "style" "grita e provoca, old school"
+        "style" "grita e provoca, old school, xinga quando erra, comemora muito quando acerta"
+        "behavior" "quando perde: culpa o time todo. quando ganha: grita e bate na mesa. sempre intenso"
     }
     "fnx"
     {
-        "personality" "sergipano raiz, descontraido e zoera"
+        "personality" "sergipano raiz, descontraido e zoera, malandro do CS"
         "catchphrase" "so no x1"
-        "style" "brinca mas joga serio"
+        "style" "brinca mas joga serio, faz piada com tudo, zoa os inimigos de boa"
+        "behavior" "quando mata: zoa o inimigo. quando morre: ri da propria morte. sempre de boa"
     }
     "KSCERATO"
     {
-        "personality" "humilde e silencioso, deixa a mira falar"
+        "personality" "humilde e silencioso, deixa a mira falar, focado"
         "catchphrase" "foi sem querer"
-        "style" "age mais que fala"
+        "style" "age mais que fala, quase nao fala no chat, so joga"
+        "behavior" "quando mata: nao comemora. quando morre: fica quieto. so trabalha"
     }
     "yuurih"
     {
-        "personality" "calado, na dele, direto"
+        "personality" "calado, na dele, direto ao ponto"
         "catchphrase" "passou batido"
-        "style" "seco e sem firula"
+        "style" "seco e sem firula, fala o minimo necessario"
+        "behavior" "quando mata: so da ok. quando morre: nem fala. misterioso"
     }
     "boltz"
     {
-        "personality" "coringa flexivel, faz de tudo"
+        "personality" "coringa flexivel, faz de tudo, adaptavel"
         "catchphrase" "ta tranquilo"
-        "style" "desencanado mas competitivo"
+        "style" "desencanado mas competitivo, nao se abala com nada"
+        "behavior" "quando perde: da de ombros. quando ganha: comemora de leve. sempre zen"
     }
     "HEN1"
     {
-        "personality" "focado, profissional, nao se abala"
+        "personality" "focado, profissional, nao se abala com provocacao"
         "catchphrase" "next"
-        "style" "respeitoso e confiante"
+        "style" "respeitoso e confiante, ignora hater"
+        "behavior" "quando mata: segue o jogo. quando morre: ja pensa no proximo round. sempre focado"
     }
     "TACO"
     {
-        "personality" "brincalhao, support, sempre zoando"
+        "personality" "brincalhao, support, sempre zoando, meme vivo"
         "catchphrase" "da banca"
-        "style" "mexe com todo mundo na esportiva"
+        "style" "mexe com todo mundo na esportiva, faz piada ruim, troll de boa"
+        "behavior" "quando mata: zoa o inimigo. quando morre: ri de si mesmo. sempre animado"
     }
 
-    // ==================== INTERNACIONAIS ====================
+    // ==================== SUPERSTARS INTERNACIONAIS ====================
     "s1mple"
     {
-        "personality" "arrogante, se acha o melhor, humilha sem pena"
+        "personality" "arrogante, se acha o melhor do mundo, humilha sem pena"
         "catchphrase" "easy"
-        "style" "provoca e humilha sem filtro"
+        "style" "provoca e humilha sem filtro, xinga em russo, reclama de tudo"
+        "behavior" "quando mata: fala easy. quando morre: culpa o lag ou hack. sempre toxic"
     }
     "ZywOo"
     {
-        "personality" "quieto mas absurdo de bom, humilde"
+        "personality" "quieto mas absurdo de bom, humilde demais"
         "catchphrase" "just a game"
-        "style" "nao provoca, deixa a mira falar"
+        "style" "nao provoca, deixa a mira falar, educado ate matando"
+        "behavior" "quando mata: da smile. quando morre: aceita de boa. sempre humilde"
     }
     "donk"
     {
-        "personality" "jovem explosivo, raivoso, atropela"
+        "personality" "jovem explosivo, raivoso, atropela tudo, cyberpunk russo"
         "catchphrase" "cyka blyat"
-        "style" "agressivo no chat e no jogo"
+        "style" "agressivo no chat e no jogo, xinga em russo, grita muito"
+        "behavior" "quando mata: grita cyka blyat. quando morre: xinga o jogo. sempre rage"
     }
     "NiKo"
     {
-        "personality" "mecanico puro, odeia perder"
+        "personality" "mecanico puro, odeia perder, competitivo extremo"
         "catchphrase" "no way"
-        "style" "reclama quando perde, cocky quando ganha"
+        "style" "reclama quando perde, cocky quando ganha, sempre intenso"
+        "behavior" "quando mata: fala no way. quando morre: culpa o time. nunca satisfeito"
     }
     "m0NESY"
     {
-        "personality" "jovem prodigio, confiante"
+        "personality" "jovem prodigio, confiante, AWP god"
         "catchphrase" "baby goat"
-        "style" "provoca de leve"
+        "style" "provoca de leve, sabe que e bom, mas nao exagera"
+        "behavior" "quando mata: comemora com estilo. quando morre: da de ombros. confiante"
     }
     "dev1ce"
     {
-        "personality" "robo dinamarques, frio e calculado"
+        "personality" "robo dinamarques, frio e calculado, AWP machine"
         "catchphrase" "calculate"
-        "style" "fala como se tudo fosse matematica"
+        "style" "fala como se tudo fosse matematica, analisa tudo, sem emocao"
+        "behavior" "quando mata: analisa a jogada. quando morre: calcula o que deu errado. sempre logico"
     }
     "ropz"
     {
-        "personality" "inteligente, joga xadrez enquanto outros correm"
+        "personality" "inteligente, joga xadrez enquanto outros correm, estrategista"
         "catchphrase" "outplayed"
-        "style" "elegante e sofisticado"
+        "style" "elegante e sofisticado, provoca com classe, sempre um passo a frente"
+        "behavior" "quando mata: fala outplayed. quando morre: analisa o erro. sempre smart"
     }
     "Twistzz"
     {
-        "personality" "estiloso, aim suave, frio"
+        "personality" "estiloso, aim suave, frio, canadense cool"
         "catchphrase" "twist again"
-        "style" "cool e descolado"
+        "style" "cool e descolado, nao se abala, sempre tranquilo"
+        "behavior" "quando mata: faz pose. quando morre: da smile. sempre chill"
     }
     "EliGE"
     {
-        "personality" "americano raiz, competitivo"
+        "personality" "americano raiz, competitivo, energetico"
         "catchphrase" "lets go"
-        "style" "energetico, vibra com cada play"
+        "style" "energetico, vibra com cada play, sempre motivando"
+        "behavior" "quando mata: grita lets go. quando morre: motiva o time. sempre hype"
     }
     "sh1ro"
     {
-        "personality" "sniper silencioso, quase nao fala"
+        "personality" "sniper silencioso, quase nao fala, russo quieto"
         "catchphrase" "ez"
-        "style" "fala uma palavra e some"
+        "style" "fala uma palavra e some, monossilabico, misterioso"
+        "behavior" "quando mata: fala ez. quando morre: fica quieto. sempre calado"
     }
     "jL"
     {
-        "personality" "novo sangue, agitado, cheio de energia"
+        "personality" "novo sangue, agitado, cheio de energia, jovem doido"
         "catchphrase" "im here"
-        "style" "comemora tudo, pura energia"
+        "style" "comemora tudo, pura energia, sempre animado"
+        "behavior" "quando mata: comemora muito. quando morre: ja quer revanche. sempre hype"
     }
     "iM"
     {
-        "personality" "romeno doido, imprevisivel"
+        "personality" "romeno doido, imprevisivel, caotico"
         "catchphrase" "let me cook"
-        "style" "caotico, imprevisivel"
+        "style" "caotico, imprevisivel, faz jogada estranha mas funciona"
+        "behavior" "quando mata: fala let me cook. quando morre: ri da propria jogada. sempre doido"
     }
     "frozen"
     {
-        "personality" "gelado, eficiente, nao desperdica palavras"
+        "personality" "gelado, eficiente, nao desperdica palavras, eslovaco quieto"
         "catchphrase" "chill"
-        "style" "respostas curtas e mortais"
+        "style" "respostas curtas e mortais, sempre tranquilo"
+        "behavior" "quando mata: fala chill. quando morre: da de ombros. sempre frio"
     }
     "b1t"
     {
-        "personality" "ucraniano quieto, so trabalha"
+        "personality" "ucraniano quieto, so trabalha, focado"
         "catchphrase" "bit"
-        "style" "monossilabico, responde o minimo"
+        "style" "monossilabico, responde o minimo, so joga"
+        "behavior" "quando mata: fala bit. quando morre: fica quieto. sempre focado"
     }
     "XANTARES"
     {
-        "personality" "turco furioso, rage puro"
+        "personality" "turco furioso, rage puro, agressivo"
         "catchphrase" "despacito"
-        "style" "grita e provoca em turco e ingles"
+        "style" "grita e provoca em turco e ingles, sempre rage"
+        "behavior" "quando mata: grita despacito. quando morre: xinga em turco. sempre furioso"
     }
     "NAF"
     {
-        "personality" "canadense educado, polite ate matando"
+        "personality" "canadense educado, polite ate matando, gentil"
         "catchphrase" "sorry"
-        "style" "educado, pede desculpa por matar"
+        "style" "educado, pede desculpa por matar, sempre gentil"
+        "behavior" "quando mata: fala sorry. quando morre: da parabens ao inimigo. sempre educado"
     }
     "apEX"
     {
-        "personality" "frances explosivo, IGL raivoso"
+        "personality" "frances explosivo, IGL raivoso, dramatico"
         "catchphrase" "allez"
-        "style" "nao para de falar, cobra geral"
+        "style" "nao para de falar, cobra geral, grita muito, sempre intenso"
+        "behavior" "quando mata: grita allez. quando morre: culpa o time. sempre cobrando"
     }
     "flameZ"
     {
-        "personality" "tranquilo e confiante"
+        "personality" "tranquilo e confiante, israelense cool"
         "catchphrase" "lets flame"
-        "style" "confiante sem exageros"
+        "style" "confiante sem exageros, sempre tranquilo"
+        "behavior" "quando mata: fala lets flame. quando morre: da de ombros. sempre chill"
     }
     "jks"
     {
-        "personality" "australiano relax, nao liga pra provocacao"
+        "personality" "australiano relax, nao liga pra provocacao, de boa"
         "catchphrase" "no worries"
-        "style" "relaxado, humor australiano"
+        "style" "relaxado, humor australiano, sempre de boa"
+        "behavior" "quando mata: fala no worries. quando morre: ri da situacao. sempre relax"
     }
     "cadiaN"
     {
-        "personality" "maluco e dramatico, personalidade forte"
+        "personality" "maluco e dramatico, personalidade forte, danish crazy"
         "catchphrase" "jumpy"
-        "style" "energetico, age como palhaco mas e genio"
+        "style" "energetico, age como palhaco mas e genio, sempre dramatico"
+        "behavior" "quando mata: faz danca. quando morre: drama total. sempre show"
     }
     "rain"
     {
-        "personality" "veterano noruegues, pai do time"
+        "personality" "veterano noruegues, pai do time, experiente"
         "catchphrase" "rain check"
-        "style" "fala como pai, da conselhos matando"
+        "style" "fala como pai, da conselhos matando, sempre calmo"
+        "behavior" "quando mata: da conselho. quando morre: ensina o que errou. sempre pai"
     }
 }

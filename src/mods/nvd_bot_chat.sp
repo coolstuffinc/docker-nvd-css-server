@@ -585,8 +585,8 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     GetClientName(botClient, botName, sizeof(botName));
     
     // Personalidade do bot
-    char personality[256], catchphrase[64], style[256];
-    GetBotPersonality(botName, personality, sizeof(personality), catchphrase, sizeof(catchphrase), style, sizeof(style));
+    char personality[256], catchphrase[64], style[256], behavior[256];
+    GetBotPersonality(botName, personality, sizeof(personality), catchphrase, sizeof(catchphrase), style, sizeof(style), behavior, sizeof(behavior));
 
     char botTeamName[32];
     int team = GetClientTeam(botClient);
@@ -740,6 +740,7 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         ReplaceString(sysPrompt, sizeof(sysPrompt), "[personality]", personality);
         ReplaceString(sysPrompt, sizeof(sysPrompt), "[catchphrase]", catchphrase);
         ReplaceString(sysPrompt, sizeof(sysPrompt), "[style]", style);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "[behavior]", behavior);
     }
     else
     {
@@ -756,6 +757,43 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         else
             Format(fullPrompt, sizeof(fullPrompt), "Fale como %s.", botName);
     }
+    
+    // Extrai arma do contexto (entre aspas duplas) para [weapon]
+    char weaponBuf[32] = "desconhecida";
+    int wStart = StrContains(localContext, "com tiro de \"");
+    if (wStart != -1)
+    {
+        wStart += 13; // skip "com tiro de "
+        int wEnd = wStart;
+        while (wEnd < strlen(localContext) && localContext[wEnd] != '\"')
+            wEnd++;
+        if (wEnd > wStart)
+        {
+            int len = wEnd - wStart;
+            if (len > 31) len = 31;
+            strcopy(weaponBuf, len + 1, localContext[wStart]);
+        }
+    }
+    else
+    {
+        wStart = StrContains(localContext, "com faca");
+        if (wStart != -1)
+            strcopy(weaponBuf, sizeof(weaponBuf), "faca");
+    }
+    
+    // Replace user prompt placeholders (system prompt already done)
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[weapon]", weaponBuf);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[behavior]", behavior);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[state]", gameState);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[event]", eventStr);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[mood]", mood);
+    char roundStr[16];
+    IntToString(g_CurrentRound, roundStr, sizeof(roundStr));
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[round]", roundStr);
+    char scoreStr[32];
+    Format(scoreStr, sizeof(scoreStr), "%d a %d", tScore, ctScore);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[score]", scoreStr);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[map]", mapName);
 
     char timeBuf[32];
     FormatTime(timeBuf, sizeof(timeBuf), "%H:%M:%S");
@@ -978,13 +1016,15 @@ void LoadPersonalities()
 }
 
 void GetBotPersonality(const char[] botName, char[] personality, int personalityLen,
-    char[] catchphrase, int catchphraseLen, char[] style, int styleLen)
+    char[] catchphrase, int catchphraseLen, char[] style, int styleLen,
+    char[] behavior, int behaviorLen)
 {
     if (g_PersonalityKV == null)
     {
         personality[0] = '\0';
         catchphrase[0] = '\0';
         style[0] = '\0';
+        behavior[0] = '\0';
         return;
     }
     
@@ -994,12 +1034,14 @@ void GetBotPersonality(const char[] botName, char[] personality, int personality
         personality[0] = '\0';
         catchphrase[0] = '\0';
         style[0] = '\0';
+        behavior[0] = '\0';
         return;
     }
     
     g_PersonalityKV.GetString("personality", personality, personalityLen);
     g_PersonalityKV.GetString("catchphrase", catchphrase, catchphraseLen);
     g_PersonalityKV.GetString("style", style, styleLen);
+    g_PersonalityKV.GetString("behavior", behavior, behaviorLen);
 }
 
 // ============================================================================
