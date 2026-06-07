@@ -81,10 +81,19 @@ public Action OnRankMeCommand(int client, const char[] command, int argc)
 		
 		char query[512];
 		Format(query, sizeof(query), 
-			"SELECT name, score, kills, deaths, shots, hits, headshots, connected FROM rankme WHERE name LIKE '%%%s%%' ORDER BY score DESC LIMIT 5", 
+			"SELECT name, score, kills, deaths, shots, hits, headshots, connected FROM rankme WHERE name LIKE '%%%s%%' AND steam != 'BOT' AND steam != 'HLTV' ORDER BY score DESC LIMIT 5", 
 			escapedArgs);
 			
-		g_Db.Query(SQL_RankMeCallback, query, client);
+		if (client == 0)
+		{
+			DBResultSet results = view_as<DBResultSet>(SQL_Query(g_Db, query));
+			ProcessRankMeResults(client, results);
+			delete results;
+		}
+		else
+		{
+			g_Db.Query(SQL_RankMeCallback, query, client);
+		}
 	}
 	else
 	{
@@ -96,17 +105,26 @@ public Action OnRankMeCommand(int client, const char[] command, int argc)
 				limit = parsedLimit;
 		}
 		
-		char query[256];
+		char query[512];
+		// Filtra apenas Steam ID 'HLTV' e 'BOT' (SourceTV)
 		Format(query, sizeof(query), 
-			"SELECT name, %s FROM rankme ORDER BY %s DESC LIMIT %d", 
+			"SELECT name, %s FROM rankme WHERE steam != 'BOT' AND steam != 'HLTV' AND score > 0 ORDER BY %s DESC LIMIT %d", 
 			column, column, limit);
 			
-		DataPack pack = new DataPack();
-		pack.WriteString(column);
-		pack.WriteCell(client);
-		pack.Reset();
-		
-		g_Db.Query(SQL_TopCallback, query, pack);
+		if (client == 0)
+		{
+			DBResultSet results = view_as<DBResultSet>(SQL_Query(g_Db, query));
+			ProcessTopResults(client, results, column);
+			delete results;
+		}
+		else
+		{
+			DataPack pack = new DataPack();
+			pack.WriteString(column);
+			pack.WriteCell(client);
+			pack.Reset();
+			g_Db.Query(SQL_TopCallback, query, pack);
+		}
 	}
 	
 	return Plugin_Handled;
@@ -126,6 +144,12 @@ public void SQL_TopCallback(Database db, DBResultSet results, const char[] error
 		return;
 	}
 	
+	ProcessTopResults(client, results, column);
+}
+
+void ProcessTopResults(int client, DBResultSet results, const char[] column)
+{
+	if (results == null) return;
 	ReplyToCommand(client, "--- TOP by %s ---", column);
 	int rank = 1;
 	while (results.FetchRow())
@@ -179,8 +203,18 @@ public Action Cmd_Top10(int client, int args)
 	}
 	
 	char query[256];
-	Format(query, sizeof(query), "SELECT name, score, kills, deaths FROM rankme ORDER BY score DESC LIMIT 10");
-	g_Db.Query(SQL_Top10Callback, query, client);
+	Format(query, sizeof(query), "SELECT name, score, kills, deaths, steam FROM rankme WHERE steam != 'BOT' AND steam != 'HLTV' AND score > 0 ORDER BY score DESC LIMIT 10");
+	
+	if (client == 0)
+	{
+		DBResultSet results = view_as<DBResultSet>(SQL_Query(g_Db, query));
+		ProcessTop10Results(client, results);
+		delete results;
+	}
+	else
+	{
+		g_Db.Query(SQL_Top10Callback, query, client);
+	}
 	return Plugin_Handled;
 }
 
@@ -192,15 +226,22 @@ public void SQL_Top10Callback(Database db, DBResultSet results, const char[] err
 		return;
 	}
 	
+	ProcessTop10Results(client, results);
+}
+
+void ProcessTop10Results(int client, DBResultSet results)
+{
+	if (results == null) return;
 	ReplyToCommand(client, "--- TOP 10 ---");
 	int rank = 1;
 	while (results.FetchRow())
 	{
-		char name[64];
+		char name[64], steam[64];
 		results.FetchString(0, name, sizeof(name));
 		int score = results.FetchInt(1);
 		int kills = results.FetchInt(2);
 		int deaths = results.FetchInt(3);
+		results.FetchString(4, steam, sizeof(steam));
 		float kdr = deaths > 0 ? float(kills) / float(deaths) : float(kills);
 		ReplyToCommand(client, "#%d  %s  Score:%d  K:%d D:%d KDR:%.2f", rank, name, score, kills, deaths, kdr);
 		rank++;
@@ -227,10 +268,19 @@ public Action Cmd_RankMe(int client, int args)
 	
 	char query[512];
 	Format(query, sizeof(query),
-		"SELECT name, score, kills, deaths, shots, hits, headshots, connected FROM rankme WHERE name LIKE '%%%s%%' ORDER BY score DESC LIMIT 5",
+		"SELECT name, score, kills, deaths, shots, hits, headshots, connected FROM rankme WHERE name LIKE '%%%s%%' AND steam != 'BOT' AND steam != 'HLTV' ORDER BY score DESC LIMIT 5",
 		search);
 	
-	g_Db.Query(SQL_RankMeCallback, query, client);
+	if (client == 0)
+	{
+		DBResultSet results = SQL_Query(g_Db, query);
+		ProcessRankMeResults(client, results);
+		delete results;
+	}
+	else
+	{
+		g_Db.Query(SQL_RankMeCallback, query, client);
+	}
 	return Plugin_Handled;
 }
 
@@ -242,7 +292,13 @@ public void SQL_RankMeCallback(Database db, DBResultSet results, const char[] er
 		return;
 	}
 	
-	int count;
+	ProcessRankMeResults(client, results);
+}
+
+void ProcessRankMeResults(int client, DBResultSet results)
+{
+	if (results == null) return;
+	int count = 0;
 	while (results.FetchRow())
 	{
 		char name[64];
