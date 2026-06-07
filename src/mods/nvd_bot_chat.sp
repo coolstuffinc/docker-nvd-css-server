@@ -750,7 +750,8 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     }
     
     if (!GetPromptTemplate(eventType, "user", fullPrompt, sizeof(fullPrompt),
-        botName, botTeamName, targetMention))
+        botName, botTeamName, targetMention, gameState, eventStr, mood,
+        g_CurrentRound, tScore, ctScore))
     {
         if (targetMention[0])
             Format(fullPrompt, sizeof(fullPrompt), "Fale como %s sobre %s.", botName, targetMention);
@@ -784,9 +785,9 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     // Replace user prompt placeholders (system prompt already done)
     ReplaceString(fullPrompt, sizeof(fullPrompt), "[weapon]", weaponBuf);
     ReplaceString(fullPrompt, sizeof(fullPrompt), "[behavior]", behavior);
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[state]", gameState);
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[event]", eventStr);
+    // Extra safety: ensure all placeholders are replaced
     ReplaceString(fullPrompt, sizeof(fullPrompt), "[mood]", mood);
+    ReplaceString(fullPrompt, sizeof(fullPrompt), "[state]", gameState);
     char roundStr[16];
     IntToString(g_CurrentRound, roundStr, sizeof(roundStr));
     ReplaceString(fullPrompt, sizeof(fullPrompt), "[round]", roundStr);
