@@ -122,7 +122,7 @@ public void OnClientDisconnect(int client)
 public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (client > 0 && IsFakeClient(client) && g_BotNameIndex[client] != -1)
+	if (client > 0 && IsFakeClient(client) && !IsClientSourceTV(client) && g_BotNameIndex[client] != -1)
 	{
 		char currentName[32];
 		GetClientName(client, currentName, sizeof(currentName));
