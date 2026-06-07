@@ -1,292 +1,151 @@
 #include <sourcemod>
 #include <sdktools>
-#include <nvd_core>
+#include <cstrike>
+#include <ripext>
 
 #pragma semicolon 1
 #pragma newdecls required
 
-#define TEAMNAME_PANEL_ID 9001
-#define TEAMNAME_VERSION "1.0.0"
+#define OLLAMA_URL "http://172.17.0.1:11433/api/generate"
 
 ConVar g_CvarEnabled;
-ConVar g_CvarAutoGenerate;
+ConVar g_CvarModel;
+bool g_Generating;
 char g_TeamNameCt[64];
 char g_TeamNameT[64];
-bool g_Generating;
-int g_VotesAccept;
-int g_VotesReroll;
-int g_Voters[MAXPLAYERS + 1];
-bool g_PendingVote;
+char g_PlayersCt[512];
+char g_PlayersT[512];
 
 public Plugin myinfo =
 {
 	name = "NVD Team Names",
 	author = "OpenCode",
-	description = "AI-powered team name generator for mixes",
-	version = TEAMNAME_VERSION,
+	description = "AI team name generator",
+	version = "1.0.0",
 	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
 };
 
 public void OnPluginStart()
 {
 	g_CvarEnabled = CreateConVar("nvd_teamnames", "1", "Enable AI team name generation");
-	g_CvarAutoGenerate = CreateConVar("nvd_teamnames_auto", "1", "Auto-generate names when mix starts");
+	g_CvarModel = CreateConVar("nvd_teamnames_model", "qwen2.5:1.5b", "Ollama model");
 	AutoExecConfig(true, "nvd_teamnames");
-	
-	RegConsoleCmd("sm_teamnames", Command_TeamNames, "Suggest new team names");
-	
-	// Hook mix start (attempt via mixmod command detection)
-	HookEvent("round_start", Event_RoundStart);
-	
-	PrintToServer("[NVD_TEAMNAMES] +- Loaded v%s", TEAMNAME_VERSION);
-}
-
-public void OnMapStart()
-{
-	g_Generating = false;
-	g_PendingVote = false;
-	strcopy(g_TeamNameCt, sizeof(g_TeamNameCt), "Time CT");
-	strcopy(g_TeamNameT, sizeof(g_TeamNameT), "Time TR");
+	RegConsoleCmd("sm_teamnames", Command_TeamNames);
 }
 
 public Action Command_TeamNames(int client, int args)
 {
-	if (!g_CvarEnabled.BoolValue)
-	{
-		ReplyToCommand(client, "[NVD] Team name generation is disabled.");
-		return Plugin_Handled;
-	}
-	
-	if (g_Generating)
-	{
-		ReplyToCommand(client, "[NVD] Already generating names, wait...");
-		return Plugin_Handled;
-	}
-	
+	if (!g_CvarEnabled.BoolValue) { ReplyToCommand(client, "[NVD] Disabled."); return Plugin_Handled; }
+	if (g_Generating) { ReplyToCommand(client, "[NVD] Generating..."); return Plugin_Handled; }
 	GenerateTeamNames();
 	return Plugin_Handled;
 }
 
-public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
-{
-	// Auto-generate on first round if enabled
-	static bool firstRound = true;
-	if (firstRound && g_CvarAutoGenerate.BoolValue && g_CvarEnabled.BoolValue)
-	{
-		firstRound = false;
-		CreateTimer(5.0, Timer_AutoGenerate, _, TIMER_FLAG_NO_MAPCHANGE);
-	}
-}
-
-public Action Timer_AutoGenerate(Handle timer)
-{
-	// Only generate if there are human players
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && !IsFakeClient(i) && !IsClientSourceTV(i))
-		{
-			GenerateTeamNames();
-			break;
-		}
-	}
-	return Plugin_Stop;
-}
-
 void GenerateTeamNames()
 {
-	if (g_Generating) return;
+	g_Generating = true;
+	g_PlayersCt[0] = '\0';
+	g_PlayersT[0] = '\0';
+	int ctPos = 0, tPos = 0, ctCount = 0, tCount = 0;
 	
-	// Build player list for context
-	char playerContext[512];
-	int pos = 0;
-	int playerCount = 0;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && !IsClientSourceTV(i))
-		{
-			char name[32];
-			GetClientName(i, name, sizeof(name));
-			if (IsFakeClient(i))
-				pos += Format(playerContext[pos], sizeof(playerContext) - pos, "[BOT]%s, ", name);
-			else if (pos < 400)
-				pos += Format(playerContext[pos], sizeof(playerContext) - pos, "%s, ", name);
-			playerCount++;
-		}
+		if (!IsClientInGame(i) || IsClientSourceTV(i)) continue;
+		char name[64]; GetClientName(i, name, sizeof(name));
+		if (IsFakeClient(i)) Format(name, sizeof(name), "[BOT]%s", name);
+		int team = GetClientTeam(i);
+		if (team == CS_TEAM_CT && ctPos < 480)
+			{ ctPos += Format(g_PlayersCt[ctPos], sizeof(g_PlayersCt) - ctPos, "%s, ", name); ctCount++; }
+		else if (team == CS_TEAM_T && tPos < 480)
+			{ tPos += Format(g_PlayersT[tPos], sizeof(g_PlayersT) - tPos, "%s, ", name); tCount++; }
 	}
 	
-	if (playerCount == 0)
-	{
-		PrintToServer("[NVD_TEAMNAMES] No players online, skipping generation");
-		return;
-	}
-	
-	g_Generating = true;
-	
-	char prompt[1024];
-	Format(prompt, sizeof(prompt),
-		"Generate 4 creative, aggressive Brazilian Portuguese Counter-Strike team names. Players: %s. Format: one per line, no numbers. Examples: Os Imortais, Furia Noturna, Chapa Quente, Pura Maldade",
-		playerContext);
-	
-	char sysPrompt[256];
-	Format(sysPrompt, sizeof(sysPrompt),
-		"Generate CS team names in PT-BR. Short (max 20 chars), aggressive, creative, war-themed or BR slang. Return exactly 4 names, one per line. No numbers.");
-	
-	PrintToServer("[NVD_TEAMNAMES] Generating names for %d players...", playerCount);
-	
-	NVD_AskAI(prompt, sysPrompt, OnNamesGenerated, 0);
+	PrintToServer("[NVD_TEAMNAMES] CT(%d) TR(%d) - generating...", ctCount, tCount);
+	QueryOllama("CT", OnCtName);
 }
 
-public void OnNamesGenerated(const char[] response, any data)
+void QueryOllama(const char[] team, HTTPRequestCallback callback)
+{
+	char model[64]; g_CvarModel.GetString(model, sizeof(model));
+	
+	char prompt[512];
+	if (StrEqual(team, "CT"))
+		Format(prompt, sizeof(prompt), "Generate 1 creative CS team name for CT team. Players: %s", g_PlayersCt);
+	else
+		Format(prompt, sizeof(prompt), "Generate 1 creative CS team name for TR team. Players: %s CT team is '%s'. TR must be different.", g_PlayersT, g_TeamNameCt);
+	
+	char sys[256] = "Generate 1 short (max 25 chars) aggressive PT-BR CS team name. Return ONLY the name.";
+	
+	// Build JSON manually
+	char json[2048];
+	Format(json, sizeof(json),
+		"{\"model\":\"%s\",\"prompt\":\"%s\",\"system\":\"%s\",\"stream\":false,\"options\":{\"temperature\":0.8}}",
+		model, prompt, sys);
+	
+	HTTPRequest req = new HTTPRequest(OLLAMA_URL);
+	JSONObject body = JSONObject.FromString(json);
+	req.Post(body, callback);
+	delete body;
+}
+
+public void OnCtName(HTTPResponse response, any value)
+{
+	if (response.Status != HTTPStatus_OK)
+	{
+		LogError("[NVD_TEAMNAMES] CT name HTTP error: %d", response.Status);
+		g_Generating = false; return;
+	}
+	
+	JSONObject obj = view_as<JSONObject>(response.Data);
+	char raw[256]; obj.GetString("response", raw, sizeof(raw));
+	delete obj;
+	
+	CleanName(raw, g_TeamNameCt, sizeof(g_TeamNameCt));
+	PrintToServer("[NVD_TEAMNAMES] CT = '%s'", g_TeamNameCt);
+	
+	// Now generate TR name
+	if (g_PlayersT[0])
+		QueryOllama("TR", OnTrName);
+	else
+		Finish();
+}
+
+public void OnTrName(HTTPResponse response, any value)
+{
+	if (response.Status != HTTPStatus_OK)
+	{
+		LogError("[NVD_TEAMNAMES] TR name HTTP error: %d", response.Status);
+		Format(g_TeamNameT, sizeof(g_TeamNameT), "%s II", g_TeamNameCt);
+		Finish(); return;
+	}
+	
+	JSONObject obj = view_as<JSONObject>(response.Data);
+	char raw[256]; obj.GetString("response", raw, sizeof(raw));
+	delete obj;
+	
+	CleanName(raw, g_TeamNameT, sizeof(g_TeamNameT));
+	PrintToServer("[NVD_TEAMNAMES] TR = '%s'", g_TeamNameT);
+	Finish();
+}
+
+void Finish()
 {
 	g_Generating = false;
-	
-	if (response[0] == '\0' || StrContains(response, "ERROR_") != -1)
+	if (g_TeamNameCt[0] && g_TeamNameT[0])
 	{
-		PrintToServer("[NVD_TEAMNAMES] Generation failed: %s", response);
-		PrintToChatAll("[NVD] \x04Failed to generate team names. Use !teamnames to retry.");
-		return;
+		PrintToChatAll("\x04[NVD] \x01Teams: \x03%s \x01(CT) vs \x03%s \x01(TR)", g_TeamNameCt, g_TeamNameT);
+		PrintToChatAll("\x04[NVD] \x01Use \x04!teamnames\x01 to reroll.");
+		ServerCommand("hostname \"NVD | %s vs %s\"", g_TeamNameCt, g_TeamNameT);
 	}
-	
-	// Parse names (one per line, pick first 2)
-	char names[4][64];
-	int nameCount = 0;
-	
-	char buffer[512];
-	strcopy(buffer, sizeof(buffer), response);
-	
-	int start = 0;
-	int end;
-	while (start < strlen(buffer) && nameCount < 4)
-	{
-		// Skip empty lines and numbers
-		while (start < strlen(buffer) && (buffer[start] == '\n' || buffer[start] == '\r' || buffer[start] == ' '))
-			start++;
-		
-		if (start >= strlen(buffer)) break;
-		
-		end = start;
-		while (end < strlen(buffer) && buffer[end] != '\n' && buffer[end] != '\r')
-			end++;
-		
-		if (end > start)
-		{
-			char raw[64];
-			int len = end - start;
-			if (len > 63) len = 63;
-			strcopy(raw, len + 1, buffer[start]);
-			TrimString(raw);
-			
-			// Remove leading numbers like "1. " or "1- "
-			if (raw[0] >= '0' && raw[0] <= '9')
-			{
-				int skip = 0;
-				while (skip < len && raw[skip] >= '0' && raw[skip] <= '9') skip++;
-				while (skip < len && (raw[skip] == '.' || raw[skip] == ')' || raw[skip] == '-' || raw[skip] == ' ')) skip++;
-				if (skip > 0 && skip < len)
-				{
-					char cleaned[64];
-					strcopy(cleaned, sizeof(cleaned), raw[skip]);
-					strcopy(raw, sizeof(raw), cleaned);
-				}
-			}
-			
-			if (strlen(raw) > 3)
-			{
-				strcopy(names[nameCount], sizeof(names[]), raw);
-				nameCount++;
-			}
-		}
-		
-		start = end + 1;
-	}
-	
-	if (nameCount < 2)
-	{
-		PrintToServer("[NVD_TEAMNAMES] Not enough names generated");
-		PrintToChatAll("[NVD] \x04Could not parse enough names. Try !teamnames.");
-		return;
-	}
-	
-	// Show panel with generated names
-	ShowTeamNamePanel(names, nameCount);
 }
 
-void ShowTeamNamePanel(char[][] names, int count)
+void CleanName(const char[] raw, char[] out, int max)
 {
-	char buffer[512];
-	Panel panel = new Panel();
-	
-	panel.SetTitle("Team Names Generator");
-	
-	panel.DrawText(" ");
-	panel.DrawText(" Suggested Teams:");
-	panel.DrawText(" ");
-	
-	for (int i = 0; i < count && i < 4; i += 2)
-	{
-		char line[256];
-		if (i + 1 < count)
-			Format(line, sizeof(line), "  [%d] %s  vs  [%d] %s", i/2 + 1, names[i], i/2 + 1, names[i+1]);
-		else
-			Format(line, sizeof(line), "  [%d] %s", i/2 + 1, names[i]);
-		panel.DrawText(line);
-	}
-	
-	panel.DrawText(" ");
-	panel.DrawText("1-4: Select pair  5: Reroll  0: Cancel");
-	panel.DrawText(" ");
-	
-	// For simplicity: use the first pair
-	strcopy(g_TeamNameCt, sizeof(g_TeamNameCt), names[0]);
-	if (count > 1)
-		strcopy(g_TeamNameT, sizeof(g_TeamNameT), names[1]);
-	else
-		Format(g_TeamNameT, sizeof(g_TeamNameT), "%s II", names[0]);
-	
-	char ctLine[128], trLine[128];
-	Format(ctLine, sizeof(ctLine), ">> Auto-set: CT = %s", g_TeamNameCt);
-	Format(trLine, sizeof(trLine), ">> Auto-set: TR = %s", g_TeamNameT);
-	panel.DrawText(ctLine);
-	panel.DrawText(trLine);
-	
-	panel.DrawText(" ");
-	panel.CurrentKey = 5;
-	panel.DrawText("Reroll");
-	panel.CurrentKey = 10;
-	panel.DrawText("Close");
-	
-	// Send to all players
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && !IsFakeClient(i) && !IsClientSourceTV(i))
-			panel.Send(i, PanelHandler, 30);
-	}
-	
-	delete panel;
-	
-	// Announce
-	PrintToChatAll("\x04[NVD] \x01Teams: \x03%s \x01vs \x03%s", g_TeamNameCt, g_TeamNameT);
-	PrintToChatAll("\x04[NVD] \x01Use \x04!teamnames\x01 to reroll.");
-	
-	// Update hostname
-	char newHostname[128];
-	Format(newHostname, sizeof(newHostname), "NVD | %s vs %s", g_TeamNameCt, g_TeamNameT);
-	ServerCommand("hostname \"%s\"", newHostname);
-	
-	PrintToServer("[NVD_TEAMNAMES] Teams set: %s vs %s", g_TeamNameCt, g_TeamNameT);
-}
-
-public int PanelHandler(Menu menu, MenuAction action, int client, int param2)
-{
-	if (action == MenuAction_Select)
-	{
-		if (param2 == 5) // Reroll
-		{
-			if (!g_Generating)
-				GenerateTeamNames();
-			else
-				PrintToChat(client, "[NVD] Already generating, wait...");
-		}
-	}
-	return 0;
+	strcopy(out, max, raw);
+	ReplaceString(out, max, "\"", "");
+	ReplaceString(out, max, "\n", ""); ReplaceString(out, max, "\r", "");
+	ReplaceString(out, max, "1.", ""); ReplaceString(out, max, "2.", ""); 
+	ReplaceString(out, max, "- ", ""); ReplaceString(out, max, "#", "");
+	TrimString(out);
+	if (strlen(out) > 25) out[25] = '\0';
 }
