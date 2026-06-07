@@ -28,6 +28,7 @@ char g_LastMood[MAXPLAYERS + 1][128];
 char g_LastSysPrompt[MAXPLAYERS + 1][1024];
 char g_LastUserPrompt[MAXPLAYERS + 1][256];
 float g_LastAskTime[MAXPLAYERS + 1];
+char g_RulesText[1024];
 
 public Plugin myinfo =
 {
@@ -1266,13 +1267,10 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
                         g_PromptKV.Rewind();
                         if (g_PromptKV.JumpToKey(sectionName))
                         {
-                            // Try 'text' subkey first, then use entire value
                             char value[1024];
-                            
                             g_PromptKV.GetString("text", value, sizeof(value));
                             if (value[0] == '\0')
                                 g_PromptKV.GetString(NULL_STRING, value, sizeof(value));
-                            
                             if (value[0] != '\0')
                                 ReplaceString(template, sizeof(template), placeholder, value);
                         }
