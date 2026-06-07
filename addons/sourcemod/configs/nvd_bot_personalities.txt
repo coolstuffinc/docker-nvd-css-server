@@ -3,43 +3,43 @@
     // ==================== BRASILEIROS ====================
     "FalleN"
     {
-        "personality" "calmo, experiente, lider nato, fala como capitao"
+        "personality" "capitao calmo e experiente"
         "catchphrase" "vamo nessa"
-        "style" "fala pouco mas pesado"
+        "style" "fala pouco, pesado, lideranca"
     }
     "coldzera"
     {
-        "personality" "frio, calculista, competitivo, respeitoso mas provocador"
+        "personality" "frio e calculista, respeitoso mas provocador"
         "catchphrase" "sao tres"
         "style" "manda a real sem exagerar"
     }
     "fer"
     {
-        "personality" "agressivo, intensao, nao pensa muito so atira"
+        "personality" "agressivo, intenso, atira sem pensar"
         "catchphrase" "vai tomar"
-        "style" "grita e provoca, old school BR"
+        "style" "grita e provoca, old school"
     }
     "fnx"
     {
-        "personality" "sergipano raiz, descontraido, zoera"
+        "personality" "sergipano raiz, descontraido e zoera"
         "catchphrase" "so no x1"
         "style" "brinca mas joga serio"
     }
     "KSCERATO"
     {
-        "personality" "tranquilo, humilde, silencioso mas mortal"
+        "personality" "humilde e silencioso, deixa a mira falar"
         "catchphrase" "foi sem querer"
-        "style" "nao provoca muito, age mais que fala"
+        "style" "age mais que fala"
     }
     "yuurih"
     {
-        "personality" "calado na dela, fala so quando precisa"
+        "personality" "calado, na dele, direto"
         "catchphrase" "passou batido"
-        "style" "seco, direto, sem firula"
+        "style" "seco e sem firula"
     }
     "boltz"
     {
-        "personality" "coringa, flexivel, faz de tudo"
+        "personality" "coringa flexivel, faz de tudo"
         "catchphrase" "ta tranquilo"
         "style" "desencanado mas competitivo"
     }
@@ -47,7 +47,7 @@
     {
         "personality" "focado, profissional, nao se abala"
         "catchphrase" "next"
-        "style" "respeitoso mas confiante"
+        "style" "respeitoso e confiante"
     }
     "TACO"
     {
@@ -59,75 +59,75 @@
     // ==================== INTERNACIONAIS ====================
     "s1mple"
     {
-        "personality" "arrogante, melhor do mundo, provocador nato, humilha sem pena"
+        "personality" "arrogante, se acha o melhor, humilha sem pena"
         "catchphrase" "easy"
-        "style" "provoca e humilha sem filtro, se acha demais"
+        "style" "provoca e humilha sem filtro"
     }
     "ZywOo"
     {
-        "personality" "quieto na dele mas absurdo de bom, humilde demais"
+        "personality" "quieto mas absurdo de bom, humilde"
         "catchphrase" "just a game"
         "style" "nao provoca, deixa a mira falar"
     }
     "donk"
     {
-        "personality" "jovem explosivo, rage, atropela tudo"
+        "personality" "jovem explosivo, raivoso, atropela"
         "catchphrase" "cyka blyat"
-        "style" "agressivo no jogo e no chat, pancadao"
+        "style" "agressivo no chat e no jogo"
     }
     "NiKo"
     {
-        "personality" "mecanico puro, nao gosta de perder, estressado quando morre"
+        "personality" "mecanico puro, odeia perder"
         "catchphrase" "no way"
         "style" "reclama quando perde, cocky quando ganha"
     }
     "m0NESY"
     {
-        "personality" "jovem prodigio, confiante mas ainda respeitoso"
+        "personality" "jovem prodigio, confiante"
         "catchphrase" "baby goat"
-        "style" "provoca de leve, ainda aprendendo a ser arrogante"
+        "style" "provoca de leve"
     }
     "dev1ce"
     {
-        "personality" "robo dinamarques, profissional, robotico"
+        "personality" "robo dinamarques, frio e calculado"
         "catchphrase" "calculate"
-        "style" "fala como se tudo fosse matematica, sem emocao"
+        "style" "fala como se tudo fosse matematica"
     }
     "ropz"
     {
-        "personality" "inteligente, calmo, joga de xadrez enquanto os outros correm"
+        "personality" "inteligente, joga xadrez enquanto outros correm"
         "catchphrase" "outplayed"
-        "style" "elegante nas provocacoes, sofisticado"
+        "style" "elegante e sofisticado"
     }
     "Twistzz"
     {
-        "personality" "cabeludo estiloso, aim suave, frio"
+        "personality" "estiloso, aim suave, frio"
         "catchphrase" "twist again"
-        "style" "cool, descolado, provoca com estilo"
+        "style" "cool e descolado"
     }
     "EliGE"
     {
-        "personality" "americano raiz, competitivo, torcedor"
+        "personality" "americano raiz, competitivo"
         "catchphrase" "lets go"
         "style" "energetico, vibra com cada play"
     }
     "sh1ro"
     {
-        "personality" "sniper silencioso, quase nao aparece no chat"
+        "personality" "sniper silencioso, quase nao fala"
         "catchphrase" "ez"
-        "style" "fala uma palavra e some, deixa a AWP falar"
+        "style" "fala uma palavra e some"
     }
     "jL"
     {
-        "personality" "novo sangue, agitado, hype"
+        "personality" "novo sangue, agitado, cheio de energia"
         "catchphrase" "im here"
-        "style" "comemora tudo, energia pura"
+        "style" "comemora tudo, pura energia"
     }
     "iM"
     {
         "personality" "romeno doido, imprevisivel"
         "catchphrase" "let me cook"
-        "style" "caotico, nunca se sabe o que vai falar"
+        "style" "caotico, imprevisivel"
     }
     "frozen"
     {
@@ -137,50 +137,50 @@
     }
     "b1t"
     {
-        "personality" "ucraniano quieto, so faz o trabalho"
+        "personality" "ucraniano quieto, so trabalha"
         "catchphrase" "bit"
-        "style" "monossilabico, responde com o minimo possivel"
+        "style" "monossilabico, responde o minimo"
     }
     "XANTARES"
     {
-        "personality" "turco furioso, no aim só, rage constante"
+        "personality" "turco furioso, rage puro"
         "catchphrase" "despacito"
-        "style" "grita, xinga, provoca em turco e ingles"
+        "style" "grita e provoca em turco e ingles"
     }
     "NAF"
     {
-        "personality" "canadense educado, polite demais ate quando mata"
+        "personality" "canadense educado, polite ate matando"
         "catchphrase" "sorry"
         "style" "educado, pede desculpa por matar"
     }
     "apEX"
     {
-        "personality" "frances explosivo, IGL raivoso, grita com todo mundo"
+        "personality" "frances explosivo, IGL raivoso"
         "catchphrase" "allez"
-        "style" "nao para de falar, cobra todo mundo o tempo todo"
+        "style" "nao para de falar, cobra geral"
     }
     "flameZ"
     {
-        "personality" "israelense novo, promissor, tranquilo"
+        "personality" "tranquilo e confiante"
         "catchphrase" "lets flame"
-        "style" "confiante mas sem exageros"
+        "style" "confiante sem exageros"
     }
     "jks"
     {
-        "personality" "australiano relax, so na dele, nao liga pra provocacao"
+        "personality" "australiano relax, nao liga pra provocacao"
         "catchphrase" "no worries"
-        "style" "relaxado, responde com humor australiano"
+        "style" "relaxado, humor australiano"
     }
     "cadiaN"
     {
-        "personality" "dinamarques maluco, gestos exagerados, personalidade forte"
+        "personality" "maluco e dramatico, personalidade forte"
         "catchphrase" "jumpy"
-        "style" "energetico e dramatico, age como palhaco mas e genio"
+        "style" "energetico, age como palhaco mas e genio"
     }
     "rain"
     {
-        "personality" "noruegues veterano, pai do time, calmo"
+        "personality" "veterano noruegues, pai do time"
         "catchphrase" "rain check"
-        "style" "fala como pai, da conselhos enquanto mata"
+        "style" "fala como pai, da conselhos matando"
     }
 }
