@@ -91,6 +91,7 @@ public void OnPluginStart()
 
 	RegAdminCmd("sm_ollama_test", Command_OllamaTest, ADMFLAG_KICK);
 	RegAdminCmd("sm_ollama_status", Command_OllamaStatus, ADMFLAG_GENERIC);
+	RegAdminCmd("sm_ollama_reload", Command_OllamaReload, ADMFLAG_KICK);
 
 	for (int i = 0; i < MAX_PENDING; i++)
 		g_PendingRequests[i].inUse = false;
@@ -228,6 +229,39 @@ public Action Command_OllamaStatus(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action Command_OllamaReload(int client, int args)
+{
+	for (int i = 0; i < MAX_PENDING; i++)
+	{
+		if (g_PendingRequests[i].inUse)
+		{
+			Function cb; any data; Handle plugin;
+			FreeSlot(i, cb, data, plugin);
+		}
+	}
+	if (g_RequestQueue != null)
+	{
+		for (int i = 0; i < g_RequestQueue.Length; i++)
+		{
+			DataPack pack = view_as<DataPack>(g_RequestQueue.Get(i));
+			delete pack;
+		}
+		g_RequestQueue.Clear();
+	}
+	if (g_PendingResponses != null)
+	{
+		for (int i = 0; i < g_PendingResponses.Length; i++)
+		{
+			DataPack pack = view_as<DataPack>(g_PendingResponses.Get(i));
+			delete pack;
+		}
+		g_PendingResponses.Clear();
+	}
+	WarmupModel();
+	ReplyToCommand(client, "[NVD] ✅ All queues flushed, model warming up");
+	return Plugin_Handled;
+}
+
 void TestConnection(int client)
 {
 	char model[64]; g_ModelCvar.GetString(model, sizeof(model));
@@ -350,7 +384,18 @@ public int Native_PollResponse(Handle plugin, int numParams)
 
 public int Native_CanRequest(Handle plugin, int numParams) { return CheckRateLimit(GetNativeCell(1)); }
 
-bool CheckRateLimit(int client) { return true; }
+bool CheckRateLimit(int client)
+{
+	if (client < 1 || client > MAXPLAYERS) return true;
+	float now = GetGameTime();
+	if (now - g_WindowStart[client] > RATE_LIMIT_WINDOW)
+	{
+		g_WindowStart[client] = now;
+		g_PlayerRequestCount[client] = 0;
+	}
+	g_PlayerRequestCount[client]++;
+	return g_PlayerRequestCount[client] <= MAX_REQUESTS_PER_WINDOW;
+}
 
 int AllocateSlot(Function cb, any data, Handle plugin, int client)
 {
