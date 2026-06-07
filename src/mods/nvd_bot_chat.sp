@@ -28,7 +28,11 @@ char g_LastMood[MAXPLAYERS + 1][128];
 char g_LastSysPrompt[MAXPLAYERS + 1][1024];
 char g_LastUserPrompt[MAXPLAYERS + 1][256];
 float g_LastAskTime[MAXPLAYERS + 1];
-char g_RulesText[1024];
+
+// Shared _meta template snippets (loaded from _meta section)
+char g_MetaKeys[16][64];
+char g_MetaValues[16][1024];
+int g_MetaCount;
 
 public Plugin myinfo =
 {
@@ -1184,14 +1188,23 @@ void LoadPromptTemplates()
     
     PrintToServer("[BOT_CHAT] +- Prompt templates loaded from %s", path);
     
-    // Load shared _rules.text into global for [rules] replacement
-    g_RulesText[0] = '\0';
+    // Load shared _meta snippets (rules, critical, examples, etc.)
+    g_MetaCount = 0;
     g_PromptKV.Rewind();
-    if (g_PromptKV.JumpToKey("_rules"))
+    if (g_PromptKV.JumpToKey("_meta"))
     {
-        g_PromptKV.GetString("text", g_RulesText, sizeof(g_RulesText));
-        if (g_RulesText[0] == '\0')
-            g_PromptKV.GetString(NULL_STRING, g_RulesText, sizeof(g_RulesText));
+        if (g_PromptKV.GotoFirstSubKey(false))
+        {
+            do
+            {
+                if (g_MetaCount >= 16) break;
+                g_PromptKV.GetSectionName(g_MetaKeys[g_MetaCount], sizeof(g_MetaKeys[]));
+                g_PromptKV.GetString(NULL_STRING, g_MetaValues[g_MetaCount], sizeof(g_MetaValues[]));
+                if (g_MetaKeys[g_MetaCount][0] != '\0' && g_MetaValues[g_MetaCount][0] != '\0')
+                    g_MetaCount++;
+            } while (g_PromptKV.GotoNextKey(false));
+        }
+        PrintToServer("[BOT_CHAT] +- Loaded %d _meta snippets", g_MetaCount);
     }
     g_PromptKV.Rewind();
 }
@@ -1246,10 +1259,16 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
     Format(scoreStr, sizeof(scoreStr), "%d a %d", tScore, ctScore);
     ReplaceString(template, sizeof(template), "[score]", scoreStr);
     
-    // Replace [rules] from shared _rules section (loaded at plugin start)
-    if (g_RulesText[0] != '\0' && StrContains(template, "[rules]") != -1)
+    // Replace shared _meta snippets: [rules], [critical], [examples], etc.
+    if (g_MetaCount > 0)
     {
-        ReplaceString(template, sizeof(template), "[rules]", g_RulesText);
+        for (int mi = 0; mi < g_MetaCount; mi++)
+        {
+            char placeholder[64];
+            Format(placeholder, sizeof(placeholder), "[%s]", g_MetaKeys[mi]);
+            if (StrContains(template, placeholder) != -1)
+                ReplaceString(template, sizeof(template), placeholder, g_MetaValues[mi]);
+        }
     }
     
     strcopy(buffer, maxlen, template);
