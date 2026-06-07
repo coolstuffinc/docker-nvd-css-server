@@ -3,165 +3,198 @@
 	"Deaths"
 	{
 		"en"		"Deaths"
+		"pt"		"Mortes"
 	}
-	"ResetMyRank"{
+	"ResetMyRank"
+	{
 		"en"		"{default}Your rank has been reseted"
+		"pt"		"{default}Seu rank foi resetado"
 	}
 	"BombPickup"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} point(s) for Picking up the Bomb."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} ponto(s) por Pegar a Bomba."
 	}
 	"BombDropped"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) lost {3} point(s) for Dropping the Bomb."
+		"pt"		"{lightgreen}{1}{default} ({2}) perdeu {3} ponto(s) por Largar a Bomba."
 	}
 	"MVP"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} point(s) for being the Most Valuable Player."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} ponto(s) por ser o Jogador Mais Valioso (MVP)."
 	}
 	"Kills"
 	{
 		"en"		"Kills"
+		"pt"		"Abates"
 	}
 	"LostSuicide"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) lost {3} point(s) for Suiciding."
+		"pt"		"{lightgreen}{1}{default} ({2}) perdeu {3} ponto(s) por Suicídio."
 	}
 	"LostTK"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:s}"
 		"en"		"{lightgreen}{1}{default} ({2}) lost {3} point(s) for Team Killing {lightgreen}{4}"
+		"pt"		"{lightgreen}{1}{default} ({2}) perdeu {3} ponto(s) por Matar Companheiro {lightgreen}{4}"
 	}
 	"VIPStats"
 	{
 		"en"		"VIP Statistics"
+		"pt"		"Estatísticas de VIP"
 	}
 	"VIPEscapes"
 	{
 		"en"		"Escapes as VIP"
+		"pt"		"Escape como VIP"
 	}
 	"VIPsKilled"
 	{
 		"en"		"VIPs Killed"
+		"pt"		"VIPs Mortos"
 	}
 	"CT_VIPEscaped"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Counter-Terrorists{default} got {1} points for Escaping as VIP."
+		"pt"		"{lightgreen}Contra-Terroristas{default} ganharam {1} pontos por Escapar como VIP."
 	}
 	"VIPEscaped"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for Escaping as VIP."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por Escapar como VIP."
 	}
 	"TR_VIPKilled"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Terrorists{default} got {1} points for Killing the VIP."
+		"pt"		"{lightgreen}Terroristas{default} ganharam {1} pontos por Matar o VIP."
 	}
 	"VIPKilled"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for Killing the VIP."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por Matar o VIP."
 	}
 	
 	"GotPointsBy"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:s}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} point(s) for {4}."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} ponto(s) por {4}."
 	}
 
 	"IsRankedAt"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:d},{5:d},{6:d},{7:.2f}"
 		"en"		"Player {1}  is ranked at {2}/{3} with {4} points, {5}  kills, {6} deaths and KDR {7}"
+		"pt"		"Jogador {1} está rankeado em {2}/{3} com {4} pontos, {5} abates, {6} mortes e KDR {7}"
 	}
 	"Killing"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:s},{5:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for killing {lightgreen}{4} {default}({5})."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por matar {lightgreen}{4} {default}({5})."
 	}
 	
 	"KillingKillerNotRanked"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:s},{5:d},{6:d},{7:d}"
 		"en"		"{lightgreen}{1}{default} ({2})[{6}/{7}] got {3} points for killing {lightgreen}{4} {default}({5})."
+		"pt"		"{lightgreen}{1}{default} ({2})[{6}/{7}] ganhou {3} pontos por matar {lightgreen}{4} {default}({5})."
 	}
 	"KillingVictimNotRanked"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:s},{5:d},{6:d},{7:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for killing {lightgreen}{4} {default}({5})[{6}/{7}]."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por matar {lightgreen}{4} {default}({5})[{6}/{7}]."
 	}
 	"KillingBothNotRanked"
 	{
 		"#format"	"{1:s},{2:d},{3:d},{4:s},{5:d},{6:d},{7:d},{8:d},{9:d}"
 		"en"		"{lightgreen}{1}{default} ({2})[{6}/{7}] got {3} points for killing {lightgreen}{4} {default}({5})[{8}/{9}]."
+		"pt"		"{lightgreen}{1}{default} ({2})[{6}/{7}] ganhou {3} pontos por matar {lightgreen}{4} {default}({5})[{8}/{9}]."
 	}
 	"Headshot"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} point for Headshot."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} ponto por Headshot."
 	}
 	"TR_Planting"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Terrorists{default} got {1} points for Planting the Bomb"
+		"pt"		"{lightgreen}Terroristas{default} ganharam {1} pontos por Plantar a Bomba"
 	}
 	
 	"Planting"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for Planting the Bomb."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por Plantar a Bomba."
 	}
 	"TR_Exploding"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Terrorists{default} got {1} points for Exploding the Bomb."
+		"pt"		"{lightgreen}Terroristas{default} ganharam {1} pontos por Explodir a Bomba."
 	}
 	
 	"Exploding"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for Exploding the Bomb."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por Explodir a Bomba."
 	}
 	"CT_Defusing"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Counter-Terrorists{default} got {1} points for Defusing the Bomb."
+		"pt"		"{lightgreen}Contra-Terroristas{default} ganharam {1} pontos por Desarmar a Bomba."
 	}
 	
 	"Defusing"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for Defusing the Bomb."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por Desarmar a Bomba."
 	}
 	
 	"CT_Hostage"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Counter-Terrorists{default} got {1} points for Rescuing the Hostage."
+		"pt"		"{lightgreen}Contra-Terroristas{default} ganharam {1} pontos por Resgatar o Refém."
 	}
 	
 	"Hostage"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
 		"en"		"{lightgreen}{1}{default} ({2}) got {3} points for Rescuing the Hostage."
+		"pt"		"{lightgreen}{1}{default} ({2}) ganhou {3} pontos por Resgatar o Refém."
 	}
 	
 	"CT_Round"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Counter-Terrorists{default} got {1} points for Winning the Round."
+		"pt"		"{lightgreen}Contra-Terroristas{default} ganharam {1} pontos por Vencer a Rodada."
 	}
 	
 	"TR_Round"
 	{
 		"#format"	"{1:d}"
 		"en"		"{lightgreen}Terrorists{default} got {1} points for Winning the Round."
+		"pt"		"{lightgreen}Terroristas{default} ganharam {1} pontos por Vencer a Rodada."
 	}
 	
 	
@@ -169,169 +202,202 @@
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
 		"en"		"Showing from {1} to {2} of {3}\n"
+		"pt"		"Mostrando de {1} a {2} de {3}\n"
 	}
 	
 	"Next"
 	{
 		"en"		"Next"
+		"pt"		"Próximo"
 	}
 	
 	"Back"
 	{
 		"en"		"Back"
+		"pt"		"Voltar"
 	}
 	
 	"KnifeKills"
 	{
 		"en"		"Knife Kills"
+		"pt"		"Abates com Faca"
 	}
 	
 	"NotRanked"
 	{
 		"#format"	"{1:d},{2:d}"
 		"en"		"Not ranked yet. You need {2} kills for entering the rank. Current {1}."
+		"pt"		"Ainda não rankeado. Você precisa de {2} abates para entrar no rank. Atual: {1}."
 	}
 	
 	"Position"
 	{
 		"en"		"Position"
+		"pt"		"Posição"
 	}
 	
 	"Points"
 	{
 		"en"		"Points"
+		"pt"		"Pontos"
 	}
 	
 	"BasicStats"
 	{
 		"en"		"Basic Stats"
+		"pt"		"Estatísticas Básicas"
 	}
 	
 	"KillsDeaths"
 	{
 		"#format"	"{1:d},{2:d}"
 		"en"		"Kills: {1}   Deaths: {2}"
+		"pt"		"Abates: {1}   Mortes: {2}"
 	}
 	
 	"Suicides"
 	{
 		"en"		"Suicides"
+		"pt"		"Suicídios"
 	}
 	
 	"RoundStats"
 	{
 		"en"		"Rounds Stats"
+		"pt"		"Estatísticas de Rodadas"
 	}
 	
 	"TRWins"
 	{
 		"en"		"TR's Wins"
+		"pt"		"Vitórias dos TRs"
 	}
 	
 	"CTWins"
 	{
 		"en"		"CT's Wins"
+		"pt"		"Vitórias dos CTs"
 	}
 	
 	"HitStats"
 	{
 		"en"		"Hit Stats"
+		"pt"		"Estatísticas de Acertos"
 	}
 	
 	"Shots"
 	{
 		"en"		"Shots"
+		"pt"		"Tiros"
 	}
 	
 	"Hits"
 	{
 		"en"		"Hits"
+		"pt"		"Acertos"
 	}
 	
 	"Accuracy"
 	{
 		"en"		"Accuracy"
+		"pt"		"Precisão"
 	}
 	
 	"BombHostagesStats"
 	{
 		"en"		"Bombs/Hostages Stats"
+		"pt"		"Estatísticas de Bombas/Reféns"
 	}
 	
 	"PlantedBombs"
 	{
 		"en"		"Planted Bombs"
+		"pt"		"Bombas Plantadas"
 	}
 	
 	"DefusedBombs"
 	{
 		"en"		"Defused Bombs"
+		"pt"		"Bombas Desarmadas"
 	}
 	
 	"ExplodedBombs"
 	{
 		"en"		"Exploded Bombs"
+		"pt"		"Bombas Explodidas"
 	}
 	
 	"RescuedHostages"
 	{
 		"en"		"Rescued Hostages"
+		"pt"		"Reféns Resgatados"
 	}
 	
 	"OtherStats"
 	{
 		"en"		"Other Stats"
+		"pt"		"Outras Estatísticas"
 	}
 	
 	"TimeConnected"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
 		"en"		"Time connected: {1} hours, {2} minutes, {3} seconds"
+		"pt"		"Tempo conectado: {1} horas, {2} minutos, {3} segundos"
 	}
 	
 	"Head"
 	{
 		"en"		"Head"
+		"pt"		"Cabeça"
 	}
 	
 	"Chest"
 	{
 		"en"		"Chest"
+		"pt"		"Peito"
 	}
 	
 	"Stomach"
 	{
 		"en"		"Stomach"
+		"pt"		"Abdômen"
 	}
 	
 	"LeftArm"
 	{
 		"en"		"Left Arm"
+		"pt"		"Braço Esquerdo"
 	}
 	
 	"LeftLeg"
 	{
 		"en"		"Left Leg"
+		"pt"		"Perna Esquerda"
 	}
 	
 	"RightArm"
 	{
 		"en"		"Right Arm"
+		"pt"		"Braço Direito"
 	}
 	
 	"RightLeg"
 	{
 		"en"		"Right Leg"
+		"pt"		"Perna Direita"
 	}
 	
 	"Next9Players"
 	{
 		"en"		"Next 9 players"
+		"pt"		"Próximos 9 jogadores"
 	}
 	
 	"WeaponsStats"
 	{
 		"en"		"Weapon Statistics"
+		"pt"		"Estatísticas de Armas"
 	}
 }
  

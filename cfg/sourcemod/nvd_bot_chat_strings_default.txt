@@ -105,7 +105,7 @@
         "map_status"			"Map %s, Round %d, score %d-%d, %s, %d TR alive vs %d CT alive"
         "bomb_planted"			", bomb planted"
         "clutch_tag"			" CLUTCH"
-        "weapon_shot"			" with \"%s\""
+        "weapon_shot"			" with %s"
         "weapon_knife"			" with knife"
         "headshot"				" headshot"
         "someone"				"Someone"

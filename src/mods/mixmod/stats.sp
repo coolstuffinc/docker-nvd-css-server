@@ -628,7 +628,7 @@ void Mix_ShowAllPlayersStats()
         if (IsClientInGame(i) && !IsFakeClient(i)) {
             SetGlobalTransTarget(i);
             PrintToChat(i, "\x04[%s]:\x03 %t", MODNAME, "Match Stats");
-            PrintToChat(i, "\x04[%s]:\x03 %-20s %5s %5s %5s %5s %5s %6s", MODNAME, "玩家", "击杀", "死亡", "助攻", "爆头", "K/D", "残局");
+            PrintToChat(i, "\x04[%s]:\x03 %-20s %5s %5s %5s %5s %5s %6s", MODNAME, "Player", "Kills", "Deaths", "Assists", "HS", "K/D", "Clutch");
 
             for (int j = 0; j < playerCount; j++) {
                 int playerId = playerIds[j];

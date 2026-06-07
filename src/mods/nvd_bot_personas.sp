@@ -82,7 +82,7 @@ void LoadBotNames()
 
 public void OnClientPutInServer(int client)
 {
-	if (!IsFakeClient(client))
+	if (!IsFakeClient(client) || IsClientSourceTV(client))
 		return;
 
 	int count = g_BotNames.Length;
