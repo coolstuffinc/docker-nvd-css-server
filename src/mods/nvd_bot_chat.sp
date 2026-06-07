@@ -13,6 +13,7 @@ ConVar g_CvarEnabled;
 ConVar g_CvarCooldown;
 ConVar g_CvarChance;
 KeyValues g_PromptKV = null;
+KeyValues g_PersonalityKV = null;
 
 float g_LastBotChat;
 Handle g_RoundStartTimer;
@@ -47,8 +48,9 @@ public void OnPluginStart()
 	// Polling timer for AI responses (every 500ms)
 	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT);
 	
-	// Carrega templates de prompt do arquivo
+	// Carrega templates de prompt e personalidades
 	LoadPromptTemplates();
+	LoadPersonalities();
 	
 	// Comando para recarregar templates
 	RegAdminCmd("sm_botchat_reload", Command_ReloadPrompts, ADMFLAG_GENERIC);
@@ -109,10 +111,10 @@ void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
     else if (StrEqual(base, "flashbang")) strcopy(output, maxlen, "flash");
     else if (StrEqual(base, "smokegrenade")) strcopy(output, maxlen, "smoke");
     else if (StrEqual(base, "knife")) strcopy(output, maxlen, "faca");
-    else if (StrEqual(base, "scout")) strcopy(output, maxlen, "scout");
+    else if (StrEqual(base, "scout")) strcopy(output, maxlen, "mata-pombo");
     else if (StrEqual(base, "sg552")) strcopy(output, maxlen, "SG");
     else if (StrEqual(base, "aug")) strcopy(output, maxlen, "AUG");
-    else if (StrEqual(base, "m249")) strcopy(output, maxlen, "M249");
+    else if (StrEqual(base, "m249")) strcopy(output, maxlen, "Rambo");
     else if (StrEqual(base, "tmp")) strcopy(output, maxlen, "TMP");
     else if (StrEqual(base, "mac10")) strcopy(output, maxlen, "MAC10");
     else if (StrEqual(base, "ump45")) strcopy(output, maxlen, "UMP");
@@ -122,6 +124,9 @@ void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
     else if (StrEqual(base, "galil")) strcopy(output, maxlen, "galil");
     else if (StrEqual(base, "m3")) strcopy(output, maxlen, "doze");
     else if (StrEqual(base, "xm1014")) strcopy(output, maxlen, "doze");
+    else if (StrEqual(base, "g3sg1")) strcopy(output, maxlen, "Teco-Teco TR");
+    else if (StrEqual(base, "sg550")) strcopy(output, maxlen, "Teco-Teco CT");
+    else if (StrEqual(base, "elite")) strcopy(output, maxlen, "beretta-dual");
     else strcopy(output, maxlen, base);
     
     if (headshot)
@@ -568,6 +573,10 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     }
     char botName[32];
     GetClientName(botClient, botName, sizeof(botName));
+    
+    // Personalidade do bot
+    char personality[256], catchphrase[64], style[256];
+    GetBotPersonality(botName, personality, sizeof(personality), catchphrase, sizeof(catchphrase), style, sizeof(style));
 
     char botTeamName[32];
     int team = GetClientTeam(botClient);
@@ -717,6 +726,10 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         g_CurrentRound, tScore, ctScore))
     {
         ReplaceString(sysPrompt, sizeof(sysPrompt), "{base_system}", sysPrompt);
+        // Injeta personalidade nos placeholders
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "{personality}", personality);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "{catchphrase}", catchphrase);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "{style}", style);
     }
     else
     {
@@ -901,6 +914,64 @@ void PollBotResponses()
         FakeClientCommand(botClient, "say %s", cleanMsg);
         g_LastBotChat = GetGameTime();
     }
+}
+
+// ============================================================================
+// PERSONALITY SYSTEM
+// ============================================================================
+
+void LoadPersonalities()
+{
+    if (g_PersonalityKV != null)
+        delete g_PersonalityKV;
+    
+    g_PersonalityKV = new KeyValues("BotPersonalities");
+    
+    char path[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_personalities.txt");
+    
+    if (!FileExists(path))
+    {
+        LogError("[BOT_CHAT] Personalities file not found: %s", path);
+        delete g_PersonalityKV;
+        g_PersonalityKV = null;
+        return;
+    }
+    
+    if (!g_PersonalityKV.ImportFromFile(path))
+    {
+        LogError("[BOT_CHAT] Failed to load personalities from: %s", path);
+        delete g_PersonalityKV;
+        g_PersonalityKV = null;
+        return;
+    }
+    
+    PrintToServer("[BOT_CHAT] +- Personalities loaded from %s", path);
+}
+
+void GetBotPersonality(const char[] botName, char[] personality, int personalityLen,
+    char[] catchphrase, int catchphraseLen, char[] style, int styleLen)
+{
+    if (g_PersonalityKV == null)
+    {
+        personality[0] = '\0';
+        catchphrase[0] = '\0';
+        style[0] = '\0';
+        return;
+    }
+    
+    g_PersonalityKV.Rewind();
+    if (!g_PersonalityKV.JumpToKey(botName))
+    {
+        personality[0] = '\0';
+        catchphrase[0] = '\0';
+        style[0] = '\0';
+        return;
+    }
+    
+    g_PersonalityKV.GetString("personality", personality, personalityLen);
+    g_PersonalityKV.GetString("catchphrase", catchphrase, catchphraseLen);
+    g_PersonalityKV.GetString("style", style, styleLen);
 }
 
 // ============================================================================

@@ -5,41 +5,79 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define NAMES_COUNT 30
+#define MAX_BOT_NAMES 128
 
-static const char g_BotNames[NAMES_COUNT][] = {
-	"FalleN", "coldzera", "fer", "fnx", "KSCERATO",
-	"yuurih", "boltz", "HEN1", "TACO", "s1mple",
-	"ZywOo", "donk", "NiKo", "m0NESY", "dev1ce",
-	"ropz", "Twistzz", "EliGE", "sh1ro", "jL",
-	"iM", "frozen", "b1t", "XANTARES", "NAF",
-	"apEX", "flameZ", "jks", "cadiaN", "rain"
-};
-
-bool g_NameUsed[NAMES_COUNT];
+ArrayList g_BotNames;
 int g_BotNameIndex[MAXPLAYERS + 1];
 
 public Plugin myinfo =
 {
 	name = "NVD Bot Personas",
 	author = "OpenCode",
-	description = "Gives bots unique themed names and personas",
-	version = "1.0.0",
+	description = "Gives bots unique themed names from config",
+	version = "2.0.0",
 	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
 };
 
 public void OnPluginStart()
 {
 	HookEvent("player_spawn", Event_PlayerSpawn);
+	g_BotNames = new ArrayList(64);
+	LoadBotNames();
 }
 
 public void OnMapStart()
 {
-	for (int i = 0; i < NAMES_COUNT; i++)
-		g_NameUsed[i] = false;
-
 	for (int i = 1; i <= MaxClients; i++)
 		g_BotNameIndex[i] = -1;
+}
+
+void LoadBotNames()
+{
+	g_BotNames.Clear();
+
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_personalities.txt");
+
+	if (!FileExists(path))
+	{
+		LogError("[BOT_PERSONAS] Config not found: %s — using fallback names", path);
+		// Fallback pro caso de nao ter config
+		g_BotNames.PushString("FalleN");
+		g_BotNames.PushString("s1mple");
+		g_BotNames.PushString("coldzera");
+		g_BotNames.PushString("ZywOo");
+		g_BotNames.PushString("NiKo");
+		return;
+	}
+
+	KeyValues kv = new KeyValues("BotPersonalities");
+	if (!kv.ImportFromFile(path))
+	{
+		LogError("[BOT_PERSONAS] Failed to parse: %s", path);
+		delete kv;
+		return;
+	}
+
+	kv.Rewind();
+	if (!kv.GotoFirstSubKey(false))
+	{
+		LogError("[BOT_PERSONAS] No entries in %s", path);
+		delete kv;
+		return;
+	}
+
+	do
+	{
+		char name[64];
+		kv.GetSectionName(name, sizeof(name));
+		if (name[0] != '\0')
+			g_BotNames.PushString(name);
+	} while (kv.GotoNextKey(false));
+
+	delete kv;
+
+	PrintToServer("[BOT_PERSONAS] +- Loaded %d bot names from %s", g_BotNames.Length, path);
 }
 
 public void OnClientPutInServer(int client)
@@ -47,25 +85,38 @@ public void OnClientPutInServer(int client)
 	if (!IsFakeClient(client))
 		return;
 
-	int idx = FindFreeName();
-	if (idx == -1)
+	int count = g_BotNames.Length;
+	if (count == 0)
 	{
-		LogError("NVD Bot Personas: No free names available!");
+		LogError("[BOT_PERSONAS] No names available!");
 		return;
 	}
 
-	g_NameUsed[idx] = true;
+	// Procura nome livre
+	int idx = FindFreeName(count);
+	if (idx == -1)
+	{
+		// Reset all used names if we ran out
+		for (int i = 1; i <= MaxClients; i++)
+			g_BotNameIndex[i] = -1;
+		idx = FindFreeName(count);
+		if (idx == -1)
+		{
+			LogError("[BOT_PERSONAS] No free names after reset!");
+			return;
+		}
+	}
+
 	g_BotNameIndex[client] = idx;
-	SetClientName(client, g_BotNames[idx]);
+
+	char name[64];
+	g_BotNames.GetString(idx, name, sizeof(name));
+	SetClientName(client, name);
 }
 
 public void OnClientDisconnect(int client)
 {
-	if (g_BotNameIndex[client] != -1)
-	{
-		g_NameUsed[g_BotNameIndex[client]] = false;
-		g_BotNameIndex[client] = -1;
-	}
+	g_BotNameIndex[client] = -1;
 }
 
 public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
@@ -75,19 +126,32 @@ public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadca
 	{
 		char currentName[32];
 		GetClientName(client, currentName, sizeof(currentName));
-		if (!StrEqual(currentName, g_BotNames[g_BotNameIndex[client]]))
-			SetClientName(client, g_BotNames[g_BotNameIndex[client]]);
+
+		char expectedName[64];
+		g_BotNames.GetString(g_BotNameIndex[client], expectedName, sizeof(expectedName));
+
+		if (!StrEqual(currentName, expectedName))
+			SetClientName(client, expectedName);
 	}
 	return Plugin_Continue;
 }
 
-int FindFreeName()
+int FindFreeName(int count)
 {
-	int start = GetRandomInt(0, NAMES_COUNT - 1);
-	for (int i = 0; i < NAMES_COUNT; i++)
+	int start = GetRandomInt(0, count - 1);
+	for (int i = 0; i < count; i++)
 	{
-		int idx = (start + i) % NAMES_COUNT;
-		if (!g_NameUsed[idx])
+		int idx = (start + i) % count;
+		bool used = false;
+		for (int j = 1; j <= MaxClients; j++)
+		{
+			if (g_BotNameIndex[j] == idx)
+			{
+				used = true;
+				break;
+			}
+		}
+		if (!used)
 			return idx;
 	}
 	return -1;

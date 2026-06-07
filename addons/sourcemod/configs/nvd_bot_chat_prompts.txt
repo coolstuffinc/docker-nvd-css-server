@@ -13,12 +13,12 @@
         "flashbang" { "name" "flash" }
         "smokegrenade" { "name" "smoke" }
         "knife"     { "name" "faca" }
-        "scout"     { "name" "scout" }
+        "scout"     { "name" "mata-pombo" }
         "sg552"     { "name" "SG" }
         "famas"     { "name" "famas" }
         "galil"     { "name" "galil" }
         "aug"       { "name" "AUG" }
-        "m249"      { "name" "M249" }
+        "m249"      { "name" "Rambo" }
         "tmp"       { "name" "TMP" }
         "mac10"     { "name" "MAC10" }
         "ump45"     { "name" "UMP" }
@@ -26,32 +26,44 @@
         "p90"       { "name" "P90" }
         "m3"        { "name" "doze punhetera" }
         "xm1014"    { "name" "doze automatica" }
-        "g3sg1"     { "name" "teco-teco" }
+        "g3sg1"     { "name" "Teco-Teco TR" }
+        "sg550"     { "name" "Teco-Teco CT" }
+        "elite"     { "name" "beretta-dual" }
     }
 
     "kill"
     {
-        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky - act like you know youll win. No filter. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. No filter. BR Portuguese slang. Catchphrase: {catchphrase}"
         "user" "Fale como {bot} sobre {target}."
     }
     "death"
     {
-        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. Be cocky - act like you know youll win. No filter. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. Use @ for others. Never @ yourself. No hashtags. No filter. BR Portuguese slang. Catchphrase: {catchphrase}"
         "user" "Fale como {bot} sobre {target}."
     }
     "round_start"
     {
-        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. BR Portuguese slang. Catchphrase: {catchphrase}"
         "user" "Fale como {bot}."
     }
     "round_end"
     {
-        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. ONLY ONE short sentence. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. BR Portuguese slang. Catchphrase: {catchphrase}"
+        "user" "Fale como {bot}."
+    }
+    "bomb_planted"
+    {
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. BR Portuguese slang. Catchphrase: {catchphrase}"
+        "user" "Fale como {bot}."
+    }
+    "bomb_defused"
+    {
+        "system" "Your name is {bot} ({team}) in CS:Source. Mapa {map}. Round {round}, placar {score}. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. BR Portuguese slang. Catchphrase: {catchphrase}"
         "user" "Fale como {bot}."
     }
     "default"
     {
-        "system" "Your name is {bot} ({team}). {state} {event} {mood}. ONLY ONE short sentence. BR Portuguese slang."
+        "system" "Your name is {bot} ({team}) in CS:Source. {state} {event} {mood}. {personality} {style} ONLY ONE short sentence. BR Portuguese slang. Catchphrase: {catchphrase}"
         "user" "Fale como {bot}."
     }
 }
