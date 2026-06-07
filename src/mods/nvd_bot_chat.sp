@@ -1170,6 +1170,19 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
     Format(scoreStr, sizeof(scoreStr), "%d a %d", tScore, ctScore);
     ReplaceString(template, sizeof(template), "[score]", scoreStr);
     
+    // Replace [rules] from shared _rules section
+    if (g_PromptKV != null)
+    {
+        g_PromptKV.Rewind();
+        if (g_PromptKV.JumpToKey("_rules") && g_PromptKV.JumpToKey("text"))
+        {
+            char rulesText[512];
+            g_PromptKV.GetString(NULL_STRING, rulesText, sizeof(rulesText));
+            if (rulesText[0] != '\0')
+                ReplaceString(template, sizeof(template), "[rules]", rulesText);
+        }
+    }
+    
     strcopy(buffer, maxlen, template);
     return true;
 }
