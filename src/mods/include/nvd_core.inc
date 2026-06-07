@@ -14,7 +14,7 @@ typedef NVD_ResponseCallback = function void (const char[] response, any data);
  * data: Dados extra para passar para o callback.
  * client: (opcional) ID do jogador para rate limiting (-1 = sem rate limit)
  */
-native void NVD_AskAI(const char[] prompt, const char[] systemPrompt, NVD_ResponseCallback callback, any data, int client = -1);
+native int NVD_AskAI(const char[] prompt, const char[] systemPrompt, NVD_ResponseCallback callback, any data, int client = -1, float timeout = 0.0);
 
 /**
  * Verifica se o jogador pode fazer uma requisição (rate limit).

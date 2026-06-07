@@ -64,12 +64,24 @@ void Mix_InitConVars()
     // 监听版本改变
     HookConVarChange(g_hPluginVersion, Mix_OnVersionChanged);
 
+    // 监听队伍名称改变以更新Hostname
+    HookConVarChange(g_hCvarCusomNameTeamCT, Mix_OnTeamNameChanged);
+    HookConVarChange(g_hCvarCusomNameTeamT, Mix_OnTeamNameChanged);
+
     // 查找游戏偏移量和ConVars
     Mix_FindGameOffsets();
 }
 
 /**
- * 查找游戏偏移量和ConVars
+ * 队伍名称改变时的回调
+ */
+public void Mix_OnTeamNameChanged(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+    Mix_UpdateHostname();
+}
+
+/**
+ * 版本改变时的回调
  */
 void Mix_FindGameOffsets()
 {
@@ -105,7 +117,9 @@ void Mix_FindGameOffsets()
 
     // 查找服务器名称ConVar
     g_hHostName = FindConVar("hostname");
-    GetConVarString(g_hHostName, g_szHostName, sizeof(g_szHostName));
+    if (g_szHostName[0] == '\0') {
+        GetConVarString(g_hHostName, g_szHostName, sizeof(g_szHostName));
+    }
 }
 
 /**

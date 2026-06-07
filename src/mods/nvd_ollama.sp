@@ -303,6 +303,7 @@ public int Native_AskAI(Handle plugin, int numParams)
 	Function cb = GetNativeFunction(3);
 	any cbData = GetNativeCell(4);
 	int client = (numParams >= 5) ? GetNativeCell(5) : -1;
+	float customTimeout = (numParams >= 6) ? GetNativeCell(6) : 0.0;
 
 	char model[64], endpoint[32];
 	g_ModelCvar.GetString(model, sizeof(model));
@@ -323,17 +324,18 @@ public int Native_AskAI(Handle plugin, int numParams)
 		pack.WriteString(model);
 		pack.WriteString(endpoint);
 		pack.WriteCell(client);
+		pack.WriteFloat(customTimeout);
 		g_RequestQueue.Push(pack);
 		return 1;
 	}
 
 	int slot = AllocateSlot(cb, cbData, plugin, client);
 	if (slot == -1) return 0;
-	SendRequest(slot, prompt, system, model, endpoint, client);
+	SendRequest(slot, prompt, system, model, endpoint, client, customTimeout);
 	return 1;
 }
 
-void SendRequest(int slot, const char[] prompt, const char[] system, const char[] model, const char[] endpoint, int client)
+void SendRequest(int slot, const char[] prompt, const char[] system, const char[] model, const char[] endpoint, int client, float customTimeout = 0.0)
 {
 	char url[64]; Format(url, sizeof(url), "/api/%s", endpoint);
 	JSONObject payload = new JSONObject();
@@ -351,7 +353,9 @@ void SendRequest(int slot, const char[] prompt, const char[] system, const char[
 	payload.Set("options", options); delete options;
 	g_HttpClient.Post(url, payload, OnOllamaResponse, slot);
 	delete payload;
-	CreateTimer(g_TimeoutCvar.FloatValue, Timer_SafetyTimeout, slot);
+	
+	float timeout = (customTimeout > 0.0) ? customTimeout : g_TimeoutCvar.FloatValue;
+	CreateTimer(timeout, Timer_SafetyTimeout, slot);
 }
 
 public int Native_PollResponse(Handle plugin, int numParams)
@@ -427,9 +431,11 @@ void ProcessQueue()
 		char prompt[512], system[2048], model[64], endpoint[32];
 		pack.ReadString(prompt, sizeof(prompt)); pack.ReadString(system, sizeof(system));
 		pack.ReadString(model, sizeof(model)); pack.ReadString(endpoint, sizeof(endpoint));
-		int client = pack.ReadCell(); delete pack;
+		int client = pack.ReadCell();
+		float customTimeout = pack.ReadFloat();
+		delete pack;
 		int slot = AllocateSlot(cb, cbData, owner, client);
-		if (slot != -1) SendRequest(slot, prompt, system, model, endpoint, client);
+		if (slot != -1) SendRequest(slot, prompt, system, model, endpoint, client, customTimeout);
 	}
 }
 

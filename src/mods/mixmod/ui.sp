@@ -410,6 +410,25 @@ void Mix_RemovePassword(int client)
 }
 
 /**
+ * 更新服务器名称 (Hostname)
+ */
+void Mix_UpdateHostname()
+{
+    if (g_bDidLiveStarted) {
+        char teamAName[32];
+        char teamBName[32];
+        GetConVarString(g_hCvarCusomNameTeamCT, teamAName, sizeof(teamAName));
+        GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
+
+        char hostName[128];
+        Format(hostName, sizeof(hostName), "🔴 %s | %s vs %s", g_szHostName, teamAName, teamBName);
+        SetConVarString(g_hHostName, hostName);
+    } else {
+        SetConVarString(g_hHostName, g_szHostName);
+    }
+}
+
+/**
  * 启动满十(live)
  */
 void Mix_StartLive(int client)
@@ -449,14 +468,7 @@ void Mix_StartLive(int client)
         Mix_GetCommandSourceName(client, name, sizeof(name));
         PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Live Started By", name);
 
-        char teamAName[32];
-        char teamBName[32];
-        GetConVarString(g_hCvarCusomNameTeamCT, teamAName, sizeof(teamAName));
-        GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
-
-        char hostName[128];
-        Format(hostName, sizeof(hostName), "🔴 %s | %s vs %s", g_szHostName, teamAName, teamBName);
-        SetConVarString(g_hHostName, hostName);
+        Mix_UpdateHostname();
 
         if (GetConVarInt(g_hCvarUseZBMatchCommand) == 1) {
             ServerCommand("zb_lo3");

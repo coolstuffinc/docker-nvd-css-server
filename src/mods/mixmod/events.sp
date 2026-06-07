@@ -243,7 +243,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
 
                     Mix_ResetMatchState();
 
-                    SetConVarString(g_hHostName, g_szHostName);
+                    Mix_UpdateHostname();
 
                     Mix_ExecutePracConfig(0);
 
@@ -658,7 +658,7 @@ public Action Mix_Event_RoundEnd(Handle event, const char[] name, bool dontBroad
                 // 输出调试信息
                 PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Overtime Decided");
                 Mix_ResetMatchState();
-                SetConVarString(g_hHostName, g_szHostName);
+                Mix_UpdateHostname();
                 Mix_ExecutePracConfig(0);
                 if (GetConVarInt(g_hCvarRemovePassWhenMixIsEnded) == 1) {
                     Mix_RemovePassword(0);

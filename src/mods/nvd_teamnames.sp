@@ -1,13 +1,10 @@
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
+#include <nvd_core>
 
 #pragma semicolon 1
 #pragma newdecls required
-
-// Natives do nvd_ollama
-native int NVD_AskAI(const char[] prompt, const char[] system, Function callback, any data, int client = -1);
-native bool NVD_PollResponse(char[] reply, int maxlen, any &data);
 
 ConVar g_CvarEnabled;
 bool g_Generating;
@@ -15,7 +12,6 @@ char g_TeamNameCt[64];
 char g_TeamNameT[64];
 char g_PlayersCt[512];
 char g_PlayersT[512];
-char g_DefaultHostname[256]; // Armazena o hostname original
 
 public Plugin myinfo =
 {
@@ -32,30 +28,8 @@ public void OnPluginStart()
 	AutoExecConfig(true, "nvd_teamnames");
 	RegConsoleCmd("sm_teamnames", Command_TeamNames);
 
-	// Hook para resetar o hostname no fim do round
-	HookEvent("round_end", Event_RoundEnd);
-
 	// Timer para ficar checando se a IA respondeu (Polling)
 	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public void OnConfigsExecuted()
-{
-	// Salva o hostname padrão configurado no server.cfg
-	ConVar cvarHostname = FindConVar("hostname");
-	if (cvarHostname)
-	{
-		cvarHostname.GetString(g_DefaultHostname, sizeof(g_DefaultHostname));
-	}
-}
-
-public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
-{
-	// Reseta o hostname para o padrão do servidor ao fim do round
-	if (g_DefaultHostname[0] != '\0')
-	{
-		ServerCommand("hostname \"%s\"", g_DefaultHostname);
-	}
 }
 
 public Action Command_TeamNames(int client, int args)
@@ -103,7 +77,8 @@ void QueryOllama(const char[] team)
 	any teamData = StrEqual(team, "CT") ? 0 : 1;
 
 	// Chama a native do nvd_ollama (a requisição entra na fila se estiver cheio)
-	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, 0);
+	// Definimos um timeout longo de 5 minutos (300s) para nomes de times
+	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, 0, 300.0);
 }
 
 public Action Timer_PollResponses(Handle timer)
@@ -125,6 +100,9 @@ public Action Timer_PollResponses(Handle timer)
 		{
 			CleanName(reply, g_TeamNameCt, sizeof(g_TeamNameCt));
 			PrintToServer("[NVD_TEAMNAMES] CT = '%s'", g_TeamNameCt);
+			
+			ConVar cv = FindConVar("sm_mixmod_custom_name_ct");
+			if (cv != null) cv.SetString(g_TeamNameCt);
 
 			if (g_PlayersT[0])
 				QueryOllama("TR");
@@ -135,6 +113,9 @@ public Action Timer_PollResponses(Handle timer)
 		{
 			CleanName(reply, g_TeamNameT, sizeof(g_TeamNameT));
 			PrintToServer("[NVD_TEAMNAMES] TR = '%s'", g_TeamNameT);
+
+			ConVar cv = FindConVar("sm_mixmod_custom_name_t");
+			if (cv != null) cv.SetString(g_TeamNameT);
 			Finish();
 		}
 	}
@@ -144,18 +125,12 @@ public Action Timer_PollResponses(Handle timer)
 void Finish()
 {
 	g_Generating = false;
-	if (g_TeamNameCt[0] && g_TeamNameT[0])
+	if (g_TeamNameCt[0] || g_TeamNameT[0])
 	{
-		PrintToChatAll("\x04[NVD] \x01Times: \x03%s \x01(CT) vs \x03%s \x01(TR)", g_TeamNameCt, g_TeamNameT);
+		PrintToChatAll("\x04[NVD] \x01Times: \x03%s \x01(CT) vs \x03%s \x01(TR)", 
+			g_TeamNameCt[0] ? g_TeamNameCt : "Team A", 
+			g_TeamNameT[0] ? g_TeamNameT : "Team B");
 		PrintToChatAll("\x04[NVD] \x01Use \x04!teamnames\x01 para gerar novos nomes.");
-		
-		char currentHost[128];
-		if (g_DefaultHostname[0] != '\0')
-			strcopy(currentHost, sizeof(currentHost), g_DefaultHostname);
-		else
-			strcopy(currentHost, sizeof(currentHost), "NVD Server");
-
-		ServerCommand("hostname \"🔴 %s | %s vs %s\"", currentHost, g_TeamNameCt, g_TeamNameT);
 	}
 }
 
