@@ -40,7 +40,7 @@ public void OnPluginStart()
 	// Carrega para quem já estiver no server (late load)
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && areClientCookiesCached(i))
+		if (IsClientInGame(i) && AreClientCookiesCached(i))
 			OnClientCookiesCached(i);
 	}
 }
