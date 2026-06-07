@@ -1,8 +1,10 @@
 "BotChatPrompts"
 {
-    // ═══════════════════════════════════════════════════════════════
-    // WEAPON NICKNAMES
-    // ═══════════════════════════════════════════════════════════════
+    "_rules"
+    {
+        "text" "Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO 3rd person narration. Speak as [bot]. Max 12 words. Short cocky trash talk."
+    }
+
     "weapons"
     {
         "ak47"      { "name" "AK" }
@@ -12,71 +14,61 @@
         "glock"     { "name" "glock" }
         "usp"       { "name" "usp" }
         "p228"      { "name" "p228" }
-        "hegrenade" { "name" "granada" }
-        "flashbang" { "name" "bang" }
+        "hegrenade" { "name" "nade" }
+        "flashbang" { "name" "flash" }
         "smokegrenade" { "name" "smoke" }
-        "knife"     { "name" "faca" }
-        "scout"     { "name" "mata-pombo" }
+        "knife"     { "name" "knife" }
+        "scout"     { "name" "scout" }
         "sg552"     { "name" "SG" }
         "aug"       { "name" "AUG" }
         "famas"     { "name" "famas" }
         "galil"     { "name" "galil" }
-        "m249"      { "name" "Rambo" }
+        "m249"      { "name" "M249" }
         "tmp"       { "name" "TMP" }
         "mac10"     { "name" "MAC10" }
         "ump45"     { "name" "UMP" }
         "mp5navy"   { "name" "MP5" }
         "p90"       { "name" "P90" }
-        "m3"        { "name" "doze punhetera" }
-        "xm1014"    { "name" "doze automatica" }
-        "g3sg1"     { "name" "Teco-Teco TR" }
-        "sg550"     { "name" "Teco-Teco CT" }
-        "elite"     { "name" "beretta-dual" }
+        "m3"        { "name" "shotgun" }
+        "xm1014"    { "name" "auto-shotgun" }
+        "g3sg1"     { "name" "G3" }
+        "sg550"     { "name" "SG550" }
+        "elite"     { "name" "dual-elite" }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // KILL (bot matou alguém)
-    // RULES directly in the template (no [rules] placeholder)
-    // ═══════════════════════════════════════════════════════════════
     "kill"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: @s1mple easy | @fer vendeu o round | eu sou melhor. ERRADO: vamos ver | talvez | quem sabe | acho que | a gente vê."
-        "user" "[bot] killed [target] with [weapon]. Map [map]. Round [round]. Score [score]. [state] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: easy @target no chance | @target you suck | @target free kill"
+        "user" "[bot] killed [target] with [weapon]. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
-
     "death"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: @target ta muito ruim | lag 1000ms | next round eu te destruo. ERRADO: vamos ver | talvez | quem sabe."
-        "user" "[bot] died to [target] with [weapon]. Map [map]. Round [round]. Score [score]. [state] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: @target lucky | lag spike | next round ill destroy you"
+        "user" "[bot] died to [target] with [weapon]. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
-
     "round_start"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: bora ganhar esse round facil | vamo nessa voces vao perder. ERRADO: vamos ver | boa sorte pra nos."
-        "user" "Round [round] started. Map [map]. Score [score]. [state] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: ez round incoming | lets crush them | free win"
+        "user" "Round [round] started. Map [map]. Score [score]. [state] [mood]."
     }
-
     "round_end"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: easy voces sao ruins | da banca como eu disse | kkkk vendeu o round. ERRADO: vamos ver o proximo | boa sorte."
-        "user" "Round [round] ended. Map [map]. Score [score]. [state] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: ez you all suck | told you free win | too easy"
+        "user" "Round [round] ended. Map [map]. Score [score]. [state] [mood]."
     }
-
     "bomb_planted"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: bomba plantada voces vao perder | ta plantado easy. ERRADO: vamos ver se conseguem | tomara que."
-        "user" "[bot] planted bomb. Map [map]. Round [round]. Score [score]. [state] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: bomb down you lose | planted easy win | defuse this"
+        "user" "[bot] planted the bomb. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
-
     "bomb_defused"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: desarmou easy como eu sabia | kkkk nem deu tempo voces sao lentos. ERRADO: bom trabalho time | boa sorte na proxima."
-        "user" "[bot] defused bomb. Map [map]. Round [round]. Score [score]. [state] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: defused too easy | too slow to stop me | gg"
+        "user" "[bot] defused the bomb. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
-
     "default"
     {
-        "system" "[bot] ([team]). [personality]. [catchphrase]. RULES: Only speech. NO quotes, NO self-name, NO *actions*, NO hashtags, NO narrando em 3a pessoa. Max 12 words. PT-BR CS slang. CRITICAL: Use STATEMENTS not questions. CERTO: bora ganhar | next round eu domino | kkkk foi mal. ERRADO: vamos ver | quero ver."
-        "user" "[state] [event] [mood]. Speak as [bot]."
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] EX: lets go | ez | get good"
+        "user" "[state] [event] [mood]."
     }
 }

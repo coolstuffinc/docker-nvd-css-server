@@ -1183,6 +1183,17 @@ void LoadPromptTemplates()
     }
     
     PrintToServer("[BOT_CHAT] +- Prompt templates loaded from %s", path);
+    
+    // Load shared _rules.text into global for [rules] replacement
+    g_RulesText[0] = '\0';
+    g_PromptKV.Rewind();
+    if (g_PromptKV.JumpToKey("_rules"))
+    {
+        g_PromptKV.GetString("text", g_RulesText, sizeof(g_RulesText));
+        if (g_RulesText[0] == '\0')
+            g_PromptKV.GetString(NULL_STRING, g_RulesText, sizeof(g_RulesText));
+    }
+    g_PromptKV.Rewind();
 }
 
 public Action Command_ReloadPrompts(int client, int args)
@@ -1235,51 +1246,10 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
     Format(scoreStr, sizeof(scoreStr), "%d a %d", tScore, ctScore);
     ReplaceString(template, sizeof(template), "[score]", scoreStr);
     
-    // Replace [section_name] from shared _section_name sections
-    // Supports any placeholder like [rules], [critical], [examples], etc.
-    if (g_PromptKV != null)
+    // Replace [rules] from shared _rules section (loaded at plugin start)
+    if (g_RulesText[0] != '\0' && StrContains(template, "[rules]") != -1)
     {
-        g_PromptKV.Rewind();
-        if (g_PromptKV.GotoFirstSubKey(false))
-        {
-            do
-            {
-                char sectionName[64];
-                g_PromptKV.GetSectionName(sectionName, sizeof(sectionName));
-                
-                // Only process underscore-prefixed sections (shared templates)
-                if (sectionName[0] == '_' && strlen(sectionName) > 1)
-                {
-                    char placeholder[64];
-                    
-                    // e.g., _rules -> [rules] (skip the underscore)
-                    int nameLen = strlen(sectionName) - 1;
-                    if (nameLen > 61) nameLen = 61;
-                    placeholder[0] = '[';
-                    for (int pi = 0; pi < nameLen; pi++)
-                        placeholder[1 + pi] = sectionName[1 + pi];
-                    placeholder[1 + nameLen] = ']';
-                    placeholder[2 + nameLen] = '\0';
-                    
-                    // Check if the template actually uses this placeholder
-                    if (StrContains(template, placeholder) != -1)
-                    {
-                        g_PromptKV.Rewind();
-                        if (g_PromptKV.JumpToKey(sectionName))
-                        {
-                            char value[1024];
-                            g_PromptKV.GetString("text", value, sizeof(value));
-                            if (value[0] == '\0')
-                                g_PromptKV.GetString(NULL_STRING, value, sizeof(value));
-                            if (value[0] != '\0')
-                                ReplaceString(template, sizeof(template), placeholder, value);
-                        }
-                    }
-                }
-            } while (g_PromptKV.GotoNextKey(false));
-            
-            g_PromptKV.Rewind();
-        }
+        ReplaceString(template, sizeof(template), "[rules]", g_RulesText);
     }
     
     strcopy(buffer, maxlen, template);
