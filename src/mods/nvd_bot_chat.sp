@@ -735,11 +735,11 @@ void AskBotChat(const char[] context, int preferredClient = -1)
         botName, botTeamName, targetMention, gameState, eventStr, mood,
         g_CurrentRound, tScore, ctScore))
     {
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "$base_system", sysPrompt);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "[base_system]", sysPrompt);
         // Injeta personalidade nos placeholders
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "$personality", personality);
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "$catchphrase", catchphrase);
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "$style", style);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "[personality]", personality);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "[catchphrase]", catchphrase);
+        ReplaceString(sysPrompt, sizeof(sysPrompt), "[style]", style);
     }
     else
     {
@@ -1108,24 +1108,24 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
         return false;
     
 
-    ReplaceString(template, sizeof(template), "$bot", bot);
-    ReplaceString(template, sizeof(template), "$team", team);
-    ReplaceString(template, sizeof(template), "$target", target);
-    ReplaceString(template, sizeof(template), "$state", state);
-    ReplaceString(template, sizeof(template), "$event", event);
-    ReplaceString(template, sizeof(template), "$mood", mood);
+    ReplaceString(template, sizeof(template), "[bot]", bot);
+    ReplaceString(template, sizeof(template), "[team]", team);
+    ReplaceString(template, sizeof(template), "[target]", target);
+    ReplaceString(template, sizeof(template), "[state]", state);
+    ReplaceString(template, sizeof(template), "[event]", event);
+    ReplaceString(template, sizeof(template), "[mood]", mood);
     
     char mapName[64];
     GetCurrentMap(mapName, sizeof(mapName));
-    ReplaceString(template, sizeof(template), "$map", mapName);
+    ReplaceString(template, sizeof(template), "[map]", mapName);
     
     char roundStr[16];
     IntToString(round, roundStr, sizeof(roundStr));
-    ReplaceString(template, sizeof(template), "$round", roundStr);
+    ReplaceString(template, sizeof(template), "[round]", roundStr);
     
     char scoreStr[32];
     Format(scoreStr, sizeof(scoreStr), "%d a %d", tScore, ctScore);
-    ReplaceString(template, sizeof(template), "$score", scoreStr);
+    ReplaceString(template, sizeof(template), "[score]", scoreStr);
     
     strcopy(buffer, maxlen, template);
     return true;
