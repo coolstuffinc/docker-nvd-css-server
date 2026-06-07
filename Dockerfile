@@ -119,6 +119,8 @@ RUN ls /home/steam/css/cstrike/maps/*.bsp | xargs -n1 basename | sed 's/\.bsp//'
 
 COPY --chown=steam:steam cfg/sourcemod/languages.cfg /home/steam/css/cstrike/addons/sourcemod/configs/languages.cfg
 COPY --chown=steam:steam cfg/sourcemod/admins_simple.ini /home/steam/css/cstrike/addons/sourcemod/configs/admins_simple.ini
+COPY --chown=steam:steam cfg/sourcemod/nvd_bot_chat_strings_default.txt /home/steam/css/cstrike/addons/sourcemod/configs/nvd_bot_chat_strings_default.txt
+COPY --chown=steam:steam cfg/sourcemod/nvd_bot_chat_strings_pt-br.txt /home/steam/css/cstrike/addons/sourcemod/configs/nvd_bot_chat_strings_pt-br.txt
 
 ENV CSS_HOSTNAME="[N.V.D] MIX SERVER"
 ENV NVD_OLLAMA_IP="172.17.0.1"

@@ -8,6 +8,9 @@
 // ── Polling-based response queue ──
 ArrayList g_PendingResponses = null;
 
+#define MAX_RESPONSE_QUEUE 64
+#define RESPONSE_TTL 60.0
+
 // Enfileira a resposta armazenando o Handle do plugin dono
 stock void QueueResponse(Handle plugin, const char[] reply, any cbData)
 {
@@ -17,9 +20,18 @@ stock void QueueResponse(Handle plugin, const char[] reply, any cbData)
 	if (g_PendingResponses == null)
 		g_PendingResponses = new ArrayList();
 
+	if (g_PendingResponses.Length >= MAX_RESPONSE_QUEUE)
+	{
+		DataPack oldest = view_as<DataPack>(g_PendingResponses.Get(0));
+		delete oldest;
+		g_PendingResponses.Erase(0);
+		PrintToServer("[NVD] [%s] ⚠️ Response queue full, dropped oldest", ts);
+	}
+
 	DataPack pack = new DataPack();
-	pack.WriteCell(plugin); // Armazena o plugin dono
+	pack.WriteCell(plugin);
 	pack.WriteCell(cbData);
+	pack.WriteFloat(GetGameTime());
 	pack.WriteString(reply);
 	pack.Reset();
 	g_PendingResponses.Push(pack);
@@ -83,13 +95,13 @@ public void OnPluginStart()
 	for (int i = 0; i < MAX_PENDING; i++)
 		g_PendingRequests[i].inUse = false;
 
-	// Inicializa a fila de espera
 	g_RequestQueue = new ArrayList();
+
+	CreateTimer(15.0, Timer_CleanupQueue, _, TIMER_REPEAT);
 }
 
 public void OnMapEnd()
 {
-	// Limpa a fila ao mudar de mapa
 	if (g_RequestQueue != null)
 	{
 		for (int i = 0; i < g_RequestQueue.Length; i++)
@@ -99,6 +111,41 @@ public void OnMapEnd()
 		}
 		g_RequestQueue.Clear();
 	}
+	if (g_PendingResponses != null)
+	{
+		for (int i = 0; i < g_PendingResponses.Length; i++)
+		{
+			DataPack pack = view_as<DataPack>(g_PendingResponses.Get(i));
+			delete pack;
+		}
+		g_PendingResponses.Clear();
+	}
+}
+
+public Action Timer_CleanupQueue(Handle timer)
+{
+	if (g_PendingResponses == null || g_PendingResponses.Length == 0)
+		return Plugin_Continue;
+
+	float now = GetGameTime();
+	int cleaned = 0;
+	for (int i = g_PendingResponses.Length - 1; i >= 0; i--)
+	{
+		DataPack pack = view_as<DataPack>(g_PendingResponses.Get(i));
+		pack.Reset();
+		pack.ReadCell(); // skip plugin
+		pack.ReadCell(); // skip cbData
+		float queuedAt = pack.ReadFloat();
+		if (now - queuedAt > RESPONSE_TTL)
+		{
+			g_PendingResponses.Erase(i);
+			delete pack;
+			cleaned++;
+		}
+	}
+	if (cleaned > 0)
+		PrintToServer("[NVD] 🧹 Cleaned %d stale responses (%d remaining)", cleaned, g_PendingResponses.Length);
+	return Plugin_Continue;
 }
 
 public void OnClientPutInServer(int client)
@@ -176,7 +223,8 @@ public Action Command_OllamaStatus(int client, int args)
 	ReplyToCommand(client, "[NVD] ═══ Ollama Status ═══");
 	char model[64]; g_ModelCvar.GetString(model, sizeof(model));
 	ReplyToCommand(client, "[NVD] Model: %s", model);
-	ReplyToCommand(client, "[NVD] Queue: %d/%d active | %d waiting", used, g_ConcurrencyCvar.IntValue, g_RequestQueue.Length);
+	int respLen = (g_PendingResponses != null) ? g_PendingResponses.Length : 0;
+	ReplyToCommand(client, "[NVD] Queue: %d/%d active | %d waiting | %d pending", used, g_ConcurrencyCvar.IntValue, g_RequestQueue.Length, respLen);
 	return Plugin_Handled;
 }
 
@@ -275,16 +323,26 @@ void SendRequest(int slot, const char[] prompt, const char[] system, const char[
 public int Native_PollResponse(Handle plugin, int numParams)
 {
 	if (g_PendingResponses == null || g_PendingResponses.Length == 0) return 0;
+	float now = GetGameTime();
 	int maxlen = GetNativeCell(2);
 	for (int i = 0; i < g_PendingResponses.Length; i++) {
 		DataPack pack = view_as<DataPack>(g_PendingResponses.Get(i));
 		pack.Reset();
-		if (view_as<Handle>(pack.ReadCell()) == plugin) {
+		Handle owner = view_as<Handle>(pack.ReadCell());
+		any cbData = pack.ReadCell();
+		float queuedAt = pack.ReadFloat();
+		if (owner == plugin) {
 			g_PendingResponses.Erase(i);
-			SetNativeCellRef(3, pack.ReadCell());
+			SetNativeCellRef(3, cbData);
 			char[] reply = new char[maxlen]; pack.ReadString(reply, maxlen);
 			SetNativeString(1, reply, maxlen);
 			delete pack; return 1;
+		}
+		if (now - queuedAt > RESPONSE_TTL)
+		{
+			g_PendingResponses.Erase(i);
+			delete pack;
+			i--;
 		}
 	}
 	return 0;
@@ -349,5 +407,14 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
 		if (msg != null) { msg.GetString("content", reply, sizeof(reply)); delete msg; }
 	}
 	delete json;
-	if (reply[0]) QueueResponse(plugin, reply, data);
+	if (!reply[0]) return;
+	if (cb != INVALID_FUNCTION)
+	{
+		Call_StartFunction(plugin, cb);
+		Call_PushString(reply);
+		Call_PushCell(data);
+		Call_Finish();
+	}
+	else
+		QueueResponse(plugin, reply, data);
 }

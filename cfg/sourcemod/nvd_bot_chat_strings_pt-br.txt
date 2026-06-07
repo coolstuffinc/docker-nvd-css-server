@@ -1,0 +1,101 @@
+"BotChatStrings"
+{
+    "events"
+    {
+        "round_start"		"O round iniciou."
+        "match_start"		"A partida iniciou!"
+        "tr_win"			"O TR venceu o round."
+        "ct_win"			"O CT venceu o round."
+        "bomb_plant"		"plantou a bomba!"
+        "bomb_defuse"		"desarmou a bomba!"
+        "location_suffix"	"%s no %s."
+        "player_chat"		"@%s falou no chat: \"%s\""
+        "ff_take"			"tomou friendly fire de"
+        "ff_give"			"deu friendly fire em"
+        "revenge"			"se vingou de"
+        "domination"		"domina"
+        "kill"				"eliminou"
+        "death"				"foi eliminado por"
+    }
+    "moods"
+    {
+        "ff_apology"		"Foi mal, foi sem querer"
+        "ff_complain"		"Reclama do colega de time"
+        "taunt"				"Provoque %s"
+        "taunt_enemy"		"Provoque o inimigo"
+        "insult"			"Finja insultar %s"
+        "insult_generic"	"Finja insultar"
+        "celebrate"			"Comemore"
+        "complain_defeat"	"Reclame da derrota"
+        "react"				"Reage"
+    }
+    "mood_keywords"
+    {
+        "celebrate"	"Comemore"
+        "complain"	"Reclame"
+    }
+    "gamestate"
+    {
+        "winning"	" Voce esta ganhando."
+        "losing"	" Voce esta perdendo."
+        "just_won"	"Acabou de vencer o round"
+        "just_lost"	"Acabou de perder o round"
+    }
+    "teams"
+    {
+        "tr"		"Time TR"
+        "ct"		"Time CT"
+        "unknown"	"Time ?"
+    }
+    "weapons_fallback"
+    {
+        "hegrenade"	"granada"
+        "knife"		"faca"
+        "scout"		"mata-pombo"
+        "m249"		"Rambo"
+        "m3"		"doze"
+        "xm1014"	"doze"
+        "g3sg1"		"Teco-Teco TR"
+        "sg550"		"Teco-Teco CT"
+        "elite"		"beretta-dual"
+    }
+    "behavior"
+    {
+        "rules"	"Apenas fala. SEM metacognicao, SEM aspas, SEM citar o proprio nome, SEM *acoes*, SEM hashtags, SEM narracao em 3a pessoa. Fale como [bot]. Max 12 palavras. Trash talk curto e provocador."
+        "critical"	"CRITICO: Apenas AFIRMACOES. SEM perguntas, SEM 'vamos ver', SEM 'talvez', SEM 'quem sabe'. Seja CERTEIRO."
+    }
+    "prompts"
+    {
+        "kill_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: facil [target] sem chance EX: [target] voce e ruim EX: [target] kill gratis"
+        "kill_user"	"[bot] matou [target] com [weapon]. Mapa [map]. Round [round]. Placar [score]. [state] [mood]."
+        "death_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: [target] deu sorte EX: lag EX: prox round vou acabar com voce [target]"
+        "death_user"	"[bot] morreu para [target] com [weapon]. Mapa [map]. Round [round]. Placar [score]. [state] [mood]."
+        "round_start_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: ez round chegando EX: vamos detonar EX: vitoria facil"
+        "round_start_user"	"Round [round] iniciado. Mapa [map]. Placar [score]. [state] [mood]."
+        "round_end_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: ez voces sao ruins EX: falei que era facil EX: moleza"
+        "round_end_user"	"Round [round] encerrado. Mapa [map]. Placar [score]. [state] [mood]."
+        "bomb_planted_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: bomba armada voces perdem EX: plant facil vitoria EX: desarma essa [team]"
+        "bomb_planted_user"	"[bot] plantou a bomba. Mapa [map]. Round [round]. Placar [score]. [state] [mood]."
+        "bomb_defused_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: desarmei facil EX: muito lento pra me parar EX: gg"
+        "bomb_defused_user"	"[bot] desarmou a bomba. Mapa [map]. Round [round]. Placar [score]. [state] [mood]."
+        "default_system"	"[bot] do [team]. [personality]. [catchphrase]. [rules] [critical] EX: vamos la EX: ez EX: get good"
+        "default_user"	"[state] [event] [mood]."
+    }
+    "misc"
+    {
+        "time_format"			"%d minuto(s) e %d segundos de jogo"
+        "map_status"			"Mapa %s, Round %d, o placar agora e %d a %d, %s, %d TR vivo(s) contra %d CT vivo(s)"
+        "bomb_planted"			", bomba plantada"
+        "weapon_shot"			" com tiro de \"%s\""
+        "weapon_knife"			" com faca"
+        "headshot"				" na cabeca"
+        "someone"				"Alguem"
+        "someone_lower"			"alguem"
+        "unknown_weapon"		"desconhecida"
+        "knife"					"faca"
+        "fallback_user"			"Fale como %s sobre %s."
+        "fallback_user_simple"	"Fale como %s."
+        "score_format"			"%d a %d"
+        "bot_reply_said"		"%s disse: \"%s\""
+    }
+}

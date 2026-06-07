@@ -39,12 +39,12 @@
 
     "kill"
     {
-        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] [critical] EX: easy @target no chance EX: @[target] you suck EX: @[target] free kill"
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] [critical] EX: easy [target] no chance EX: [target] you suck EX: [target] free kill"
         "user" "[bot] killed [target] with [weapon]. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
     "death"
     {
-        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] [critical] EX: @[target] got lucky EX: lag spike EX: next round ill destroy you @[target]"
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] [critical] EX: [target] got lucky EX: lag spike EX: next round ill destroy you [target]"
         "user" "[bot] died to [target] with [weapon]. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
     "round_start"
@@ -59,7 +59,7 @@
     }
     "bomb_planted"
     {
-        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] [critical] EX: bomb down you lose EX: planted easy win EX: defuse this"
+        "system" "[bot] from [team]. [personality]. [catchphrase]. [rules] [critical] EX: bomb down you lose EX: planted easy win EX: defuse this [team]"
         "user" "[bot] planted the bomb. Map [map]. Round [round]. Score [score]. [state] [mood]."
     }
     "bomb_defused"
