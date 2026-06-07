@@ -455,7 +455,7 @@ void Mix_StartLive(int client)
         GetConVarString(g_hCvarCusomNameTeamT, teamBName, sizeof(teamBName));
 
         char hostName[128];
-        Format(hostName, sizeof(hostName), "%s | %s vs %s | Live", g_szHostName, teamAName, teamBName);
+        Format(hostName, sizeof(hostName), "🔴 %s | %s vs %s", g_szHostName, teamAName, teamBName);
         SetConVarString(g_hHostName, hostName);
 
         if (GetConVarInt(g_hCvarUseZBMatchCommand) == 1) {

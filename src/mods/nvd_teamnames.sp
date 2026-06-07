@@ -93,11 +93,11 @@ void QueryOllama(const char[] team)
 {
 	char prompt[512];
 	if (StrEqual(team, "CT"))
-		Format(prompt, sizeof(prompt), "Generate 1 creative CS team name for CT team. Players: %s", g_PlayersCt);
+		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the CT team. Players: %s", g_PlayersCt);
 	else
-		Format(prompt, sizeof(prompt), "Generate 1 creative CS team name for TR team. Players: %s CT team is '%s'. TR must be different.", g_PlayersT, g_TeamNameCt);
+		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the TR team. Players: %s. The CT team is named '%s', yours must be different.", g_PlayersT, g_TeamNameCt);
 
-	char sys[256] = "Generate 1 short (max 25 chars) aggressive PT-BR CS team name. Return ONLY the name.";
+	char sys[256] = "You are a Brazilian CS commentator. Generate 1 creative e-sports team name in Portuguese (max 20 chars). Return ONLY the name, no quotes or explanations.";
 
 	// Usamos 'teamData' para identificar quem é quem quando a resposta chegar
 	any teamData = StrEqual(team, "CT") ? 0 : 1;
@@ -146,9 +146,16 @@ void Finish()
 	g_Generating = false;
 	if (g_TeamNameCt[0] && g_TeamNameT[0])
 	{
-		PrintToChatAll("\x04[NVD] \x01Teams: \x03%s \x01(CT) vs \x03%s \x01(TR)", g_TeamNameCt, g_TeamNameT);
-		PrintToChatAll("\x04[NVD] \x01Use \x04!teamnames\x01 to reroll.");
-		ServerCommand("hostname \"NVD | %s vs %s\"", g_TeamNameCt, g_TeamNameT);
+		PrintToChatAll("\x04[NVD] \x01Times: \x03%s \x01(CT) vs \x03%s \x01(TR)", g_TeamNameCt, g_TeamNameT);
+		PrintToChatAll("\x04[NVD] \x01Use \x04!teamnames\x01 para gerar novos nomes.");
+		
+		char currentHost[128];
+		if (g_DefaultHostname[0] != '\0')
+			strcopy(currentHost, sizeof(currentHost), g_DefaultHostname);
+		else
+			strcopy(currentHost, sizeof(currentHost), "NVD Server");
+
+		ServerCommand("hostname \"🔴 %s | %s vs %s\"", currentHost, g_TeamNameCt, g_TeamNameT);
 	}
 }
 
