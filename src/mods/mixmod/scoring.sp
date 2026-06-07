@@ -89,7 +89,7 @@ void Mix_ShowTeamMoneyAndWeapons()
         if (show == 0) {  // 在聊天框中显示
             char name[MAX_NAME_LENGTH], msg[150];
             int team, money, i, max = 0, pos = -1;
-            PrintToChatAll("----------------------------");
+            // PrintToChatAll("----------------------------"); // Removed since the chat is only 6 lines
 
             while (max != -1) {
                 max = -1;
