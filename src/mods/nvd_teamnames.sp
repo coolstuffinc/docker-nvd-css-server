@@ -1,36 +1,61 @@
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
-#include <ripext>
 
 #pragma semicolon 1
 #pragma newdecls required
 
-#define OLLAMA_URL "http://172.17.0.1:11433/api/generate"
+// Natives do nvd_ollama
+native int NVD_AskAI(const char[] prompt, const char[] system, Function callback, any data, int client = -1);
+native bool NVD_PollResponse(char[] reply, int maxlen, any &data);
 
 ConVar g_CvarEnabled;
-ConVar g_CvarModel;
 bool g_Generating;
 char g_TeamNameCt[64];
 char g_TeamNameT[64];
 char g_PlayersCt[512];
 char g_PlayersT[512];
+char g_DefaultHostname[256]; // Armazena o hostname original
 
 public Plugin myinfo =
 {
 	name = "NVD Team Names",
 	author = "OpenCode",
 	description = "AI team name generator",
-	version = "1.0.0",
+	version = "1.1.0",
 	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
 };
 
 public void OnPluginStart()
 {
 	g_CvarEnabled = CreateConVar("nvd_teamnames", "1", "Enable AI team name generation");
-	g_CvarModel = CreateConVar("nvd_teamnames_model", "qwen2.5:1.5b", "Ollama model");
 	AutoExecConfig(true, "nvd_teamnames");
 	RegConsoleCmd("sm_teamnames", Command_TeamNames);
+
+	// Hook para resetar o hostname no fim do round
+	HookEvent("round_end", Event_RoundEnd);
+
+	// Timer para ficar checando se a IA respondeu (Polling)
+	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void OnConfigsExecuted()
+{
+	// Salva o hostname padrão configurado no server.cfg
+	ConVar cvarHostname = FindConVar("hostname");
+	if (cvarHostname)
+	{
+		cvarHostname.GetString(g_DefaultHostname, sizeof(g_DefaultHostname));
+	}
+}
+
+public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
+{
+	// Reseta o hostname para o padrão do servidor ao fim do round
+	if (g_DefaultHostname[0] != '\0')
+	{
+		ServerCommand("hostname \"%s\"", g_DefaultHostname);
+	}
 }
 
 public Action Command_TeamNames(int client, int args)
@@ -47,7 +72,7 @@ void GenerateTeamNames()
 	g_PlayersCt[0] = '\0';
 	g_PlayersT[0] = '\0';
 	int ctPos = 0, tPos = 0, ctCount = 0, tCount = 0;
-	
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsClientSourceTV(i)) continue;
@@ -55,77 +80,65 @@ void GenerateTeamNames()
 		if (IsFakeClient(i)) Format(name, sizeof(name), "[BOT]%s", name);
 		int team = GetClientTeam(i);
 		if (team == CS_TEAM_CT && ctPos < 480)
-			{ ctPos += Format(g_PlayersCt[ctPos], sizeof(g_PlayersCt) - ctPos, "%s, ", name); ctCount++; }
+		{ ctPos += Format(g_PlayersCt[ctPos], sizeof(g_PlayersCt) - ctPos, "%s, ", name); ctCount++; }
 		else if (team == CS_TEAM_T && tPos < 480)
-			{ tPos += Format(g_PlayersT[tPos], sizeof(g_PlayersT) - tPos, "%s, ", name); tCount++; }
+		{ tPos += Format(g_PlayersT[tPos], sizeof(g_PlayersT) - tPos, "%s, ", name); tCount++; }
 	}
-	
+
 	PrintToServer("[NVD_TEAMNAMES] CT(%d) TR(%d) - generating...", ctCount, tCount);
-	QueryOllama("CT", OnCtName);
+	QueryOllama("CT");
 }
 
-void QueryOllama(const char[] team, HTTPRequestCallback callback)
+void QueryOllama(const char[] team)
 {
-	char model[64]; g_CvarModel.GetString(model, sizeof(model));
-	
 	char prompt[512];
 	if (StrEqual(team, "CT"))
 		Format(prompt, sizeof(prompt), "Generate 1 creative CS team name for CT team. Players: %s", g_PlayersCt);
 	else
 		Format(prompt, sizeof(prompt), "Generate 1 creative CS team name for TR team. Players: %s CT team is '%s'. TR must be different.", g_PlayersT, g_TeamNameCt);
-	
+
 	char sys[256] = "Generate 1 short (max 25 chars) aggressive PT-BR CS team name. Return ONLY the name.";
-	
-	// Build JSON manually
-	char json[2048];
-	Format(json, sizeof(json),
-		"{\"model\":\"%s\",\"prompt\":\"%s\",\"system\":\"%s\",\"stream\":false,\"options\":{\"temperature\":0.8}}",
-		model, prompt, sys);
-	
-	HTTPRequest req = new HTTPRequest(OLLAMA_URL);
-	JSONObject body = JSONObject.FromString(json);
-	req.Post(body, callback);
-	delete body;
+
+	// Usamos 'teamData' para identificar quem é quem quando a resposta chegar
+	any teamData = StrEqual(team, "CT") ? 0 : 1;
+
+	// Chama a native do nvd_ollama (a requisição entra na fila se estiver cheio)
+	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, 0);
 }
 
-public void OnCtName(HTTPResponse response, any value)
+public Action Timer_PollResponses(Handle timer)
 {
-	if (response.Status != HTTPStatus_OK)
-	{
-		LogError("[NVD_TEAMNAMES] CT name HTTP error: %d", response.Status);
-		g_Generating = false; return;
-	}
-	
-	JSONObject obj = view_as<JSONObject>(response.Data);
-	char raw[256]; obj.GetString("response", raw, sizeof(raw));
-	delete obj;
-	
-	CleanName(raw, g_TeamNameCt, sizeof(g_TeamNameCt));
-	PrintToServer("[NVD_TEAMNAMES] CT = '%s'", g_TeamNameCt);
-	
-	// Now generate TR name
-	if (g_PlayersT[0])
-		QueryOllama("TR", OnTrName);
-	else
-		Finish();
-}
+	char reply[2048];
+	any teamData;
 
-public void OnTrName(HTTPResponse response, any value)
-{
-	if (response.Status != HTTPStatus_OK)
+	// Tenta pegar respostas destinadas a este plugin
+	while (NVD_PollResponse(reply, sizeof(reply), teamData))
 	{
-		LogError("[NVD_TEAMNAMES] TR name HTTP error: %d", response.Status);
-		Format(g_TeamNameT, sizeof(g_TeamNameT), "%s II", g_TeamNameCt);
-		Finish(); return;
+		if (StrContains(reply, "ERROR") != -1)
+		{
+			PrintToServer("[NVD_TEAMNAMES] AI error: %s", reply);
+			g_Generating = false;
+			continue;
+		}
+
+		if (teamData == 0) // Resposta do CT
+		{
+			CleanName(reply, g_TeamNameCt, sizeof(g_TeamNameCt));
+			PrintToServer("[NVD_TEAMNAMES] CT = '%s'", g_TeamNameCt);
+
+			if (g_PlayersT[0])
+				QueryOllama("TR");
+			else
+				Finish();
+		}
+		else if (teamData == 1) // Resposta do TR
+		{
+			CleanName(reply, g_TeamNameT, sizeof(g_TeamNameT));
+			PrintToServer("[NVD_TEAMNAMES] TR = '%s'", g_TeamNameT);
+			Finish();
+		}
 	}
-	
-	JSONObject obj = view_as<JSONObject>(response.Data);
-	char raw[256]; obj.GetString("response", raw, sizeof(raw));
-	delete obj;
-	
-	CleanName(raw, g_TeamNameT, sizeof(g_TeamNameT));
-	PrintToServer("[NVD_TEAMNAMES] TR = '%s'", g_TeamNameT);
-	Finish();
+	return Plugin_Continue;
 }
 
 void Finish()
