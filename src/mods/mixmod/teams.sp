@@ -26,9 +26,16 @@ void Mix_SwapTeams()
     }
 
     int team;
+    ConVar hStartMoney = FindConVar("mp_startmoney");
+    int startMoney = (hStartMoney != null) ? hStartMoney.IntValue : 800;
+
     for (int i = 1; i <= MaxClients; i++) {
         if (!IsClientInGame(i))
             continue;
+
+        if (g_iAccount != -1) {
+            SetEntProp(i, Prop_Send, "m_iAccount", startMoney);
+        }
 
         team = GetClientTeam(i);
         if (team == TEAM_T) {
@@ -59,9 +66,16 @@ public Action Mix_SwapTimer(Handle timer)
     // 输出调试信息
     PrintToChatAll("\x04[%s]:\x03 %t", MODNAME, "Score Before Swap", g_iCTScore, g_iTScore);
 
+    ConVar hStartMoney = FindConVar("mp_startmoney");
+    int startMoney = (hStartMoney != null) ? hStartMoney.IntValue : 800;
+
     int team;
     for (int client = 1; client <= MaxClients; client++) {
-        if (IsClientInGame(client) && !IsFakeClient(client) && IsClientConnected(client)) {
+        if (IsClientInGame(client) && IsClientConnected(client)) {
+            if (g_iAccount != -1) {
+                SetEntProp(client, Prop_Send, "m_iAccount", startMoney);
+            }
+
             team = GetClientTeam(client);
 
             if (team == CS_TEAM_CT) {

@@ -266,6 +266,12 @@ void Mix_ResetMatchState()
         g_bGaggedPlayers[i] = false;
         g_iLastKnownHealth[i] = 0;
     }
+
+    // Reseta nomes dos times para o padrão (Team A / Team B)
+    if (g_hCvarCusomNameTeamCT != INVALID_HANDLE)
+        SetConVarString(g_hCvarCusomNameTeamCT, "Team A");
+    if (g_hCvarCusomNameTeamT != INVALID_HANDLE)
+        SetConVarString(g_hCvarCusomNameTeamT, "Team B");
 }
 
 /**

@@ -75,7 +75,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
         if ((g_iCurrentHalf == 2 && g_iCurrentRound == 1) || (g_iCurrentHalf > 2 && g_iCurrentRound == 1)) {
             int money = (g_iCurrentHalf > 2) ? 10000 : 800;
             for (int client = 1; client <= MaxClients; client++) {
-                if (IsClientInGame(client) && !IsFakeClient(client) && IsClientConnected(client)) {
+                if (IsClientInGame(client) && IsClientConnected(client)) {
                     int team = GetClientTeam(client);
                     if (team > 1) {
                         bool hasC4 = false;
@@ -206,7 +206,7 @@ public Action Mix_Event_RoundStart(Handle event, const char[] name, bool dontBro
                 if (g_iCurrentRound == 1 ) {
                     // 重置玩家金钱为800
                     for (int client = 1; client <= MaxClients; client++) {
-                        if (IsClientInGame(client) && !IsFakeClient(client) && IsClientConnected(client)) {
+                        if (IsClientInGame(client) && IsClientConnected(client)) {
                             int team = GetClientTeam(client);
 
                             if (team > 1) {

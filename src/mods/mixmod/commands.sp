@@ -142,6 +142,10 @@ public Action Mix_Command_Ready(int client, int args)
                             PrintToChat(i, "\x04[%s]:\x03 %t", MODNAME, "Ten Players Ready Again");
                         }
                     }
+
+                    // Inicia processo de batismo dos times (Votação/IA)
+                    ServerCommand("sm_teamnames");
+
                     // 分队/拼刀
                     if (GetConVarInt(g_hCvarAutoMixRandomize) == 1) {
                         for (int i = 1; i <= MaxClients; i++) {

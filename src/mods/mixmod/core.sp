@@ -117,8 +117,27 @@ void Mix_FindGameOffsets()
 
     // 查找服务器名称ConVar
     g_hHostName = FindConVar("hostname");
-    if (g_szHostName[0] == '\0') {
-        GetConVarString(g_hHostName, g_szHostName, sizeof(g_szHostName));
+    char currentHost[150];
+    GetConVarString(g_hHostName, currentHost, sizeof(currentHost));
+    
+    // Limpa o hostname de emojis e nomes de times anteriores para pegar apenas a BASE
+    // Ex: "🔴 NVD Server | Team A vs Team B" -> "NVD Server"
+    if (StrContains(currentHost, "🔴") != -1 || StrContains(currentHost, " vs ") != -1) {
+        // Se já está sujo e não temos o g_szHostName salvo ainda, precisamos extrair a base
+        if (g_szHostName[0] == '\0') {
+            char base[150];
+            strcopy(base, sizeof(base), currentHost);
+            ReplaceString(base, sizeof(base), "🔴", "");
+            
+            int pipePos = StrContains(base, "|");
+            if (pipePos != -1) base[pipePos] = '\0';
+            
+            TrimString(base);
+            strcopy(g_szHostName, sizeof(g_szHostName), base);
+        }
+    } else {
+        // Nome limpo, salva direto
+        strcopy(g_szHostName, sizeof(g_szHostName), currentHost);
     }
 }
 

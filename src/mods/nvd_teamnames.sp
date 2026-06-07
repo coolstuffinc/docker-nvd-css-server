@@ -2,50 +2,197 @@
 #include <sdktools>
 #include <cstrike>
 #include <nvd_core>
+#include <clientprefs>
 
 #pragma semicolon 1
 #pragma newdecls required
 
 ConVar g_CvarEnabled;
-bool g_Generating;
-char g_TeamNameCt[64];
-char g_TeamNameT[64];
 char g_PlayersCt[512];
 char g_PlayersT[512];
 
+// Cookie para persistência
+Handle g_hSuggestionCookie;
+char g_PlayerSuggestion[MAXPLAYERS + 1][32];
+
 public Plugin myinfo =
 {
-	name = "NVD Team Names",
+	name = "NVD Team Names (Persistent Suggestions)",
 	author = "OpenCode",
-	description = "AI team name generator",
-	version = "1.1.0",
+	description = "Players can suggest team names anytime; suggestions persist across maps",
+	version = "3.1.0",
 	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
 };
 
 public void OnPluginStart()
 {
-	g_CvarEnabled = CreateConVar("nvd_teamnames", "1", "Enable AI team name generation");
+	g_CvarEnabled = CreateConVar("nvd_teamnames", "1", "Enable AI/Voting team name generation");
 	AutoExecConfig(true, "nvd_teamnames");
+	
 	RegConsoleCmd("sm_teamnames", Command_TeamNames);
+	RegConsoleCmd("sm_suggest", Command_Suggest);
 
-	// Timer para ficar checando se a IA respondeu (Polling)
+	g_hSuggestionCookie = RegClientCookie("nvd_teamname_suggestion", "Sua sugestão favorita de nome de time", CookieAccess_Private);
+
+	// Timer para polling da IA
 	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+
+	// Carrega para quem já estiver no server (late load)
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && areClientCookiesCached(i))
+			OnClientCookiesCached(i);
+	}
+}
+
+public void OnClientDisconnect(int client)
+{
+	g_PlayerSuggestion[client][0] = '\0';
+}
+
+public void OnClientCookiesCached(int client)
+{
+	char buffer[32];
+	GetClientCookie(client, g_hSuggestionCookie, buffer, sizeof(buffer));
+	if (buffer[0] != '\0')
+	{
+		strcopy(g_PlayerSuggestion[client], 32, buffer);
+	}
+}
+
+public Action Command_Suggest(int client, int args)
+{
+	if (client == 0) return Plugin_Handled;
+
+	if (args < 1)
+	{
+		if (g_PlayerSuggestion[client][0] != '\0')
+			ReplyToCommand(client, "\x04[NVD] \x01Sua sugestão atual é: \x03\"%s\"\x01. Use \x04!suggest <nome>\x01 para mudar.", g_PlayerSuggestion[client]);
+		else
+			ReplyToCommand(client, "\x04[NVD] \x01Você ainda não sugeriu um nome. Use \x04!suggest <nome>\x01.");
+		return Plugin_Handled;
+	}
+
+	char suggestion[32];
+	GetCmdArgString(suggestion, sizeof(suggestion));
+	StripQuotes(suggestion);
+	TrimString(suggestion);
+
+	if (strlen(suggestion) < 3)
+	{
+		ReplyToCommand(client, "\x04[NVD] \x01Nome muito curto (mínimo 3 letras).");
+		return Plugin_Handled;
+	}
+
+	strcopy(g_PlayerSuggestion[client], 32, suggestion);
+	SetClientCookie(client, g_hSuggestionCookie, suggestion);
+	
+	ReplyToCommand(client, "\x04[NVD] \x01Sugestão salva: \x03\"%s\"\x01. Será usada na próxima votação de time.", suggestion);
+
+	return Plugin_Handled;
 }
 
 public Action Command_TeamNames(int client, int args)
 {
-	if (!g_CvarEnabled.BoolValue) { ReplyToCommand(client, "[NVD] Disabled."); return Plugin_Handled; }
-	if (g_Generating) { ReplyToCommand(client, "[NVD] Generating..."); return Plugin_Handled; }
-	GenerateTeamNames();
+	if (!g_CvarEnabled.BoolValue) return Plugin_Handled;
+	
+	ProcessTeamNaming(CS_TEAM_T);
+	ProcessTeamNaming(CS_TEAM_CT);
+	
 	return Plugin_Handled;
 }
 
-void GenerateTeamNames()
+void ProcessTeamNaming(int team)
 {
-	g_Generating = true;
+	char teamSuggestions[5][32];
+	int count = 0;
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == team)
+		{
+			if (g_PlayerSuggestion[i][0] != '\0')
+			{
+				strcopy(teamSuggestions[count], 32, g_PlayerSuggestion[i]);
+				count++;
+				if (count >= 5) break;
+			}
+		}
+	}
+
+	if (count == 0)
+	{
+		PrintToChatAll("\x04[NVD] \x01Sem sugestões dos jogadores para o time \x03%s\x01. Chamando IA...", (team == CS_TEAM_T) ? "TR" : "CT");
+		RefreshPlayerLists();
+		QueryOllama((team == CS_TEAM_CT) ? "CT" : "TR");
+	}
+	else if (count == 1)
+	{
+		ApplyTeamName(team, teamSuggestions[0]);
+	}
+	else
+	{
+		StartTeamVoteNative(team, teamSuggestions, count);
+	}
+}
+
+void StartTeamVoteNative(int team, char suggestions[5][32], int count)
+{
+	Menu menu = new Menu(Handle_VoteResults);
+	menu.SetTitle("Vote no nome do time %s:", (team == CS_TEAM_T) ? "TR" : "CT");
+
+	for (int i = 0; i < count; i++)
+	{
+		menu.AddItem(suggestions[i], suggestions[i]);
+	}
+
+	menu.ExitButton = false;
+	
+	int clients[MAXPLAYERS], total = 0;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == team)
+			clients[total++] = i;
+	}
+
+	if (total > 0)
+		menu.DisplayVote(clients, total, 15);
+}
+
+public int Handle_VoteResults(Menu menu, MenuAction action, int param1, int param2)
+{
+	if (action == MenuAction_End) delete menu;
+	else if (action == MenuAction_VoteEnd)
+	{
+		char winner[32];
+		menu.GetItem(param1, winner, sizeof(winner));
+		
+		char title[64];
+		menu.GetTitle(title, sizeof(title));
+		int team = (StrContains(title, "TR") != -1) ? CS_TEAM_T : CS_TEAM_CT;
+		
+		ApplyTeamName(team, winner);
+	}
+	return 0;
+}
+
+void ApplyTeamName(int team, const char[] name)
+{
+	PrintToChatAll("\x04[NVD] \x01Nome definido para o time \x03%s\x01: \x04%s", 
+		(team == CS_TEAM_T) ? "TR" : "CT", name);
+	
+	char cvarName[64];
+	Format(cvarName, sizeof(cvarName), "sm_mixmod_custom_name_%s", (team == CS_TEAM_T) ? "t" : "ct");
+	
+	ConVar cv = FindConVar(cvarName);
+	if (cv != null) cv.SetString(name);
+}
+
+void RefreshPlayerLists()
+{
 	g_PlayersCt[0] = '\0';
 	g_PlayersT[0] = '\0';
-	int ctPos = 0, tPos = 0, ctCount = 0, tCount = 0;
+	int ctPos = 0, tPos = 0;
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -54,13 +201,10 @@ void GenerateTeamNames()
 		if (IsFakeClient(i)) Format(name, sizeof(name), "[BOT]%s", name);
 		int team = GetClientTeam(i);
 		if (team == CS_TEAM_CT && ctPos < 480)
-		{ ctPos += Format(g_PlayersCt[ctPos], sizeof(g_PlayersCt) - ctPos, "%s, ", name); ctCount++; }
+		{ ctPos += Format(g_PlayersCt[ctPos], sizeof(g_PlayersCt) - ctPos, "%s, ", name); }
 		else if (team == CS_TEAM_T && tPos < 480)
-		{ tPos += Format(g_PlayersT[tPos], sizeof(g_PlayersT) - tPos, "%s, ", name); tCount++; }
+		{ tPos += Format(g_PlayersT[tPos], sizeof(g_PlayersT) - tPos, "%s, ", name); }
 	}
-
-	PrintToServer("[NVD_TEAMNAMES] CT(%d) TR(%d) - generating...", ctCount, tCount);
-	QueryOllama("CT");
 }
 
 void QueryOllama(const char[] team)
@@ -69,15 +213,11 @@ void QueryOllama(const char[] team)
 	if (StrEqual(team, "CT"))
 		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the CT team. Players: %s", g_PlayersCt);
 	else
-		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the TR team. Players: %s. The CT team is named '%s', yours must be different.", g_PlayersT, g_TeamNameCt);
+		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the TR team. Players: %s.", g_PlayersT);
 
 	char sys[256] = "You are a Brazilian CS commentator. Generate 1 creative e-sports team name in Portuguese (max 20 chars). Return ONLY the name, no quotes or explanations.";
 
-	// Usamos 'teamData' para identificar quem é quem quando a resposta chegar
-	any teamData = StrEqual(team, "CT") ? 0 : 1;
-
-	// Chama a native do nvd_ollama (a requisição entra na fila se estiver cheio)
-	// Definimos um timeout longo de 5 minutos (300s) para nomes de times
+	any teamData = StrEqual(team, "CT") ? 1 : 0;
 	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, 0, 300.0);
 }
 
@@ -85,53 +225,21 @@ public Action Timer_PollResponses(Handle timer)
 {
 	char reply[2048];
 	any teamData;
-
-	// Tenta pegar respostas destinadas a este plugin
 	while (NVD_PollResponse(reply, sizeof(reply), teamData))
 	{
+		PrintToServer("[NVD_TEAMNAMES] Recebeu resposta: \"%s\" (Data: %d)", reply, teamData);
+
 		if (StrContains(reply, "ERROR") != -1)
 		{
-			PrintToServer("[NVD_TEAMNAMES] AI error: %s", reply);
-			g_Generating = false;
+			PrintToServer("[NVD_TEAMNAMES] Erro detectado na resposta da IA.");
 			continue;
 		}
 
-		if (teamData == 0) // Resposta do CT
-		{
-			CleanName(reply, g_TeamNameCt, sizeof(g_TeamNameCt));
-			PrintToServer("[NVD_TEAMNAMES] CT = '%s'", g_TeamNameCt);
-			
-			ConVar cv = FindConVar("sm_mixmod_custom_name_ct");
-			if (cv != null) cv.SetString(g_TeamNameCt);
-
-			if (g_PlayersT[0])
-				QueryOllama("TR");
-			else
-				Finish();
-		}
-		else if (teamData == 1) // Resposta do TR
-		{
-			CleanName(reply, g_TeamNameT, sizeof(g_TeamNameT));
-			PrintToServer("[NVD_TEAMNAMES] TR = '%s'", g_TeamNameT);
-
-			ConVar cv = FindConVar("sm_mixmod_custom_name_t");
-			if (cv != null) cv.SetString(g_TeamNameT);
-			Finish();
-		}
+		char name[32];
+		CleanName(reply, name, sizeof(name));
+		ApplyTeamName(teamData == 1 ? CS_TEAM_CT : CS_TEAM_T, name);
 	}
 	return Plugin_Continue;
-}
-
-void Finish()
-{
-	g_Generating = false;
-	if (g_TeamNameCt[0] || g_TeamNameT[0])
-	{
-		PrintToChatAll("\x04[NVD] \x01Times: \x03%s \x01(CT) vs \x03%s \x01(TR)", 
-			g_TeamNameCt[0] ? g_TeamNameCt : "Team A", 
-			g_TeamNameT[0] ? g_TeamNameT : "Team B");
-		PrintToChatAll("\x04[NVD] \x01Use \x04!teamnames\x01 para gerar novos nomes.");
-	}
 }
 
 void CleanName(const char[] raw, char[] out, int max)
