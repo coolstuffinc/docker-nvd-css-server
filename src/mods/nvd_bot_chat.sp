@@ -1058,18 +1058,82 @@ void LogBotInteraction(const char[] action, const char[] bot,
     char path[PLATFORM_MAX_PATH];
     BuildPath(Path_SM, path, sizeof(path), "logs/nvd_bot_chat.log");
     
-    char date[16], time[16];
-    FormatTime(date, sizeof(date), "%Y-%m-%d");
-    FormatTime(time, sizeof(time), "%H:%M:%S");
+    char ts[64];
+    FormatTime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ");
     
-    // Pipe-delimited: date | time | action | bot | event | target | mood | data1 | data2 | data3
+    // JSONL: build a single json string per line
+    char line[4096];
+    int pos = 0;
+    
+    // Always: timestamp, action, bot
+    pos += Format(line[pos], sizeof(line) - pos,
+        "{\"ts\":\"%s\",\"a\":\"%s\",\"b\":\"%s\"",
+        ts, action, bot);
+    
+    // Event if any
+    if (eventType[0] || target[0] || mood[0])
+    {
+        pos += Format(line[pos], sizeof(line) - pos, ",\"e\":{\"t\":\"%s\"", eventType);
+        if (target[0]) pos += Format(line[pos], sizeof(line) - pos,
+            ",\"tg\":\"%s\"", target);
+        if (mood[0]) pos += Format(line[pos], sizeof(line) - pos,
+            ",\"m\":\"%s\"", mood);
+        pos += Format(line[pos], sizeof(line) - pos, "}");
+    }
+    
+    // System prompt if available (for RESP and SENT)
+    if (data1[0] && (StrEqual(action, "RESP") || StrEqual(action, "SENT")))
+    {
+        pos += Format(line[pos], sizeof(line) - pos, ",\"sys\":\"");
+        pos = JsonEsc(line, sizeof(line), pos, data1);
+        pos += Format(line[pos], sizeof(line) - pos, "\"");
+    }
+    
+    // User prompt if available
+    if (data2[0] && (StrEqual(action, "RESP") || StrEqual(action, "SENT")))
+    {
+        pos += Format(line[pos], sizeof(line) - pos, ",\"usr\":\"");
+        pos = JsonEsc(line, sizeof(line), pos, data2);
+        pos += Format(line[pos], sizeof(line) - pos, "\"");
+    }
+    
+    // Response
+    if (data3[0])
+    {
+        pos += Format(line[pos], sizeof(line) - pos, ",\"r\":\"");
+        pos = JsonEsc(line, sizeof(line), pos, data3);
+        pos += Format(line[pos], sizeof(line) - pos, "\"");
+    }
+    
+    // Close
+    pos += Format(line[pos], sizeof(line) - pos, "}\n");
+    
     Handle file = OpenFile(path, "a");
     if (file != null)
     {
-        WriteFileLine(file, "%s | %s | %s | %s | %s | %s | %s | %s | %s | %s",
-            date, time, action, bot, eventType, target, mood, data1, data2, data3);
+        WriteFileString(file, line, false);
         delete file;
     }
+}
+
+// Escape string for JSON value
+int JsonEsc(char[] buf, int max, int pos, const char[] inp)
+{
+    int len = strlen(inp);
+    for (int i = 0; i < len && pos < max - 6; i++)
+    {
+        switch (inp[i])
+        {
+            case '\"': { buf[pos++] = '\\'; buf[pos++] = '\"'; break; }
+            case '\\': { buf[pos++] = '\\'; buf[pos++] = '\\'; break; }
+            case '\n': { buf[pos++] = '\\'; buf[pos++] = 'n'; break; }
+            case '\r': { buf[pos++] = '\\'; buf[pos++] = 'r'; break; }
+            case '\t': { buf[pos++] = '\\'; buf[pos++] = 't'; break; }
+            default: { buf[pos++] = inp[i]; }
+        }
+    }
+    buf[pos] = '\0';
+    return pos;
 }
 
 void LogPolledResponse(int botClient, const char[] reply)
