@@ -12,6 +12,7 @@
 ConVar g_CvarEnabled;
 ConVar g_CvarCooldown;
 ConVar g_CvarChance;
+ConVar g_CvarLogging;
 KeyValues g_PromptKV = null;
 KeyValues g_PersonalityKV = null;
 
@@ -19,6 +20,14 @@ float g_LastBotChat;
 Handle g_RoundStartTimer;
 int g_CurrentRound;
 int g_BombPlanted;
+
+// Structured log tracking per bot
+char g_LastEventType[MAXPLAYERS + 1][32];
+char g_LastTarget[MAXPLAYERS + 1][64];
+char g_LastMood[MAXPLAYERS + 1][128];
+char g_LastSysPrompt[MAXPLAYERS + 1][1024];
+char g_LastUserPrompt[MAXPLAYERS + 1][256];
+float g_LastAskTime[MAXPLAYERS + 1];
 
 public Plugin myinfo =
 {
@@ -34,6 +43,7 @@ public void OnPluginStart()
 	g_CvarEnabled = CreateConVar("nvd_bot_chat", "1", "Enable AI bot chat messages");
 	g_CvarCooldown = CreateConVar("nvd_bot_chat_cooldown", "12.0", "Min seconds between bot messages");
 	g_CvarChance = CreateConVar("nvd_bot_chat_chance", "45", "Percent chance to react to an event (0-100)");
+	g_CvarLogging = CreateConVar("nvd_bot_chat_log", "1", "Enable structured bot chat logging to nvd_bot_chat.log");
 	AutoExecConfig(true, "nvd_bot_chat");
 
 	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
@@ -753,6 +763,14 @@ void AskBotChat(const char[] context, int preferredClient = -1)
     NVD_AskAI(fullPrompt, sysPrompt, OnPollingDummy, botClient);
     PrintToServer("[BOT_CHAT] [%s] 🤖 Asked bot %s (%s): %s", timeBuf, botName, botTeamName, context);
     PrintToServer("[BOT_CHAT] [%s] 📝 Prompt >> system: \"%s\" | user: \"%s\"", timeBuf, sysPrompt, fullPrompt);
+    
+    // Store for structured log (read by PollBotResponses when response arrives)
+    strcopy(g_LastEventType[botClient], sizeof(g_LastEventType[]), eventType);
+    strcopy(g_LastTarget[botClient], sizeof(g_LastTarget[]), targetMention);
+    strcopy(g_LastMood[botClient], sizeof(g_LastMood[]), mood);
+    strcopy(g_LastSysPrompt[botClient], sizeof(g_LastSysPrompt[]), sysPrompt);
+    strcopy(g_LastUserPrompt[botClient], sizeof(g_LastUserPrompt[]), fullPrompt);
+    g_LastAskTime[botClient] = GetGameTime();
 }
 
 // No-op callback — responses come through NVD_PollResponse polling
@@ -777,6 +795,9 @@ void PollBotResponses()
     while (NVD_PollResponse(reply, sizeof(reply), botClient))
     {
         PrintToServer("[BOT_CHAT] [%s] 📥 Polled response for bot %d: \"%s\"", ts, botClient, reply);
+        
+        // Log the raw response for analysis
+        LogPolledResponse(botClient, reply);
 
         // Check for explicit error responses
         if (StrContains(reply, "ERROR_") != -1)
@@ -806,6 +827,7 @@ void PollBotResponses()
             if (activeBotCount == 0)
             {
                 PrintToServer("[BOT_CHAT] ⏭ Dropped (no active bots): \"%s\"", reply);
+                LogBotInteraction("DROP", "?", "?", "?", "?", "sem_bots", reply);
                 continue;
             }
 
@@ -868,6 +890,7 @@ void PollBotResponses()
         if (cleanMsg[0] == '\0')
         {
             PrintToServer("[BOT_CHAT] ⏭ Dropped (empty after clean): \"%s\"", reply);
+            LogBotInteraction("DROP", botName, "?", "?", "?", "vazio", reply);
             continue;
         }
 
@@ -886,6 +909,11 @@ void PollBotResponses()
         }
 
         PrintToServer("[BOT_CHAT] [%s] ✅ Sent: [BOT %s] %s", ts, botName, cleanMsg);
+        
+        // Structured log: response sent
+        LogBotInteraction("SENT", botName,
+            g_LastEventType[botClient], g_LastTarget[botClient], g_LastMood[botClient],
+            g_LastSysPrompt[botClient], g_LastUserPrompt[botClient], cleanMsg);
 
         // Bot-to-bot reply: 15% chance de outro bot responder
         if (GetRandomInt(1, 100) <= 15)
@@ -972,6 +1000,49 @@ void GetBotPersonality(const char[] botName, char[] personality, int personality
     g_PersonalityKV.GetString("personality", personality, personalityLen);
     g_PersonalityKV.GetString("catchphrase", catchphrase, catchphraseLen);
     g_PersonalityKV.GetString("style", style, styleLen);
+}
+
+// ============================================================================
+// STRUCTURED LOGGING
+// ============================================================================
+
+void LogBotInteraction(const char[] action, const char[] bot,
+    const char[] eventType, const char[] target, const char[] mood,
+    const char[] data1 = "", const char[] data2 = "", const char[] data3 = "")
+{
+    if (!g_CvarLogging.BoolValue) return;
+    
+    char path[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, path, sizeof(path), "logs/nvd_bot_chat.log");
+    
+    char date[16], time[16];
+    FormatTime(date, sizeof(date), "%Y-%m-%d");
+    FormatTime(time, sizeof(time), "%H:%M:%S");
+    
+    // Pipe-delimited: date | time | action | bot | event | target | mood | data1 | data2 | data3
+    Handle file = OpenFile(path, "a");
+    if (file != null)
+    {
+        WriteFileLine(file, "%s | %s | %s | %s | %s | %s | %s | %s | %s | %s",
+            date, time, action, bot, eventType, target, mood, data1, data2, data3);
+        delete file;
+    }
+}
+
+void LogPolledResponse(int botClient, const char[] reply)
+{
+    if (!g_CvarLogging.BoolValue) return;
+    
+    char botName[32];
+    if (botClient > 0 && IsClientInGame(botClient))
+        GetClientName(botClient, botName, sizeof(botName));
+    else
+        strcopy(botName, sizeof(botName), "?");
+    
+    // Log raw response with stored prompt info
+    LogBotInteraction("RESP", botName,
+        g_LastEventType[botClient], g_LastTarget[botClient], g_LastMood[botClient],
+        g_LastSysPrompt[botClient], g_LastUserPrompt[botClient], reply);
 }
 
 // ============================================================================
