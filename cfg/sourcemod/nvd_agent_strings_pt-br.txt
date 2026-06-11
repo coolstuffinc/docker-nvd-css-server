@@ -1,0 +1,14 @@
+"AgentStrings"
+{
+    "misc"
+    {
+        "processing"    "[\x04AGENT\x01] Processando pedido..."
+        "no_perm"       "[\x04AGENT\x01] ❌ Você não tem permissão para usar este comando."
+        "cooldown"      "[\x04AGENT\x01] ⏱ Aguarde %.0fs antes de fazer outra requisição."
+        "usage"         "Uso: !agent <seu pedido>"
+        "example"       "Ex: !agent trocar mapa para dust2"
+        "unknown_cmd"   "[\x04AGENT\x01] ❌ Comando não reconhecido: %s"
+        "no_access"     "[\x04AGENT\x01] ❌ Sem permissão para: %s"
+        "executing"     "[\x04AGENT\x01] ✅ Executando: %s"
+    }
+}

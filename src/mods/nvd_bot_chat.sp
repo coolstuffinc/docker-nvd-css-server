@@ -7,54 +7,67 @@
 #pragma newdecls required
 
 #define CHAT_COOLDOWN 12.0
-#define EVENT_CHANCE 45
 
 ConVar g_CvarEnabled;
 ConVar g_CvarCooldown;
-ConVar g_CvarChance;
-ConVar g_CvarLogging;
 KeyValues g_PromptKV = null;
 KeyValues g_PersonalityKV = null;
 KeyValues g_GameKV = null;
-KeyValues g_StringsDefault = null;
-KeyValues g_StringsLang = null;
-ConVar g_LangCvar;
 
 float g_LastBotChat;
 Handle g_RoundStartTimer;
 int g_CurrentRound;
-int g_BombPlanted;
+float g_BombPlanted;
+
+// Timeline history: alternating events (system) + bot messages
+#define MAX_HISTORY_ENTRIES 8
+#define HISTORY_CONTENT_LEN 256
+enum struct HistoryEntry {
+    char role[32];
+    char content[HISTORY_CONTENT_LEN];
+}
+HistoryEntry g_History[MAX_HISTORY_ENTRIES];
+int g_HistIdx = 0;
+int g_HistCount = 0;
+
+// Per-map bot K/D tracking
+int g_BotKills[MAXPLAYERS + 1];
+int g_BotDeaths[MAXPLAYERS + 1];
 
 // Structured log tracking per bot
 char g_LastEventType[MAXPLAYERS + 1][32];
-char g_LastTarget[MAXPLAYERS + 1][64];
-char g_LastMood[MAXPLAYERS + 1][128];
 char g_LastSysPrompt[MAXPLAYERS + 1][1024];
-char g_LastUserPrompt[MAXPLAYERS + 1][256];
+char g_LastUserPrompt[MAXPLAYERS + 1][1024];
 float g_LastAskTime[MAXPLAYERS + 1];
-
-// Shared _meta template snippets (loaded from _meta section)
-char g_MetaKeys[16][64];
-char g_MetaValues[16][1024];
-int g_MetaCount;
 
 public Plugin myinfo =
 {
 	name = "NVD Bot Chat",
 	author = "OpenCode",
-	description = "AI-powered contextual chat and roasting for bots",
-	version = "2.0.0",
+	description = "AI-powered contextual chat with centralized strings",
+	version = "3.1.0",
 	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
 };
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	CreateNative("NVD_SubmitChatEvent", Native_SubmitChatEvent);
+	RegPluginLibrary("nvd_bot_chat");
+	return APLRes_Success;
+}
+
+public void OnAllPluginsLoaded()
+{
+	// Centralizado via Core
+	NVD_RegisterStrings("nvd_bot_chat");
+	LoadMetaFromStrings();
+}
 
 public void OnPluginStart()
 {
 	g_CvarEnabled = CreateConVar("nvd_bot_chat", "1", "Enable AI bot chat messages");
 	g_CvarCooldown = CreateConVar("nvd_bot_chat_cooldown", "12.0", "Min seconds between bot messages");
-	g_CvarChance = CreateConVar("nvd_bot_chat_chance", "45", "Percent chance to react to an event (0-100)");
-	g_CvarLogging = CreateConVar("nvd_bot_chat_log", "1", "Enable structured bot chat logging to nvd_bot_chat.log");
-	g_LangCvar = CreateConVar("nvd_bot_chat_language", "default", "Language for bot chat strings (default, pt-br, etc.)");
-	g_LangCvar.AddChangeHook(OnLanguageChanged);
+	
 	AutoExecConfig(true, "nvd_bot_chat");
 
 	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Post);
@@ -71,18 +84,26 @@ public void OnPluginStart()
 	
 	LoadPromptTemplates();
 	LoadPersonalities();
-	LoadStrings();
-	LoadMetaFromStrings();
 	
 	// Comando para recarregar templates
 	RegAdminCmd("sm_botchat_reload", Command_ReloadPrompts, ADMFLAG_GENERIC);
+}
+
+public Action Timer_DelayedReRegister(Handle timer)
+{
+	NVD_RegisterStrings("nvd_bot_chat");
+	LoadMetaFromStrings();
+	return Plugin_Stop;
 }
 
 public void OnMapStart()
 {
 	g_LastBotChat = 0.0;
 	g_CurrentRound = 0;
-	g_BombPlanted = 0;
+	g_BombPlanted = 0.0;
+
+	for (int i = 1; i <= MaxClients; i++) { g_BotKills[i] = 0; g_BotDeaths[i] = 0; }
+	g_HistIdx = 0; g_HistCount = 0;
 
 	delete g_GameKV;
 	g_GameKV = null;
@@ -127,1332 +148,34 @@ public void OnMapStart()
 public void OnPluginEnd()
 {
 	delete g_GameKV;
-	delete g_StringsDefault;
-	delete g_StringsLang;
-}
-
-public void OnLanguageChanged(ConVar convar, const char[] oldVal, const char[] newVal)
-{
-	LoadStrings();
-	LoadMetaFromStrings();
-}
-
-void LoadStrings()
-{
-	if (g_StringsDefault != null)
-		delete g_StringsDefault;
-	if (g_StringsLang != null)
-		delete g_StringsLang;
-	g_StringsDefault = null;
-	g_StringsLang = null;
-
-	char path[PLATFORM_MAX_PATH];
-
-	BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_chat_strings_default.txt");
-	if (FileExists(path))
-	{
-		g_StringsDefault = new KeyValues("BotChatStrings");
-		g_StringsDefault.ImportFromFile(path);
-		PrintToServer("[BOT_CHAT] +- Default strings loaded from %s", path);
-	}
-
-	char lang[32];
-	g_LangCvar.GetString(lang, sizeof(lang));
-	if (!StrEqual(lang, "default") && lang[0])
-	{
-		char langPath[PLATFORM_MAX_PATH];
-		BuildPath(Path_SM, langPath, sizeof(langPath), "configs/nvd_bot_chat_strings_%s.txt", lang);
-		if (FileExists(langPath))
-		{
-			g_StringsLang = new KeyValues("BotChatStrings");
-			g_StringsLang.ImportFromFile(langPath);
-			PrintToServer("[BOT_CHAT] +- Language overrides loaded from %s", langPath);
-		}
-		else
-		{
-			LogError("[BOT_CHAT] Language file not found: %s", langPath);
-		}
-	}
-
-	if (g_StringsDefault == null && g_StringsLang == null)
-		PrintToServer("[BOT_CHAT] No string configs found — using hardcoded fallbacks");
-}
-
-stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen, const char[] fallback)
-{
-	if (g_StringsLang != null)
-	{
-		g_StringsLang.Rewind();
-		if (g_StringsLang.JumpToKey(section))
-		{
-			g_StringsLang.GetString(key, buffer, maxlen);
-			g_StringsLang.GoBack();
-			if (buffer[0] != '\0')
-				return;
-		}
-	}
-	if (g_StringsDefault != null)
-	{
-		g_StringsDefault.Rewind();
-		if (g_StringsDefault.JumpToKey(section))
-		{
-			g_StringsDefault.GetString(key, buffer, maxlen);
-			g_StringsDefault.GoBack();
-			if (buffer[0] != '\0')
-				return;
-		}
-	}
-	strcopy(buffer, maxlen, fallback);
-}
-
-// ============================================================================
-// CONTEXT BUILDER
-// ============================================================================
-
-// Mapa de armas para nomes mais amigaveis
-void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
-{
-    char base[32];
-    strcopy(base, sizeof(base), weapon);
-    
-    bool headshot = false;
-    int hsPos = StrContains(base, " HS");
-    if (hsPos != -1)
-    {
-        base[hsPos] = '\0';
-        headshot = true;
-    }
-    
-    // Tenta ler do config weapons primeiro
-    if (g_PromptKV != null)
-    {
-        char kvName[32];
-        g_PromptKV.Rewind();
-        if (g_PromptKV.JumpToKey("weapons") && g_PromptKV.JumpToKey(base))
-        {
-            g_PromptKV.GetString("name", kvName, sizeof(kvName));
-            if (kvName[0] != '\0')
-            {
-                strcopy(output, maxlen, kvName);
-                if (headshot)
-                    Format(output, maxlen, "%s HS", output);
-                return;
-            }
-        }
-    }
-    
-    char weaponName[32];
-    GetStr("weapons_fallback", base, weaponName, sizeof(weaponName), "");
-    if (weaponName[0])
-        strcopy(output, maxlen, weaponName);
-    else
-        strcopy(output, maxlen, base);
-    
-    if (headshot)
-        Format(output, maxlen, "%s HS", output);
-}
-void BuildContext(char[] buffer, int maxlen, const char[] event, 
-	int mainClient = -1, int targetClient = -1, const char[] weapon = "")
-{
-	int ctScore = CS_GetTeamScore(CS_TEAM_CT);
-	int tScore = CS_GetTeamScore(CS_TEAM_T);
-	
-	char timeStr[64];
-	int timeLeft = RoundFloat(GetGameTime());
-	int mins = timeLeft / 60;
-	int secs = timeLeft % 60;
-	char timeFmt[64];
-	GetStr("misc", "time_format", timeFmt, sizeof(timeFmt), "%d minute(s) and %d seconds of game time");
-	Format(timeStr, sizeof(timeStr), timeFmt, mins, secs);
-	
-	int ctAlive = 0, tAlive = 0;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i)) continue;
-		if (GetClientTeam(i) == 2) tAlive++;
-		else if (GetClientTeam(i) == 3) ctAlive++;
-	}
-	
-	// Detectar clutch (1 vs N) quando o 1 for um player real
-	char clutchTag[32];
-	clutchTag[0] = '\0';
-	
-	// Encontrar player real
-	int humanClient = -1;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && !IsFakeClient(i) && !IsClientSourceTV(i))
-		{
-			humanClient = i;
-			break;
-		}
-	}
-	
-	if (humanClient > 0)
-	{
-		int humanTeam = GetClientTeam(humanClient);
-		bool humanAlive = IsPlayerAlive(humanClient);
-		
-		// Player real e o unico vivo do time em situacao 1vN
-		if (humanAlive && ((humanTeam == CS_TEAM_T && tAlive == 1 && ctAlive >= 2) ||
-			(humanTeam == CS_TEAM_CT && ctAlive == 1 && tAlive >= 2)))
-		{
-			GetStr("misc", "clutch_tag", clutchTag, sizeof(clutchTag), " CLUTCH");
-		}
-	}
-	
-	char mainName[32], targetName[32];
-	if (mainClient > 0 && IsClientInGame(mainClient))
-	{
-		GetClientName(mainClient, mainName, sizeof(mainName));
-	}
-	else
-	{
-		mainName[0] = '\0';
-	}
-	
-	if (targetClient > 0 && IsClientInGame(targetClient))
-	{
-		GetClientName(targetClient, targetName, sizeof(targetName));
-	}
-	
-	int pos = 0;
-	
-	// Evento (quem fez o que) vem primeiro
-	if (mainName[0])
-	{
-		char mainTag[16];
-		if (mainClient > 0 && IsFakeClient(mainClient))
-			strcopy(mainTag, sizeof(mainTag), " BOT");
-		else if (mainClient > 0)
-			strcopy(mainTag, sizeof(mainTag), " Player");
-		else
-			mainTag[0] = '\0';
-		
-		pos += Format(buffer[pos], maxlen - pos, "@%s%s %s", mainName, mainTag, event);
-		if (targetName[0] && targetClient != mainClient)
-		{
-			char targetTag[16];
-			if (targetClient > 0 && IsFakeClient(targetClient))
-				strcopy(targetTag, sizeof(targetTag), " BOT");
-			else if (targetClient > 0)
-				strcopy(targetTag, sizeof(targetTag), " Player");
-			else
-				targetTag[0] = '\0';
-			pos += Format(buffer[pos], maxlen - pos, " @%s%s", targetName, targetTag);
-		}
-		if (weapon[0])
-		{
-			char friendlyWeapon[32];
-			FriendlyWeaponName(weapon, friendlyWeapon, sizeof(friendlyWeapon));
-			
-			// Separa headshot das aspas: "M4 HS" -> com "M4" na cabeca
-			char weaponShot[64], weaponKnife[64], hsStr[64];
-			GetStr("misc", "weapon_shot", weaponShot, sizeof(weaponShot), " with %s");
-			GetStr("misc", "headshot", hsStr, sizeof(hsStr), " headshot");
-			GetStr("misc", "weapon_knife", weaponKnife, sizeof(weaponKnife), " with knife");
-			char knifeName[32];
-			GetStr("misc", "knife", knifeName, sizeof(knifeName), "knife");
-
-			int hsPos = StrContains(friendlyWeapon, " HS");
-			if (hsPos != -1)
-			{
-				friendlyWeapon[hsPos] = '\0';
-				pos += Format(buffer[pos], maxlen - pos, weaponShot, friendlyWeapon);
-				pos += Format(buffer[pos], maxlen - pos, "%s", hsStr);
-			}
-			else
-			{
-				if (StrEqual(friendlyWeapon, knifeName))
-					pos += Format(buffer[pos], maxlen - pos, "%s", weaponKnife);
-				else
-					pos += Format(buffer[pos], maxlen - pos, weaponShot, friendlyWeapon);
-			}
-		}
-		pos += Format(buffer[pos], maxlen - pos, ". ");
-	}
-	else if (event[0])
-	{
-		// Sem jogador especifico: "O CT venceu o round."
-		pos += Format(buffer[pos], maxlen - pos, "%s ", event);
-	}
-	
-	// Depois o estado da partida
-	char mapName[64];
-	GetCurrentMap(mapName, sizeof(mapName));
-	
-	char mapFmt[256];
-	GetStr("misc", "map_status", mapFmt, sizeof(mapFmt), 
-		"Map %s, Round %d, score %d-%d, %s, %d TR alive vs %d CT alive");
-	pos += Format(buffer[pos], maxlen - pos, mapFmt, 
-		mapName, g_CurrentRound, tScore, ctScore, timeStr, tAlive, ctAlive);
-	
-	if (g_BombPlanted > 0)
-	{
-		char bombStatus[32];
-		GetStr("misc", "bomb_planted", bombStatus, sizeof(bombStatus), ", bomb planted");
-		pos += Format(buffer[pos], maxlen - pos, "%s", bombStatus);
-	}
-	
-	pos += Format(buffer[pos], maxlen - pos, "%s.", clutchTag);
-}
-
-void GetPlayerLocation(int client, char[] buffer, int maxlen)
-{
-	if (client > 0 && IsClientInGame(client))
-	{
-		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", buffer, maxlen);
-		if (buffer[0] == '\0')
-			strcopy(buffer, maxlen, "");
-	}
-	else
-	{
-		buffer[0] = '\0';
-	}
-}
-
-// ============================================================================
-// EVENTS
-// ============================================================================
-public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
-{
-	g_CurrentRound++;
-	g_BombPlanted = 0;
-	delete g_RoundStartTimer;
-	g_RoundStartTimer = CreateTimer(3.0, Timer_RoundStartMsg, _, TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public Action Timer_RoundStartMsg(Handle timer)
-{
-	g_RoundStartTimer = null;
-	if (!CanBotChat()) return Plugin_Stop;
-	
-	// Round events: 20% chance (menos interessante)
-	if (GetRandomInt(1, 100) > 20) return Plugin_Stop;
-	
-	char roundStart[64], matchStart[64];
-	GetStr("events", "round_start", roundStart, sizeof(roundStart), "The round has started.");
-	GetStr("events", "match_start", matchStart, sizeof(matchStart), "The match has started!");
-	char ctx[1024];
-	BuildContext(ctx, sizeof(ctx), g_CurrentRound > 1 ? roundStart : matchStart);
-	AskBotChat(ctx, -1, "round_start");
-	return Plugin_Stop;
-}
-
-public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
-{
-	delete g_RoundStartTimer;
-	
-	int winner = event.GetInt("winner");
-	
-	if (!CanBotChat()) return;
-	
-	// Round events: 20% chance
-	if (GetRandomInt(1, 100) > 20) return;
-	
-	char trWin[64], ctWin[64];
-	GetStr("events", "tr_win", trWin, sizeof(trWin), "TR won the round.");
-	GetStr("events", "ct_win", ctWin, sizeof(ctWin), "CT won the round.");
-	char ctx[1024];
-	if (winner == 2)
-		BuildContext(ctx, sizeof(ctx), trWin);
-	else if (winner == 3)
-		BuildContext(ctx, sizeof(ctx), ctWin);
-	else
-		return;
-	AskBotChat(ctx, -1, "round_end");
-}
-
-public void Event_BombPlanted(Event event, const char[] name, bool dontBroadcast)
-{
-	g_BombPlanted = GetGameTime();
-	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (client > 0 && IsFakeClient(client) && CanBotChat())
-	{
-		// Bomb events: 50% chance
-		if (GetRandomInt(1, 100) > 50) return;
-		
-		char bombPlant[64], locSuffix[64];
-		GetStr("events", "bomb_plant", bombPlant, sizeof(bombPlant), "planted the bomb!");
-		GetStr("events", "location_suffix", locSuffix, sizeof(locSuffix), "%s at %s.");
-		char ctx[1024];
-		BuildContext(ctx, sizeof(ctx), bombPlant, client);
-		char loc[64];
-		GetPlayerLocation(client, loc, sizeof(loc));
-		if (loc[0])
-		{
-			char tmp[640];
-			Format(tmp, sizeof(tmp), locSuffix, ctx, loc);
-			strcopy(ctx, sizeof(ctx), tmp);
-		}
-		AskBotChat(ctx, client, "bomb_planted");
-	}
-}
-
-public void Event_BombDefused(Event event, const char[] name, bool dontBroadcast)
-{
-	g_BombPlanted = 0;
-	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (client > 0 && IsFakeClient(client) && CanBotChat())
-	{
-		// Bomb events: 50% chance
-		if (GetRandomInt(1, 100) > 50) return;
-		
-		char bombDefuse[64], locSuffix[64];
-		GetStr("events", "bomb_defuse", bombDefuse, sizeof(bombDefuse), "defused the bomb!");
-		GetStr("events", "location_suffix", locSuffix, sizeof(locSuffix), "%s at %s.");
-		char ctx[512];
-		BuildContext(ctx, sizeof(ctx), bombDefuse, client);
-		char loc[64];
-		GetPlayerLocation(client, loc, sizeof(loc));
-		if (loc[0])
-		{
-			char tmp[640];
-			Format(tmp, sizeof(tmp), locSuffix, ctx, loc);
-			strcopy(ctx, sizeof(ctx), tmp);
-		}
-		AskBotChat(ctx, client, "bomb_defused");
-	}
-}
-
-void GetGameFunfactText(const char[] token, char[] buffer, int maxlen, int player, int data1, int data2)
-{
-	buffer[0] = '\0';
-
-	char cleanToken[128];
-	strcopy(cleanToken, sizeof(cleanToken), token);
-	if (cleanToken[0] == '#')
-	{
-		int i = 0;
-		while (cleanToken[i+1] != '\0')
-		{
-			cleanToken[i] = cleanToken[i+1];
-			i++;
-		}
-		cleanToken[i] = '\0';
-	}
-
-	char rawText[512];
-
-	// Try language KV first (PT-BR override)
-	GetStr("funfacts", cleanToken, rawText, sizeof(rawText), "");
-
-	// Fallback to game's built-in localization (English)
-	if (rawText[0] == '\0' && g_GameKV != null)
-	{
-		g_GameKV.Rewind();
-		if (g_GameKV.JumpToKey("Tokens"))
-		{
-			g_GameKV.GetString(cleanToken, rawText, sizeof(rawText));
-			g_GameKV.GoBack();
-		}
-	}
-
-	if (rawText[0] != '\0')
-	{
-		char someone[64];
-		GetStr("misc", "someone", someone, sizeof(someone), "Someone");
-		char playerName[64];
-		if (player > 0 && IsClientInGame(player))
-			GetClientName(player, playerName, sizeof(playerName));
-		else
-			strcopy(playerName, sizeof(playerName), someone);
-
-		char d1[16], d2[16];
-		IntToString(data1, d1, sizeof(d1));
-		IntToString(data2, d2, sizeof(d2));
-
-		ReplaceString(rawText, sizeof(rawText), "%s3", d2);
-		ReplaceString(rawText, sizeof(rawText), "%s2", d1);
-		ReplaceString(rawText, sizeof(rawText), "%s1", playerName);
-
-		strcopy(buffer, maxlen, rawText);
-	}
-}
-
-public void Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
-{
-	if (!CanBotChat() || GetRandomInt(1, 100) > 40) return;
-	
-	char funfact[128];
-	event.GetString("funfact_token", funfact, sizeof(funfact));
-	if (funfact[0] == '\0') return;
-	
-	int player = event.GetInt("funfact_player");
-	int data1 = event.GetInt("funfact_data1");
-	int data2 = event.GetInt("funfact_data2");
-	
-	char translatedMsg[512];
-	GetGameFunfactText(funfact, translatedMsg, sizeof(translatedMsg), player, data1, data2);
-	
-	char someoneLower[32];
-	GetStr("misc", "someone_lower", someoneLower, sizeof(someoneLower), "someone");
-	char playerName[32];
-	if (player > 0 && IsClientInGame(player))
-		GetClientName(player, playerName, sizeof(playerName));
-	else
-		strcopy(playerName, sizeof(playerName), someoneLower);
-	
-	char ctx[768];
-	if (translatedMsg[0] != '\0')
-		Format(ctx, sizeof(ctx), "@%s: \"%s\"", playerName, translatedMsg);
-	else
-		Format(ctx, sizeof(ctx), "@%s: %s", playerName, funfact);
-	
-	int preferred = (player > 0 && IsFakeClient(player)) ? player : -1;
-	AskBotChat(ctx, preferred, "default");
-}
-
-public void Event_PlayerSay(Event event, const char[] name, bool dontBroadcast)
-{
-	if (!CanBotChat() || GetRandomInt(1, 100) > 15) return;
-	
-	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (client < 1 || IsFakeClient(client) || IsClientSourceTV(client)) return;
-	
-	char text[128];
-	event.GetString("text", text, sizeof(text));
-	if (text[0] == '!' || text[0] == '/') return; // Comandos
-	
-	char mainName[32];
-	GetClientName(client, mainName, sizeof(mainName));
-	
-	char playerChatFmt[128];
-	GetStr("events", "player_chat", playerChatFmt, sizeof(playerChatFmt), "@%s said: \"%s\"");
-	char ctx[1024];
-	Format(ctx, sizeof(ctx), playerChatFmt, mainName, text);
-	AskBotChat(ctx, -1, "default");
-}
-
-public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
-{
-	if (!CanBotChat() || GetRandomInt(1, 100) > 25) return;
-	
-	int attacker = GetClientOfUserId(event.GetInt("attacker"));
-	int victim = GetClientOfUserId(event.GetInt("userid"));
-	
-	// SÃ³ friendly fire: mesmo time
-	if (attacker < 1 || victim < 1) return;
-	if (GetClientTeam(attacker) != GetClientTeam(victim)) return;
-	if (attacker == victim) return;
-	
-	char weapon[32];
-	event.GetString("weapon", weapon, sizeof(weapon));
-	
-	// Prioriza bot que sofreu FF
-	int preferred;
-	char ffTake[64], ffGive[64];
-	GetStr("events", "ff_take", ffTake, sizeof(ffTake), "took friendly fire from");
-	GetStr("events", "ff_give", ffGive, sizeof(ffGive), "gave friendly fire to");
-	char ctx[1024];
-	if (IsFakeClient(victim))
-	{
-		preferred = victim;
-		BuildContext(ctx, sizeof(ctx), ffTake, victim, attacker, weapon);
-	}
-	else if (IsFakeClient(attacker))
-	{
-		preferred = attacker;
-		BuildContext(ctx, sizeof(ctx), ffGive, attacker, victim, weapon);
-	}
-	else
-		return;
-	
-	AskBotChat(ctx, preferred, "default", weapon);
-}
-
-public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
-{
-	if (!CanBotChat()) return;
-
-	int killer = GetClientOfUserId(event.GetInt("attacker"));
-	int victim = GetClientOfUserId(event.GetInt("userid"));
-	int headshot = event.GetInt("headshot");
-	char weapon[32];
-	event.GetString("weapon", weapon, sizeof(weapon));
-
-	if (headshot)
-		Format(weapon, sizeof(weapon), "%s HS", weapon);
-
-	if (killer < 1 || (!IsFakeClient(killer) && !IsFakeClient(victim)))
-		return;
-
-	// Peso varia conforme o envolvimento de player real
-	int chance;
-	if (IsFakeClient(killer) && !IsFakeClient(victim))
-		chance = 70; // Bot matou player: MUITO interessante
-	else if (!IsFakeClient(killer) && IsFakeClient(victim))
-		chance = 60; // Player matou bot: interessante
-	else
-		chance = 30; // Bot matou bot: menos interessante
-	
-	if (GetRandomInt(1, 100) > chance) return;
-
-	int dominated = event.GetInt("dominated");
-	int revenge = event.GetInt("revenge");
-
-	char evRevenge[64], evDomination[64], evKill[64], evDeath[64], locSuffix[64];
-	GetStr("events", "revenge", evRevenge, sizeof(evRevenge), "took revenge on");
-	GetStr("events", "domination", evDomination, sizeof(evDomination), "dominated");
-	GetStr("events", "kill", evKill, sizeof(evKill), "eliminated");
-	GetStr("events", "death", evDeath, sizeof(evDeath), "was eliminated by");
-	GetStr("events", "location_suffix", locSuffix, sizeof(locSuffix), "%s no %s.");
-	char ctx[1024];
-	if (revenge)
-		BuildContext(ctx, sizeof(ctx), evRevenge, killer, victim, weapon);
-	else if (dominated)
-		BuildContext(ctx, sizeof(ctx), evDomination, killer, victim, weapon);
-	else if (IsFakeClient(killer) && !IsFakeClient(victim))
-		BuildContext(ctx, sizeof(ctx), evKill, killer, victim, weapon);
-	else if (IsFakeClient(victim) && !IsFakeClient(killer))
-		BuildContext(ctx, sizeof(ctx), evDeath, victim, killer, weapon);
-	else if (IsFakeClient(killer) && IsFakeClient(victim))
-		BuildContext(ctx, sizeof(ctx), evKill, killer, victim, weapon);
-	else
-		return;
-
-	char location[64];
-	GetPlayerLocation(killer, location, sizeof(location));
-	if (location[0] != '\0')
-	{
-		char withLoc[640];
-		Format(withLoc, sizeof(withLoc), locSuffix, ctx, location);
-		strcopy(ctx, sizeof(ctx), withLoc);
-	}
-
-	AskBotChat(ctx, IsFakeClient(killer) ? killer : victim, IsFakeClient(killer) ? "kill" : "death", weapon);
-}
-
-// ============================================================================
-// AI INTEGRATION
-// ============================================================================
-bool CanBotChat()
-{
-	if (!g_CvarEnabled.BoolValue) return false;
-	float delay = g_CvarCooldown.FloatValue;
-	if (GetGameTime() - g_LastBotChat < delay) return false;
-	
-	for (int i = 1; i <= MaxClients; i++)
-		if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i))
-			return true;
-	return false;
-}
-
-void AskBotChat(const char[] context, int preferredClient = -1, const char[] eventType = "default", const char[] weapon = "")
-{
-    if (!g_CvarEnabled.BoolValue) return;
-
-    int botClient;
-    
-    // Se tem preferredClient e e um bot valido, usa ele
-    if (preferredClient >= 1 && preferredClient <= MaxClients &&
-        IsClientInGame(preferredClient) && IsFakeClient(preferredClient))
-    {
-        botClient = preferredClient;
-    }
-    else
-    {
-        int botClients[MAXPLAYERS + 1];
-        int botCount = 0;
-        for (int i = 1; i <= MaxClients; i++)
-        {
-            if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i))
-                botClients[botCount++] = i;
-        }
-        if (botCount == 0) return;
-        botClient = botClients[GetRandomInt(0, botCount - 1)];
-    }
-    char botName[32];
-    GetClientName(botClient, botName, sizeof(botName));
-    
-    // Personalidade do bot
-    char personality[256], catchphrase[64], style[256], behavior[256];
-    GetBotPersonality(botName, personality, sizeof(personality), catchphrase, sizeof(catchphrase), style, sizeof(style), behavior, sizeof(behavior));
-
-    char teamTR[32], teamCT[32], teamUnknown[32];
-    GetStr("teams", "tr", teamTR, sizeof(teamTR), "Team TR");
-    GetStr("teams", "ct", teamCT, sizeof(teamCT), "Team CT");
-    GetStr("teams", "unknown", teamUnknown, sizeof(teamUnknown), "Team ?");
-    char botTeamName[32];
-    int team = GetClientTeam(botClient);
-    if (team == CS_TEAM_T)
-        strcopy(botTeamName, sizeof(botTeamName), teamTR);
-    else if (team == CS_TEAM_CT)
-        strcopy(botTeamName, sizeof(botTeamName), teamCT);
-    else
-        strcopy(botTeamName, sizeof(botTeamName), teamUnknown);
-
-    // Prompt natural: quem é + contexto
-    char localContext[768];
-    strcopy(localContext, sizeof(localContext), context);
-    
-    // Time do bot: ganhando ou perdendo?
-    int tScore = CS_GetTeamScore(CS_TEAM_T);
-    int ctScore = CS_GetTeamScore(CS_TEAM_CT);
-    char winning[64], losing[64];
-    GetStr("gamestate", "winning", winning, sizeof(winning), " You are winning.");
-    GetStr("gamestate", "losing", losing, sizeof(losing), " You are losing.");
-    char scoreStatus[64];
-    if ((team == CS_TEAM_T && tScore > ctScore) || (team == CS_TEAM_CT && ctScore > tScore))
-        strcopy(scoreStatus, sizeof(scoreStatus), winning);
-    else if ((team == CS_TEAM_T && tScore < ctScore) || (team == CS_TEAM_CT && ctScore < tScore))
-        strcopy(scoreStatus, sizeof(scoreStatus), losing);
-    else
-        strcopy(scoreStatus, sizeof(scoreStatus), "");
-    
-    // Mood baseado no evento
-    char mood[128];
-    
-    // Extrai @alvo do contexto (pula o nome do proprio bot)
-    char targetMention[64];
-    targetMention[0] = '\0';
-    
-    int searchPos = 0;
-    while (searchPos < strlen(localContext))
-    {
-        int atPos = StrContains(localContext[searchPos], "@");
-        if (atPos == -1) break;
-        
-        atPos += searchPos;
-        int endPos = atPos + 1;
-        while (endPos < strlen(localContext) && localContext[endPos] != ' ' && localContext[endPos] != '.' && localContext[endPos] != ',')
-            endPos++;
-        
-        if (endPos > atPos + 1)
-        {
-            char mention[64];
-            strcopy(mention, sizeof(mention), localContext[atPos]);
-            // Trunca
-            int sp = StrContains(mention, " ");
-            if (sp != -1) mention[sp] = '\0';
-            int dt = StrContains(mention, ".");
-            if (dt != -1) mention[dt] = '\0';
-            
-            // Se nao e o proprio bot, usa
-            if (StrContains(mention, botName) == -1)
-            {
-                strcopy(targetMention, sizeof(targetMention), mention);
-                break;
-            }
-        }
-        
-        searchPos = endPos;
-    }
-    
-    char moodFFApology[64], moodFFComplain[64], moodTaunt[64], moodTauntEnemy[64];
-    char moodInsult[64], moodInsultGeneric[64], moodCelebrate[64], moodComplainDefeat[64], moodReact[64];
-    GetStr("moods", "ff_apology", moodFFApology, sizeof(moodFFApology), "Sorry, my bad");
-    GetStr("moods", "ff_complain", moodFFComplain, sizeof(moodFFComplain), "Complain about teammate");
-    GetStr("moods", "taunt", moodTaunt, sizeof(moodTaunt), "Taunt %s");
-    GetStr("moods", "taunt_enemy", moodTauntEnemy, sizeof(moodTauntEnemy), "Taunt the enemy");
-    GetStr("moods", "insult", moodInsult, sizeof(moodInsult), "Pretend to insult %s");
-    GetStr("moods", "insult_generic", moodInsultGeneric, sizeof(moodInsultGeneric), "Pretend to insult");
-    GetStr("moods", "celebrate", moodCelebrate, sizeof(moodCelebrate), "Celebrate");
-    GetStr("moods", "complain_defeat", moodComplainDefeat, sizeof(moodComplainDefeat), "Complain about defeat");
-    GetStr("moods", "react", moodReact, sizeof(moodReact), "React");
-
-    if (StrContains(localContext, "friendly fire") != -1)
-    {
-        if (StrContains(localContext, "deu friendly fire") != -1)
-            strcopy(mood, sizeof(mood), moodFFApology);
-        else
-            strcopy(mood, sizeof(mood), moodFFComplain);
-    }
-    else if (StrContains(localContext, "eliminated") != -1)
-    {
-        if (targetMention[0])
-            Format(mood, sizeof(mood), moodTaunt, targetMention);
-        else
-            strcopy(mood, sizeof(mood), moodTauntEnemy);
-    }
-    else if (StrContains(localContext, "eliminado") != -1)
-    {
-        if (targetMention[0])
-            Format(mood, sizeof(mood), moodInsult, targetMention);
-        else
-            strcopy(mood, sizeof(mood), moodInsultGeneric);
-    }
-    else if (StrContains(localContext, "won") != -1)
-    {
-        if ((StrContains(localContext, "TR won") != -1 && StrContains(botTeamName, "TR") != -1) ||
-            (StrContains(localContext, "CT won") != -1 && StrContains(botTeamName, "CT") != -1))
-            strcopy(mood, sizeof(mood), moodCelebrate);
-        else
-            strcopy(mood, sizeof(mood), moodComplainDefeat);
-    }
-    else
-        strcopy(mood, sizeof(mood), moodReact);
-    
-    // Remove estado do jogo do user prompt (ja esta no system prompt)
-    char eventOnly[768];
-    strcopy(eventOnly, sizeof(eventOnly), localContext);
-    int mapaPos = StrContains(eventOnly, ". Mapa");
-    if (mapaPos != -1)
-        eventOnly[mapaPos] = '\0';
-    
-    // System: tudo (estado + evento + instrucoes)
-    char mapName[64];
-    GetCurrentMap(mapName, sizeof(mapName));
-    
-    char kwCelebrate[32], kwComplain[32], gsJustWon[64], gsJustLost[64];
-    GetStr("mood_keywords", "celebrate", kwCelebrate, sizeof(kwCelebrate), "Celebrate");
-    GetStr("mood_keywords", "complain", kwComplain, sizeof(kwComplain), "Complain");
-    GetStr("gamestate", "just_won", gsJustWon, sizeof(gsJustWon), "Just won the round");
-    GetStr("gamestate", "just_lost", gsJustLost, sizeof(gsJustLost), "Just lost the round");
-    char gameState[64];
-    if (StrContains(mood, kwCelebrate) != -1)
-        strcopy(gameState, sizeof(gameState), gsJustWon);
-    else if (StrContains(mood, kwComplain) != -1)
-        strcopy(gameState, sizeof(gameState), gsJustLost);
-    else if (scoreStatus[0] != '\0')
-        strcopy(gameState, sizeof(gameState), scoreStatus[1]);
-    else
-        gameState[0] = '\0';
-    
-    // Evento (sem estado duplicado)
-    char eventStr[768];
-    if (eventOnly[0])
-        Format(eventStr, sizeof(eventStr), "%s%s", eventOnly, scoreStatus);
-    else
-        Format(eventStr, sizeof(eventStr), "%s%s", localContext, scoreStatus);
-    
-    // Determina tipo de evento para o template (fallback se não passado)
-    char type[32];
-    strcopy(type, sizeof(type), eventType);
-    if (StrEqual(type, "default"))
-    {
-        if (StrContains(localContext, "eliminated") != -1 || StrContains(localContext, "eliminou") != -1)
-            strcopy(type, sizeof(type), "kill");
-        else if (StrContains(localContext, "was eliminated") != -1 || StrContains(localContext, "foi eliminado") != -1)
-            strcopy(type, sizeof(type), "death");
-        else if (StrContains(localContext, "won") != -1 || StrContains(localContext, "venceu") != -1)
-            strcopy(type, sizeof(type), "round_end");
-        else if (StrContains(localContext, "started") != -1 || StrContains(localContext, "iniciou") != -1)
-            strcopy(type, sizeof(type), "round_start");
-    }
-    
-    char sysPrompt[2048];
-    char fullPrompt[1024];
-    
-
-    if (GetPromptTemplate(type, "system", sysPrompt, sizeof(sysPrompt),
-        botName, botTeamName, targetMention, gameState, eventStr, mood,
-        g_CurrentRound, tScore, ctScore))
-    {
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "[base_system]", sysPrompt);
-        // Injeta personalidade nos placeholders
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "[personality]", personality);
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "[catchphrase]", catchphrase);
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "[style]", style);
-        ReplaceString(sysPrompt, sizeof(sysPrompt), "[behavior]", behavior);
-    }
-    else
-    {
-        char fallbackSys[256];
-        GetStr("misc", "fallback_system", fallbackSys, sizeof(fallbackSys),
-            "Your name is %s (%s). %s %s. ONE short sentence.");
-        Format(sysPrompt, sizeof(sysPrompt), fallbackSys,
-            botName, botTeamName, gameState, eventStr);
-    }
-    
-    if (!GetPromptTemplate(type, "user", fullPrompt, sizeof(fullPrompt),
-        botName, botTeamName, targetMention, gameState, eventStr, mood,
-        g_CurrentRound, tScore, ctScore))
-    {
-        char fallbackUser[128], fallbackUserSimple[64];
-        GetStr("misc", "fallback_user", fallbackUser, sizeof(fallbackUser), "Speak as %s about %s.");
-        GetStr("misc", "fallback_user_simple", fallbackUserSimple, sizeof(fallbackUserSimple), "Speak as %s.");
-        if (targetMention[0])
-            Format(fullPrompt, sizeof(fullPrompt), fallbackUser, botName, targetMention);
-        else
-            Format(fullPrompt, sizeof(fullPrompt), fallbackUserSimple, botName);
-    }
-    
-    // Injeta instrução de idioma baseada no idioma do servidor ou da cvar (SEMPRE no final do sysPrompt)
-    char langCode[16], langName[32];
-    g_LangCvar.GetString(langCode, sizeof(langCode));
-    if (StrEqual(langCode, "default")) {
-        int langId = GetServerLanguage();
-        GetLanguageInfo(langId, langCode, sizeof(langCode));
-    }
-
-    if (langCode[0] != '\0' && !StrEqual(langCode, "en", false) && !StrEqual(langCode, "default", false))
-    {
-        if (StrContains(langCode, "pt", false) != -1) strcopy(langName, sizeof(langName), "Portuguese");
-        else if (StrContains(langCode, "ru", false) != -1) strcopy(langName, sizeof(langName), "Russian");
-        else if (StrContains(langCode, "es", false) != -1) strcopy(langName, sizeof(langName), "Spanish");
-        else if (StrContains(langCode, "zh", false) != -1 || StrContains(langCode, "chi", false) != -1) strcopy(langName, sizeof(langName), "Chinese");
-        else strcopy(langName, sizeof(langName), langCode);
-
-        char langRule[64];
-        Format(langRule, sizeof(langRule), " Answer in %s.", langName);
-        StrCat(sysPrompt, sizeof(sysPrompt), langRule);
-    }
-    
-    char weaponBuf[32];
-    if (weapon[0])
-    {
-        char friendly[32];
-        FriendlyWeaponName(weapon, friendly, sizeof(friendly));
-        int hsPos = StrContains(friendly, " HS");
-        if (hsPos != -1) friendly[hsPos] = '\0';
-        strcopy(weaponBuf, sizeof(weaponBuf), friendly);
-    }
-    else
-    {
-        // Tenta extrair do contexto se não passado (compatibilidade)
-        GetStr("misc", "unknown_weapon", weaponBuf, sizeof(weaponBuf), "unknown");
-        char weaponShotPrefix[32];
-        GetStr("misc", "weapon_shot", weaponShotPrefix, sizeof(weaponShotPrefix), " with %s");
-        char shotPrefixFind[32];
-        strcopy(shotPrefixFind, sizeof(shotPrefixFind), weaponShotPrefix);
-        int dotPos = StrContains(shotPrefixFind, "%s");
-        if (dotPos != -1) shotPrefixFind[dotPos] = '\0';
-        int wStart = StrContains(localContext, shotPrefixFind);
-        if (wStart != -1)
-        {
-            wStart += strlen(shotPrefixFind);
-            int wEnd = wStart;
-            while (wEnd < strlen(localContext) && localContext[wEnd] != ' ' && localContext[wEnd] != '.' && localContext[wEnd] != ',')
-                wEnd++;
-            if (wEnd > wStart)
-            {
-                int len = wEnd - wStart;
-                if (len > 31) len = 31;
-                strcopy(weaponBuf, len + 1, localContext[wStart]);
-            }
-        }
-    }
-    
-    // Replace user prompt placeholders (system prompt already done)
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[weapon]", weaponBuf);
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[behavior]", behavior);
-    // Extra safety: ensure all placeholders are replaced
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[mood]", mood);
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[state]", gameState);
-    char roundStr[16];
-    IntToString(g_CurrentRound, roundStr, sizeof(roundStr));
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[round]", roundStr);
-    char scoreFmt[32];
-	GetStr("misc", "score_format", scoreFmt, sizeof(scoreFmt), "%d-%d");
-    char scoreStr[32];
-    Format(scoreStr, sizeof(scoreStr), scoreFmt, tScore, ctScore);
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[score]", scoreStr);
-    ReplaceString(fullPrompt, sizeof(fullPrompt), "[map]", mapName);
-
-    char timeBuf[32];
-    FormatTime(timeBuf, sizeof(timeBuf), "%H:%M:%S");
-
-    NVD_AskAI(fullPrompt, sysPrompt, INVALID_FUNCTION, botClient);
-    PrintToServer("[BOT_CHAT] [%s] 🤖 Asked bot %s (%s): %s", timeBuf, botName, botTeamName, context);
-    PrintToServer("[BOT_CHAT] [%s] 📝 Prompt >> system: \"%s\" | user: \"%s\"", timeBuf, sysPrompt, fullPrompt);
-    
-    // Store for structured log (read by PollBotResponses when response arrives)
-    strcopy(g_LastEventType[botClient], sizeof(g_LastEventType[]), type);
-    strcopy(g_LastTarget[botClient], sizeof(g_LastTarget[]), targetMention);
-    strcopy(g_LastMood[botClient], sizeof(g_LastMood[]), mood);
-    strcopy(g_LastSysPrompt[botClient], sizeof(g_LastSysPrompt[]), sysPrompt);
-    strcopy(g_LastUserPrompt[botClient], sizeof(g_LastUserPrompt[]), fullPrompt);
-    g_LastAskTime[botClient] = GetGameTime();
-}
-
-// No-op callback — responses come through NVD_PollResponse polling
-public void OnPollingDummy(const char[] response, any data)
-{
-}
-
-// ── Polling timer ─────────────────────────────────────────────────────
-public Action Timer_PollResponses(Handle timer)
-{
-    PollBotResponses();
-    return Plugin_Continue;
-}
-
-void PollBotResponses()
-{
-    char reply[2048];
-    any botClient;
-    char ts[32];
-    FormatTime(ts, sizeof(ts), "%H:%M:%S");
-
-    while (NVD_PollResponse(reply, sizeof(reply), botClient))
-    {
-        PrintToServer("[BOT_CHAT] [%s] 📥 Polled response for bot %d: \"%s\"", ts, botClient, reply);
-        
-        // Log the raw response for analysis
-        LogPolledResponse(botClient, reply);
-
-        // Check for explicit error responses
-        if (StrContains(reply, "ERROR_") != -1)
-        {
-            LogError("[BOT_CHAT] ❌ Ollama error received: %s", reply);
-            continue;
-        }
-
-        if (reply[0] == '\0') continue;
-        if (!g_CvarEnabled.BoolValue) continue;
-
-        char botName[32];
-
-        // If the original bot is invalid (morto ainda pode falar), find another
-        if (botClient == 0 || !IsClientInGame(botClient) || !IsFakeClient(botClient))
-        {
-            int activeBots[MAXPLAYERS + 1];
-            int activeBotCount = 0;
-            for (int i = 1; i <= MaxClients; i++)
-            {
-                if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i))
-                {
-                    activeBots[activeBotCount++] = i;
-                }
-            }
-
-            if (activeBotCount == 0)
-            {
-                PrintToServer("[BOT_CHAT] ⏭ Dropped (no active bots): \"%s\"", reply);
-                LogBotInteraction("DROP", "?", "?", "?", "?", "sem_bots", reply);
-                continue;
-            }
-
-            char oldName[32];
-            if (botClient > 0 && IsClientInGame(botClient))
-                GetClientName(botClient, oldName, sizeof(oldName));
-            else
-                strcopy(oldName, sizeof(oldName), "unknown");
-
-            botClient = activeBots[GetRandomInt(0, activeBotCount - 1)];
-            char newName[32];
-            GetClientName(botClient, newName, sizeof(newName));
-            PrintToServer("[BOT_CHAT] 🔄 Resposta de %s redirecionada para %s (original invalido)", oldName, newName);
-        }
-
-        GetClientName(botClient, botName, sizeof(botName));
-
-        char cleanMsg[320];
-        strcopy(cleanMsg, sizeof(cleanMsg), reply);
-        ReplaceString(cleanMsg, sizeof(cleanMsg), "\"", "");
-        ReplaceString(cleanMsg, sizeof(cleanMsg), "[", "");
-        ReplaceString(cleanMsg, sizeof(cleanMsg), "]", "");
-        ReplaceString(cleanMsg, sizeof(cleanMsg), "\\n", " ");
-        ReplaceString(cleanMsg, sizeof(cleanMsg), "\\r", " ");
-        TrimString(cleanMsg);
-
-        // Remove bot name prefix if model repeated it (e.g. "TACO: mensagem" or "TACO mensagem")
-        char namePattern[64];
-        Format(namePattern, sizeof(namePattern), "%s", botName);
-        if (StrContains(cleanMsg, namePattern) == 0)
-        {
-            int nameLen = strlen(namePattern);
-            int rest = strlen(cleanMsg) - nameLen;
-            if (rest > 0)
-            {
-                char tmp[256];
-                int start = nameLen;
-                // Skip colon and space after name
-                while (start < strlen(cleanMsg) && (cleanMsg[start] == ':' || cleanMsg[start] == ' '))
-                    start++;
-                strcopy(tmp, sizeof(tmp), cleanMsg[start]);
-                strcopy(cleanMsg, sizeof(cleanMsg), tmp);
-                TrimString(cleanMsg);
-            }
-        }
-
-        // Remove leftover "chat:" prefix
-        if (StrContains(cleanMsg, "chat:") == 0 || StrContains(cleanMsg, "chat :") == 0)
-        {
-            int pos = StrContains(cleanMsg, ":");
-            if (pos >= 0)
-            {
-                char tmp[256];
-                strcopy(tmp, sizeof(tmp), cleanMsg[pos + 1]);
-                strcopy(cleanMsg, sizeof(cleanMsg), tmp);
-                TrimString(cleanMsg);
-            }
-        }
-
-        if (cleanMsg[0] == '\0')
-        {
-            PrintToServer("[BOT_CHAT] ⏭ Dropped (empty after clean): \"%s\"", reply);
-            LogBotInteraction("DROP", botName, "?", "?", "?", "vazio", reply);
-            continue;
-        }
-
-        // Trunca mensagens longas (limite do comando say)
-        if (strlen(cleanMsg) > 100)
-        {
-            cleanMsg[100] = '\0';
-            // Volta ate encontrar pontuacao
-            int truncPos = 100;
-            while (truncPos > 80 && cleanMsg[truncPos] != '.' && cleanMsg[truncPos] != '!' && cleanMsg[truncPos] != '?' && cleanMsg[truncPos] != ',')
-                truncPos--;
-            if (truncPos > 80)
-                cleanMsg[truncPos + 1] = '\0';
-            else
-                cleanMsg[100] = '\0';
-        }
-
-        PrintToServer("[BOT_CHAT] [%s] ✅ Sent: [BOT %s] %s", ts, botName, cleanMsg);
-        
-        // Structured log: response sent
-        LogBotInteraction("SENT", botName,
-            g_LastEventType[botClient], g_LastTarget[botClient], g_LastMood[botClient],
-            g_LastSysPrompt[botClient], g_LastUserPrompt[botClient], cleanMsg);
-
-        // Bot-to-bot reply: 15% chance de outro bot responder
-        if (GetRandomInt(1, 100) <= 15)
-        {
-            int otherBots[MAXPLAYERS + 1];
-            int otherCount = 0;
-            for (int i = 1; i <= MaxClients; i++)
-            {
-                if (i != botClient && IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i))
-                    otherBots[otherCount++] = i;
-            }
-            if (otherCount > 0)
-            {
-                int replyBot = otherBots[GetRandomInt(0, otherCount - 1)];
-                char replyBotName[32];
-                GetClientName(replyBot, replyBotName, sizeof(replyBotName));
-                char replySaidFmt[64];
-                GetStr("misc", "bot_reply_said", replySaidFmt, sizeof(replySaidFmt), "%s said: \"%s\"");
-                char replyCtx[640];
-                Format(replyCtx, sizeof(replyCtx), replySaidFmt, botName, cleanMsg);
-                // Forca rate limit manual
-                g_LastBotChat = 0.0;
-                AskBotChat(replyCtx, replyBot);
-            }
-        }
-
-        // Bot speaks via say command (RP: actual bot chat, not server message)
-        FakeClientCommand(botClient, "say %s", cleanMsg);
-        g_LastBotChat = GetGameTime();
-    }
-}
-
-// ============================================================================
-// PERSONALITY SYSTEM
-// ============================================================================
-
-void LoadPersonalities()
-{
-    if (g_PersonalityKV != null)
-        delete g_PersonalityKV;
-    
-    g_PersonalityKV = new KeyValues("BotPersonalities");
-    
-    char path[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_personalities.txt");
-    
-    if (!FileExists(path))
-    {
-        LogError("[BOT_CHAT] Personalities file not found: %s", path);
-        delete g_PersonalityKV;
-        g_PersonalityKV = null;
-        return;
-    }
-    
-    if (!g_PersonalityKV.ImportFromFile(path))
-    {
-        LogError("[BOT_CHAT] Failed to load personalities from: %s", path);
-        delete g_PersonalityKV;
-        g_PersonalityKV = null;
-        return;
-    }
-    
-    PrintToServer("[BOT_CHAT] +- Personalities loaded from %s", path);
-}
-
-void GetBotPersonality(const char[] botName, char[] personality, int personalityLen,
-    char[] catchphrase, int catchphraseLen, char[] style, int styleLen,
-    char[] behavior, int behaviorLen)
-{
-    if (g_PersonalityKV == null)
-    {
-        personality[0] = '\0';
-        catchphrase[0] = '\0';
-        style[0] = '\0';
-        behavior[0] = '\0';
-        return;
-    }
-    
-    g_PersonalityKV.Rewind();
-    if (!g_PersonalityKV.JumpToKey(botName))
-    {
-        personality[0] = '\0';
-        catchphrase[0] = '\0';
-        style[0] = '\0';
-        behavior[0] = '\0';
-        return;
-    }
-    
-    g_PersonalityKV.GetString("personality", personality, personalityLen);
-    g_PersonalityKV.GetString("catchphrase", catchphrase, catchphraseLen);
-    g_PersonalityKV.GetString("style", style, styleLen);
-    g_PersonalityKV.GetString("behavior", behavior, behaviorLen);
-}
-
-// ============================================================================
-// STRUCTURED LOGGING
-// ============================================================================
-
-void LogBotInteraction(const char[] action, const char[] bot,
-    const char[] eventType, const char[] target, const char[] mood,
-    const char[] data1 = "", const char[] data2 = "", const char[] data3 = "")
-{
-    if (!g_CvarLogging.BoolValue) return;
-    
-    char path[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, path, sizeof(path), "logs/nvd_bot_chat.log");
-    
-    char ts[64];
-    FormatTime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ");
-    
-    // JSONL: build a single json string per line
-    char line[4096];
-    int pos = 0;
-    
-    // Always: timestamp, action, bot
-    pos += Format(line[pos], sizeof(line) - pos,
-        "{\"ts\":\"%s\",\"a\":\"%s\",\"b\":\"%s\"",
-        ts, action, bot);
-    
-    // Event if any
-    if (eventType[0] || target[0] || mood[0])
-    {
-        pos += Format(line[pos], sizeof(line) - pos, ",\"e\":{\"t\":\"%s\"", eventType);
-        if (target[0]) pos += Format(line[pos], sizeof(line) - pos,
-            ",\"tg\":\"%s\"", target);
-        if (mood[0]) pos += Format(line[pos], sizeof(line) - pos,
-            ",\"m\":\"%s\"", mood);
-        pos += Format(line[pos], sizeof(line) - pos, "}");
-    }
-    
-    // System prompt if available (for RESP and SENT)
-    if (data1[0] && (StrEqual(action, "RESP") || StrEqual(action, "SENT")))
-    {
-        pos += Format(line[pos], sizeof(line) - pos, ",\"sys\":\"");
-        pos = JsonEsc(line, sizeof(line), pos, data1);
-        pos += Format(line[pos], sizeof(line) - pos, "\"");
-    }
-    
-    // User prompt if available
-    if (data2[0] && (StrEqual(action, "RESP") || StrEqual(action, "SENT")))
-    {
-        pos += Format(line[pos], sizeof(line) - pos, ",\"usr\":\"");
-        pos = JsonEsc(line, sizeof(line), pos, data2);
-        pos += Format(line[pos], sizeof(line) - pos, "\"");
-    }
-    
-    // Response
-    if (data3[0])
-    {
-        pos += Format(line[pos], sizeof(line) - pos, ",\"r\":\"");
-        pos = JsonEsc(line, sizeof(line), pos, data3);
-        pos += Format(line[pos], sizeof(line) - pos, "\"");
-    }
-    
-    // Close
-    pos += Format(line[pos], sizeof(line) - pos, "}\n");
-    
-    Handle file = OpenFile(path, "a");
-    if (file != null)
-    {
-        WriteFileString(file, line, false);
-        delete file;
-    }
-}
-
-// Escape string for JSON value
-int JsonEsc(char[] buf, int max, int pos, const char[] inp)
-{
-    int len = strlen(inp);
-    for (int i = 0; i < len && pos < max - 6; i++)
-    {
-        switch (inp[i])
-        {
-            case '\"': { buf[pos++] = '\\'; buf[pos++] = '\"'; break; }
-            case '\\': { buf[pos++] = '\\'; buf[pos++] = '\\'; break; }
-            case '\n': { buf[pos++] = '\\'; buf[pos++] = 'n'; break; }
-            case '\r': { buf[pos++] = '\\'; buf[pos++] = 'r'; break; }
-            case '\t': { buf[pos++] = '\\'; buf[pos++] = 't'; break; }
-            default: { buf[pos++] = inp[i]; }
-        }
-    }
-    buf[pos] = '\0';
-    return pos;
-}
-
-void LogPolledResponse(int botClient, const char[] reply)
-{
-    if (!g_CvarLogging.BoolValue) return;
-    
-    char botName[32];
-    if (botClient > 0 && IsClientInGame(botClient))
-        GetClientName(botClient, botName, sizeof(botName));
-    else
-        strcopy(botName, sizeof(botName), "?");
-    
-    // Log raw response with stored prompt info
-    LogBotInteraction("RESP", botName,
-        g_LastEventType[botClient], g_LastTarget[botClient], g_LastMood[botClient],
-        g_LastSysPrompt[botClient], g_LastUserPrompt[botClient], reply);
-}
-
-// ============================================================================
-// PROMPT TEMPLATE SYSTEM
-// ============================================================================
-void LoadPromptTemplates()
-{
-    if (g_PromptKV != null)
-        delete g_PromptKV;
-    
-    g_PromptKV = new KeyValues("BotChatPrompts");
-    
-    char path[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_chat_prompts.txt");
-    
-    if (!FileExists(path))
-    {
-        LogError("[BOT_CHAT] Prompt file not found: %s", path);
-        delete g_PromptKV;
-        g_PromptKV = null;
-        return;
-    }
-    
-    if (!g_PromptKV.ImportFromFile(path))
-    {
-        LogError("[BOT_CHAT] Failed to load prompts from: %s", path);
-        delete g_PromptKV;
-        g_PromptKV = null;
-        return;
-    }
-    
-    PrintToServer("[BOT_CHAT] +- Prompt templates loaded from %s", path);
-    g_PromptKV.Rewind();
+	delete g_PromptKV;
+	delete g_PersonalityKV;
 }
 
 void LoadMetaFromStrings()
 {
-    g_MetaCount = 0;
-    char keys[2][16] = {"rules", "critical"};
-    for (int i = 0; i < 2; i++)
-    {
-        strcopy(g_MetaKeys[g_MetaCount], sizeof(g_MetaKeys[]), keys[i]);
-        GetStr("behavior", keys[i], g_MetaValues[g_MetaCount], sizeof(g_MetaValues[]), "");
-        if (g_MetaValues[g_MetaCount][0] != '\0')
-            g_MetaCount++;
-    }
-    if (g_MetaCount > 0)
-        PrintToServer("[BOT_CHAT] +- Loaded %d _meta snippets from language strings", g_MetaCount);
+    char val[1024];
+    GetStr("behavior", "rules", val, sizeof(val));
+    if (val[0]) NVD_SetMeta("rules", val);
+    
+    GetStr("behavior", "critical", val, sizeof(val));
+    if (val[0]) NVD_SetMeta("critical", val);
+
+    PrintToServer("[BOT_CHAT] +- Behavior snippets registered to NVD Core");
 }
 
 public Action Command_ReloadPrompts(int client, int args)
 {
     LoadPromptTemplates();
-    LoadStrings();
+    NVD_RegisterStrings("nvd_bot_chat");
     LoadMetaFromStrings();
     ReplyToCommand(client, "[BOT_CHAT] +- Prompts and strings reloaded");
     return Plugin_Handled;
+}
+
+stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen, const char[] fallback = "")
+{
+    NVD_GetStr("nvd_bot_chat", section, key, buffer, maxlen, fallback);
 }
 
 bool GetPromptTemplate(const char[] eventType, const char[] promptType,
@@ -1464,63 +187,546 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
 {
     char template[2048];
     char langKey[64];
-    Format(langKey, sizeof(langKey), "%s_%s", eventType, promptType);
+    if (StrEqual(promptType, "system"))
+        strcopy(langKey, sizeof(langKey), "system");
+    else
+        Format(langKey, sizeof(langKey), "%s_%s", eventType, promptType);
     GetStr("prompts", langKey, template, sizeof(template), "");
     
     if (template[0] == '\0')
     {
         if (g_PromptKV == null) return false;
         g_PromptKV.Rewind();
-        if (!g_PromptKV.JumpToKey(eventType))
+        if (StrEqual(promptType, "system"))
         {
-            g_PromptKV.Rewind();
-            if (!g_PromptKV.JumpToKey("default"))
+            g_PromptKV.GetString("system", template, sizeof(template));
+            if (template[0] == '\0') return false;
+        } else {
+            if (!g_PromptKV.JumpToKey(eventType))
+            {
+                g_PromptKV.Rewind();
+                if (!g_PromptKV.JumpToKey("default"))
+                    return false;
+            }
+            g_PromptKV.GetString(promptType, template, sizeof(template));
+            if (template[0] == '\0')
                 return false;
         }
-        g_PromptKV.GetString(promptType, template, sizeof(template));
-        if (template[0] == '\0')
-            return false;
     }
     
-
-    ReplaceString(template, sizeof(template), "[bot]", bot);
-    ReplaceString(template, sizeof(template), "[team]", team);
-    ReplaceString(template, sizeof(template), "[target]", target);
-    ReplaceString(template, sizeof(template), "[state]", state);
-    ReplaceString(template, sizeof(template), "[event]", event);
-    ReplaceString(template, sizeof(template), "[mood]", mood);
-    
-    char mapName[64];
-    GetCurrentMap(mapName, sizeof(mapName));
-    ReplaceString(template, sizeof(template), "[map]", mapName);
+    ReplaceString(template, sizeof(template), "|bot|", bot);
+    ReplaceString(template, sizeof(template), "|team|", team);
+    ReplaceString(template, sizeof(template), "|target|", target);
+    ReplaceString(template, sizeof(template), "|state|", state);
+    ReplaceString(template, sizeof(template), "|event|", event);
+    ReplaceString(template, sizeof(template), "|mood|", mood);
     
     char roundStr[16];
     IntToString(round, roundStr, sizeof(roundStr));
-    ReplaceString(template, sizeof(template), "[round]", roundStr);
+    ReplaceString(template, sizeof(template), "|round|", roundStr);
     
     char scoreFmtPT[32];
     GetStr("misc", "score_format", scoreFmtPT, sizeof(scoreFmtPT), "%d-%d");
     char scoreStr[32];
     Format(scoreStr, sizeof(scoreStr), scoreFmtPT, tScore, ctScore);
-    ReplaceString(template, sizeof(template), "[score]", scoreStr);
-    
-    // Replace shared _meta snippets: [rules], [critical], [examples], etc.
-    if (g_MetaCount > 0)
-    {
-        for (int mi = 0; mi < g_MetaCount; mi++)
-        {
-            char placeholder[64];
-            Format(placeholder, sizeof(placeholder), "[%s]", g_MetaKeys[mi]);
-            if (StrContains(template, placeholder) != -1)
-                ReplaceString(template, sizeof(template), placeholder, g_MetaValues[mi]);
-        }
-    }
-    
-    // Second pass: meta values may contain [bot] etc.
-    ReplaceString(template, sizeof(template), "[bot]", bot);
-    ReplaceString(template, sizeof(template), "[team]", team);
-    ReplaceString(template, sizeof(template), "[target]", target);
+    ReplaceString(template, sizeof(template), "|score|", scoreStr);
     
     strcopy(buffer, maxlen, template);
     return true;
+}
+
+// ----------------------------------------------------------------------------
+// Lógica de Eventos e Contexto
+// ----------------------------------------------------------------------------
+
+void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
+{
+    char base[32];
+    strcopy(base, sizeof(base), weapon);
+    bool headshot = false;
+    int hsPos = StrContains(base, " HS");
+    if (hsPos != -1) { base[hsPos] = '\0'; headshot = true; }
+    
+    if (g_PromptKV != null)
+    {
+        char kvName[32];
+        g_PromptKV.Rewind();
+        if (g_PromptKV.JumpToKey("weapons") && g_PromptKV.JumpToKey(base))
+        {
+            g_PromptKV.GetString("name", kvName, sizeof(kvName));
+            if (kvName[0] != '\0')
+            {
+                strcopy(output, maxlen, kvName);
+                if (headshot) Format(output, maxlen, "%s HS", output);
+                return;
+            }
+        }
+    }
+    char weaponName[32];
+    GetStr("weapons_fallback", base, weaponName, sizeof(weaponName), "");
+    if (weaponName[0]) strcopy(output, maxlen, weaponName);
+    else strcopy(output, maxlen, base);
+    if (headshot) Format(output, maxlen, "%s HS", output);
+}
+
+void BuildContext(char[] buffer, int maxlen, const char[] event, int mainClient = -1, int targetClient = -1, const char[] weapon = "")
+{
+	char mainName[32], targetName[32];
+	if (mainClient > 0 && IsClientInGame(mainClient)) GetClientName(mainClient, mainName, sizeof(mainName)); else mainName[0] = '\0';
+	if (targetClient > 0 && IsClientInGame(targetClient)) GetClientName(targetClient, targetName, sizeof(targetName)); else targetName[0] = '\0';
+	
+	int pos = 0;
+	if (mainName[0]) {
+		pos += Format(buffer[pos], maxlen - pos, "%s %s", mainName, event);
+		if (targetName[0] && targetClient != mainClient) {
+			pos += Format(buffer[pos], maxlen - pos, " %s", targetName);
+		}
+		if (weapon[0]) {
+			char friendly[32], wShot[64], hsStr[64], wKnife[64], kName[32];
+			FriendlyWeaponName(weapon, friendly, sizeof(friendly));
+			GetStr("misc", "weapon_shot", wShot, sizeof(wShot), " with %s");
+			GetStr("misc", "headshot", hsStr, sizeof(hsStr), " headshot");
+			GetStr("misc", "weapon_knife", wKnife, sizeof(wKnife), " with knife");
+			GetStr("misc", "knife", kName, sizeof(kName), "knife");
+			int hsPos = StrContains(friendly, " HS");
+			if (hsPos != -1) {
+				friendly[hsPos] = '\0';
+				pos += Format(buffer[pos], maxlen - pos, wShot, friendly);
+				pos += Format(buffer[pos], maxlen - pos, "%s", hsStr);
+			} else {
+				if (StrEqual(friendly, kName)) pos += Format(buffer[pos], maxlen - pos, "%s", wKnife);
+				else pos += Format(buffer[pos], maxlen - pos, wShot, friendly);
+			}
+		}
+		pos += Format(buffer[pos], maxlen - pos, ".");
+	} else if (event[0]) pos += Format(buffer[pos], maxlen - pos, "%s ", event);
+}
+
+void GetPlayerLocation(int client, char[] buffer, int maxlen) {
+	if (client > 0 && IsClientInGame(client)) {
+		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", buffer, maxlen);
+	} else buffer[0] = '\0';
+}
+
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast) {
+	g_CurrentRound++; g_BombPlanted = 0.0;
+	delete g_RoundStartTimer;
+	g_RoundStartTimer = CreateTimer(3.0, Timer_RoundStartMsg, _, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Timer_RoundStartMsg(Handle timer) {
+	g_RoundStartTimer = null;
+	if (!CanBotChat() || !RollInterest(IntBase_RoundStart)) return Plugin_Stop;
+	char rs[64], ms[64], ctx[1024];
+	GetStr("events", "round_start", rs, sizeof(rs), "The round has started.");
+	GetStr("events", "match_start", ms, sizeof(ms), "The match has started!");
+	BuildContext(ctx, sizeof(ctx), g_CurrentRound > 1 ? rs : ms);
+	GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "round_start");
+	AskBotChat(ev);
+	return Plugin_Stop;
+}
+
+public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
+	delete g_RoundStartTimer;
+	int winner = event.GetInt("winner");
+	if (!CanBotChat() || !RollInterest(IntBase_RoundEnd)) return;
+	char trW[64], ctW[64], ctx[1024];
+	GetStr("events", "tr_win", trW, sizeof(trW), "TR won the round.");
+	GetStr("events", "ct_win", ctW, sizeof(ctW), "CT won the round.");
+	GameEvent ev; ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "round_end");
+	if (winner == 2) { BuildContext(ctx, sizeof(ctx), trW); strcopy(ev.context, sizeof(ev.context), ctx); }
+	else if (winner == 3) { BuildContext(ctx, sizeof(ctx), ctW); strcopy(ev.context, sizeof(ev.context), ctx); }
+	else return;
+	AskBotChat(ev);
+}
+
+public void Event_BombPlanted(Event event, const char[] name, bool dontBroadcast) {
+	g_BombPlanted = GetGameTime();
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client > 0 && IsFakeClient(client) && CanBotChat() && RollInterest(IntBase_BombPlant)) {
+		char bp[64], ls[64], ctx[1024], loc[64];
+		GetStr("events", "bomb_plant", bp, sizeof(bp), "planted the bomb!");
+		GetStr("events", "location_suffix", ls, sizeof(ls), "%s at %s.");
+		BuildContext(ctx, sizeof(ctx), bp, client);
+		GetPlayerLocation(client, loc, sizeof(loc));
+		if (loc[0]) { char tmp[640]; Format(tmp, sizeof(tmp), ls, ctx, loc); strcopy(ctx, sizeof(ctx), tmp); }
+		GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = client; strcopy(ev.eventType, sizeof(ev.eventType), "bomb_planted");
+		AskBotChat(ev);
+	}
+}
+
+public void Event_BombDefused(Event event, const char[] name, bool dontBroadcast) {
+	g_BombPlanted = 0.0;
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client > 0 && IsFakeClient(client) && CanBotChat() && RollInterest(IntBase_BombDefuse)) {
+		char bd[64], ls[64], ctx[1024], loc[64];
+		GetStr("events", "bomb_defuse", bd, sizeof(bd), "defused the bomb!");
+		GetStr("events", "location_suffix", ls, sizeof(ls), "%s at %s.");
+		BuildContext(ctx, sizeof(ctx), bd, client);
+		GetPlayerLocation(client, loc, sizeof(loc));
+		if (loc[0]) { char tmp[640]; Format(tmp, sizeof(tmp), ls, ctx, loc); strcopy(ctx, sizeof(ctx), tmp); }
+		GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = client; strcopy(ev.eventType, sizeof(ev.eventType), "bomb_defused");
+		AskBotChat(ev);
+	}
+}
+
+void GetGameFunfactText(const char[] token, char[] buffer, int maxlen, int player, int data1, int data2) {
+	buffer[0] = '\0'; char clean[128]; strcopy(clean, sizeof(clean), token);
+	if (clean[0] == '#') { int i=0; while(clean[i+1]) { clean[i]=clean[i+1]; i++; } clean[i]='\0'; }
+	char raw[512]; GetStr("funfacts", clean, raw, sizeof(raw), "");
+	if (raw[0] == '\0' && g_GameKV != null) {
+		g_GameKV.Rewind(); if (g_GameKV.JumpToKey("Tokens")) { g_GameKV.GetString(clean, raw, sizeof(raw)); g_GameKV.GoBack(); }
+	}
+	if (raw[0]) {
+		char smone[64], pName[64]; GetStr("misc", "someone", smone, sizeof(smone), "Someone");
+		if (player > 0 && IsClientInGame(player)) GetClientName(player, pName, sizeof(pName)); else strcopy(pName, sizeof(pName), smone);
+		char d1[16], d2[16]; IntToString(data1, d1, sizeof(d1)); IntToString(data2, d2, sizeof(d2));
+		ReplaceString(raw, sizeof(raw), "%s3", d2); ReplaceString(raw, sizeof(raw), "%s2", d1); ReplaceString(raw, sizeof(raw), "%s1", pName);
+		strcopy(buffer, maxlen, raw);
+	}
+}
+
+public void Event_WinPanel(Event event, const char[] name, bool dontBroadcast) {
+	if (!CanBotChat() || !RollInterest(IntBase_WinPanel)) return;
+	char ff[128]; event.GetString("funfact_token", ff, sizeof(ff)); if (!ff[0]) return;
+	int player = event.GetInt("funfact_player"), d1 = event.GetInt("funfact_data1"), d2 = event.GetInt("funfact_data2");
+	char msg[512], sml[32], pName[32], ctx[1024];
+	GetGameFunfactText(ff, msg, sizeof(msg), player, d1, d2);
+	GetStr("misc", "someone_lower", sml, sizeof(sml), "someone");
+	if (player > 0 && IsClientInGame(player)) GetClientName(player, pName, sizeof(pName)); else strcopy(pName, sizeof(pName), sml);
+	if (msg[0]) Format(ctx, sizeof(ctx), "@%s: \"%s\"", pName, msg); else Format(ctx, sizeof(ctx), "@%s: %s", pName, ff);
+	GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = (player > 0 && IsFakeClient(player)) ? player : -1; strcopy(ev.eventType, sizeof(ev.eventType), "default");
+	AskBotChat(ev);
+}
+
+public void Event_PlayerSay(Event event, const char[] name, bool dontBroadcast) {
+	if (!CanBotChat() || !RollInterest(IntBase_PlayerSay)) return;
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client < 1 || IsFakeClient(client) || IsClientSourceTV(client)) return;
+	char text[128]; event.GetString("text", text, sizeof(text)); if (text[0] == '!' || text[0] == '/') return;
+	char pName[32], fmt[128], ctx[1024]; GetClientName(client, pName, sizeof(pName));
+	GetStr("events", "player_chat", fmt, sizeof(fmt), "@%s said: \"%s\"");
+	Format(ctx, sizeof(ctx), fmt, pName, text);
+	GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "default");
+	AskBotChat(ev);
+}
+
+public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
+	if (!CanBotChat() || !RollInterest(IntBase_FriendlyFire)) return;
+	int atk = GetClientOfUserId(event.GetInt("attacker")), vic = GetClientOfUserId(event.GetInt("userid"));
+	if (atk < 1 || vic < 1 || GetClientTeam(atk) != GetClientTeam(vic) || atk == vic) return;
+	char wpn[32], fT[64], fG[64], ctx[1024]; event.GetString("weapon", wpn, sizeof(wpn));
+	GetStr("events", "ff_take", fT, sizeof(fT), "took friendly fire from");
+	GetStr("events", "ff_give", fG, sizeof(fG), "gave friendly fire to");
+	GameEvent ev; strcopy(ev.eventType, sizeof(ev.eventType), "default"); strcopy(ev.weapon, sizeof(ev.weapon), wpn);
+	if (IsFakeClient(vic)) { ev.preferredBot = vic; BuildContext(ctx, sizeof(ctx), fT, vic, atk, wpn); strcopy(ev.context, sizeof(ev.context), ctx); if (atk > 0 && IsClientInGame(atk)) GetClientName(atk, ev.targetName, sizeof(ev.targetName)); }
+	else if (IsFakeClient(atk)) { ev.preferredBot = atk; BuildContext(ctx, sizeof(ctx), fG, atk, vic, wpn); strcopy(ev.context, sizeof(ev.context), ctx); if (vic > 0 && IsClientInGame(vic)) GetClientName(vic, ev.targetName, sizeof(ev.targetName)); }
+	else return;
+	AskBotChat(ev);
+}
+
+public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
+	PrintToServer("[NVD_DEBUG] Event_PlayerDeath");
+	if (!CanBotChat()) return;
+	int kil = GetClientOfUserId(event.GetInt("attacker")), vic = GetClientOfUserId(event.GetInt("userid")), hs = event.GetInt("headshot");
+	if (kil < 1 || vic < 1) return;
+	char wpn[32]; event.GetString("weapon", wpn, sizeof(wpn)); if (hs) Format(wpn, sizeof(wpn), "%s HS", wpn);
+	if (kil >= 1 && kil <= MaxClients && IsFakeClient(kil)) g_BotKills[kil]++;
+	if (vic >= 1 && vic <= MaxClients && IsFakeClient(vic)) g_BotDeaths[vic]++;
+	if (kil < 1 || (!IsFakeClient(kil) && !IsFakeClient(vic))) return;
+	bool botKillsHuman = IsFakeClient(kil) && !IsFakeClient(vic);
+	bool humanKillsBot = !IsFakeClient(kil) && IsFakeClient(vic);
+	int baseInt = botKillsHuman ? IntBase_Kill : (humanKillsBot ? IntBase_Death : 25);
+	int extra = (event.GetInt("revenge") ? 15 : 0) + (event.GetInt("dominated") ? 20 : 0) + (hs ? 5 : 0);
+	if (!RollInterest(baseInt, wpn, extra)) return;
+	char rev[64], dom[64], kln[64], dth[64], ls[64], ctx[1024];
+	GetStr("events", "revenge", rev, sizeof(rev), "took revenge on");
+	GetStr("events", "domination", dom, sizeof(dom), "dominated");
+	GetStr("events", "kill", kln, sizeof(kln), "eliminated");
+	GetStr("events", "death", dth, sizeof(dth), "was eliminated by");
+	GetStr("events", "location_suffix", ls, sizeof(ls), "%s at %s");
+	GameEvent ev; strcopy(ev.weapon, sizeof(ev.weapon), wpn);
+	if (event.GetInt("revenge")) { BuildContext(ctx, sizeof(ctx), rev, kil, vic, wpn); }
+	else if (event.GetInt("dominated")) { BuildContext(ctx, sizeof(ctx), dom, kil, vic, wpn); }
+	else if (IsFakeClient(kil) && !IsFakeClient(vic)) { BuildContext(ctx, sizeof(ctx), kln, kil, vic, wpn); strcopy(ev.eventType, sizeof(ev.eventType), "kill"); }
+	else if (IsFakeClient(vic) && !IsFakeClient(kil)) { BuildContext(ctx, sizeof(ctx), dth, vic, kil, wpn); strcopy(ev.eventType, sizeof(ev.eventType), "death"); }
+	else { BuildContext(ctx, sizeof(ctx), kln, kil, vic, wpn); }
+	char loc[64]; GetPlayerLocation(kil, loc, sizeof(loc));
+	if (loc[0]) { char tmp[640]; Format(tmp, sizeof(tmp), ls, ctx, loc); strcopy(ctx, sizeof(ctx), tmp); }
+	strcopy(ev.context, sizeof(ev.context), ctx);
+	if (IsFakeClient(kil) && vic > 0 && IsClientInGame(vic)) GetClientName(vic, ev.targetName, sizeof(ev.targetName));
+	else if (IsFakeClient(vic) && kil > 0 && IsClientInGame(kil)) GetClientName(kil, ev.targetName, sizeof(ev.targetName));
+	ev.preferredBot = IsFakeClient(kil) ? kil : vic;
+	if (!ev.eventType[0]) strcopy(ev.eventType, sizeof(ev.eventType), IsFakeClient(kil) ? "kill" : "death");
+	AskBotChat(ev);
+}
+
+bool CanBotChat() {
+	if (!g_CvarEnabled.BoolValue) { PrintToServer("[NVD_DEBUG] CvarEnabled false"); return false; }
+	if (GetGameTime() - g_LastBotChat < g_CvarCooldown.FloatValue) { PrintToServer("[NVD_DEBUG] Cooldown active"); return false; }
+	for (int i = 1; i <= MaxClients; i++) if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i)) return true;
+	PrintToServer("[NVD_DEBUG] No bots found");
+	return false;
+}
+
+// ── Interest Scoring ──
+enum {
+	IntBase_Kill        = 30,
+	IntBase_Death       = 25,
+	IntBase_BombPlant   = 50,
+	IntBase_BombDefuse  = 50,
+	IntBase_RoundStart  = 30,
+	IntBase_RoundEnd    = 30,
+	IntBase_WinPanel    = 40,
+	IntBase_FriendlyFire = 20,
+	IntBase_PlayerSay   = 10,
+	IntBase_External    = 45,
+};
+
+int GetGameStateBonus()
+{
+	int bonus = 0;
+	if (g_CurrentRound <= 3) bonus += 10;
+	int t = CS_GetTeamScore(2), ct = CS_GetTeamScore(3);
+	if (t - ct <= 2 && ct - t <= 2) bonus += 15;
+	int ctA = 0, tA = 0;
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsClientInGame(i) || !IsPlayerAlive(i)) continue;
+		if (GetClientTeam(i) == 2) tA++; else if (GetClientTeam(i) == 3) ctA++;
+	}
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsClientInGame(i) || IsFakeClient(i) || IsClientSourceTV(i) || !IsPlayerAlive(i)) continue;
+		int ht = GetClientTeam(i);
+		if ((ht == 2 && tA == 1 && ctA >= 2) || (ht == 3 && ctA == 1 && tA >= 2))
+			{ bonus += 25; break; }
+	}
+	return bonus;
+}
+
+int CalculateInterest(int base, const char[] weapon = "", int extra = 0)
+{
+	int score = base + GetGameStateBonus() + extra;
+	if (weapon[0]) {
+		if (StrContains(weapon, "knife") != -1) score += 20;
+		else if (StrContains(weapon, "awp") != -1) score += 10;
+	}
+	return score > 100 ? 100 : score < 0 ? 0 : score;
+}
+
+bool RollInterest(int base, const char[] weapon = "", int extra = 0)
+{
+	return GetRandomInt(1, 100) <= CalculateInterest(base, weapon, extra);
+}
+
+// ── External Plugin Native ──
+public int Native_SubmitChatEvent(Handle plugin, int numParams)
+{
+	char context[512], eventType[32];
+	GetNativeString(1, context, sizeof(context));
+	int bot = GetNativeCell(2);
+	int priority = GetNativeCell(3);
+	GetNativeString(4, eventType, sizeof(eventType));
+	if (!eventType[0]) strcopy(eventType, sizeof(eventType), "default");
+	if (!RollInterest(priority > 0 ? priority : IntBase_External)) return 0;
+	if (!CanBotChat()) return 0;
+	GameEvent ev; strcopy(ev.context, sizeof(ev.context), context); ev.preferredBot = bot; strcopy(ev.eventType, sizeof(ev.eventType), eventType);
+	AskBotChat(ev);
+	return 1;
+}
+
+// ── Timeline History for multi-turn API ──
+enum struct GameEvent {
+    char context[1024];
+    int preferredBot;
+    char eventType[32];
+    char weapon[32];
+    char targetName[32];
+}
+void RecordEvent(const char[] description)
+{
+	if (description[0] == '\0') return;
+	strcopy(g_History[g_HistIdx].role, 32, "user");
+	strcopy(g_History[g_HistIdx].content, HISTORY_CONTENT_LEN, description);
+	g_HistIdx = (g_HistIdx + 1) % MAX_HISTORY_ENTRIES;
+	if (g_HistCount < MAX_HISTORY_ENTRIES) g_HistCount++;
+}
+
+void RecordBotMessage(const char[] botName, const char[] message)
+{
+	if (message[0] == '\0') return;
+	strcopy(g_History[g_HistIdx].role, 32, botName);
+	strcopy(g_History[g_HistIdx].content, HISTORY_CONTENT_LEN, message);
+	g_HistIdx = (g_HistIdx + 1) % MAX_HISTORY_ENTRIES;
+	if (g_HistCount < MAX_HISTORY_ENTRIES) g_HistCount++;
+}
+
+void EscapeJSON(const char[] input, char[] output, int maxlen)
+{
+    int ep = 0;
+    for (int c = 0; input[c] != '\0' && ep < maxlen - 4; c++) {
+        if (input[c] == '"') { output[ep++] = '\\'; output[ep++] = '"'; }
+        else if (input[c] == '\\') { output[ep++] = '\\'; output[ep++] = '\\'; }
+        else output[ep++] = input[c];
+    }
+    output[ep] = '\0';
+}
+
+void BuildHistoryBlock(char[] buffer, int maxlen, const char[] catchphrase = "", const char[] botName = "")
+{
+    buffer[0] = '\0';
+    int pos = 0;
+    pos += Format(buffer[pos], maxlen - pos, "[");
+    bool first = true;
+
+    // Fallback seeds (1)
+    char phrases[3][64]; int pCount = 0;
+    if (catchphrase[0]) pCount = ExplodeString(catchphrase, ";", phrases, 3, 64);
+    if (pCount == 0) { strcopy(phrases[0], sizeof(phrases[]), "ez"); pCount = 1; }
+
+    if (!first) pos += Format(buffer[pos], maxlen - pos, ",");
+    pos += Format(buffer[pos], maxlen - pos, "{\"role\":\"user\",\"content\":\"Round start.\"},{\"role\":\"assistant\",\"content\":\"%s\"}", phrases[0]);
+    first = false;
+
+    // Real history (cap at 3 most recent)
+    static const int MAX_REAL_HISTORY = 3;
+    if (g_HistCount > 0) {
+        int take = g_HistCount > MAX_REAL_HISTORY ? MAX_REAL_HISTORY : g_HistCount;
+        int start = (g_HistIdx - take + MAX_HISTORY_ENTRIES) % MAX_HISTORY_ENTRIES;
+        for (int i = 0; i < take; i++) {
+            int idx = (start + i) % MAX_HISTORY_ENTRIES;
+            if (g_History[idx].content[0] == '\0') continue;
+            char escaped[512];
+            EscapeJSON(g_History[idx].content, escaped, sizeof(escaped));
+            pos += Format(buffer[pos], maxlen - pos, ",{\"role\":\"%s\",\"content\":\"%s\"}", g_History[idx].role, escaped);
+        }
+    }
+
+    pos += Format(buffer[pos], maxlen - pos, "]");
+}
+
+void AskBotChat(GameEvent ev) {
+    PrintToServer("[NVD_DEBUG] AskBotChat called. Event: %s", ev.eventType);
+    int bot; if (ev.preferredBot >= 1 && ev.preferredBot <= MaxClients && IsClientInGame(ev.preferredBot) && IsFakeClient(ev.preferredBot)) bot = ev.preferredBot;
+    else {
+        int bots[MAXPLAYERS+1], bCnt = 0;
+        for (int i=1; i<=MaxClients; i++) if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i)) bots[bCnt++] = i;
+        if (!bCnt) return; bot = bots[GetRandomInt(0, bCnt-1)];
+    }
+    char bName[32], bTeam[32], sS[64];
+    GetClientName(bot, bName, sizeof(bName));
+    GetStr("teams", (GetClientTeam(bot) == 2) ? "tr" : "ct", bTeam, sizeof(bTeam), "Team");
+    int tS = CS_GetTeamScore(2), ctS = CS_GetTeamScore(3), bT = GetClientTeam(bot);
+    if ((bT == 2 && tS > ctS) || (bT == 3 && ctS > tS)) GetStr("gamestate", "winning", sS, sizeof(sS), " You are winning.");
+    else if ((bT == 2 && tS < ctS) || (bT == 3 && ctS < tS)) GetStr("gamestate", "losing", sS, sizeof(sS), " You are losing.");
+    else sS[0]='\0';
+
+    char type[32]; strcopy(type, sizeof(type), ev.eventType);
+    if (StrEqual(type, "default")) {
+        if (StrContains(ev.context, "eliminated") != -1 || StrContains(ev.context, "eliminou") != -1) strcopy(type, sizeof(type), "kill");
+        else if (StrContains(ev.context, "was eliminated") != -1 || StrContains(ev.context, "foi eliminado") != -1) strcopy(type, sizeof(type), "death");
+    }
+
+    char target[32];
+    if (ev.targetName[0]) {
+        strcopy(target, sizeof(target), ev.targetName);
+    } else {
+        target[0] = '\0';
+    }
+
+    char sysP[2048], fullP[1024];
+    if (GetPromptTemplate(type, "system", sysP, sizeof(sysP), bName, bTeam, target, sS, ev.context, "", g_CurrentRound, tS, ctS)) {
+    } else Format(sysP, sizeof(sysP), "Speak as %s (%s). %s", bName, bTeam, ev.context);
+
+    char gameState[256];
+    {
+        int ctA = 0, tA = 0;
+        for (int i = 1; i <= MaxClients; i++) {
+            if (!IsClientInGame(i) || !IsPlayerAlive(i)) continue;
+            if (GetClientTeam(i) == 2) tA++; else if (GetClientTeam(i) == 3) ctA++;
+        }
+        char mapName[64]; GetCurrentMap(mapName, sizeof(mapName));
+        char tStr[64]; int gt = RoundFloat(GetGameTime());
+        Format(tStr, sizeof(tStr), "%d:%02d", gt / 60, gt % 60);
+        Format(gameState, sizeof(gameState), "Map %s, Round %d, score %d-%d, %s, %d TR vs %d CT", mapName, g_CurrentRound, tS, ctS, tStr, tA, ctA);
+        if (g_BombPlanted > 0) StrCat(gameState, sizeof(gameState), ", bomb planted");
+    }
+    ReplaceString(sysP, sizeof(sysP), "|game_state|", gameState);
+
+    char kStr[8], dStr[8];
+    IntToString(g_BotKills[bot], kStr, sizeof(kStr));
+    IntToString(g_BotDeaths[bot], dStr, sizeof(dStr));
+    ReplaceString(sysP, sizeof(sysP), "|kills|", kStr);
+    ReplaceString(sysP, sizeof(sysP), "|deaths|", dStr);
+
+    ReplaceString(sysP, sizeof(sysP), "  ", " ");
+    ReplaceString(sysP, sizeof(sysP), " .", ".");
+    ReplaceString(sysP, sizeof(sysP), "..", ".");
+
+    if (!GetPromptTemplate(type, "user", fullP, sizeof(fullP), bName, bTeam, target, sS, ev.context, "", g_CurrentRound, tS, ctS))
+        Format(fullP, sizeof(fullP), "Speak as %s about %s", bName, ev.context);
+    ReplaceString(fullP, sizeof(fullP), "  ", " ");
+    ReplaceString(fullP, sizeof(fullP), ". .", ".");
+    ReplaceString(fullP, sizeof(fullP), " .", ".");
+    ReplaceString(fullP, sizeof(fullP), "..", ".");
+    TrimString(fullP);
+    
+    char wBuf[32]; if (ev.weapon[0]) { FriendlyWeaponName(ev.weapon, wBuf, sizeof(wBuf)); int hsP = StrContains(wBuf, " HS"); if (hsP!=-1) wBuf[hsP]='\0'; }
+    else GetStr("misc", "unknown_weapon", wBuf, sizeof(wBuf), "unknown");
+    ReplaceString(fullP, sizeof(fullP), "|weapon|", wBuf);
+    
+    char catchphrase[64], pers[8], sty[8], beh[8];
+    GetBotPersonality(bName, pers, sizeof(pers), catchphrase, sizeof(catchphrase), sty, sizeof(sty), beh, sizeof(beh));
+    char cpFormatted[128];
+    char parts[3][32]; int n = ExplodeString(catchphrase, ";", parts, 3, 32);
+    for (int i = 0; i < n; i++) { TrimString(parts[i]); if (parts[i][0]) { if (i > 0) StrCat(cpFormatted, sizeof(cpFormatted), " "); Format(cpFormatted, sizeof(cpFormatted), "%s\"%s\"", cpFormatted, parts[i]); } }
+    ReplaceString(sysP, sizeof(sysP), "|catchphrase|", cpFormatted);
+    char historyBlock[1024];
+    BuildHistoryBlock(historyBlock, sizeof(historyBlock), catchphrase, bName);
+
+    NVD_AskAI(fullP, sysP, INVALID_FUNCTION, bot, historyBlock);
+    strcopy(g_LastEventType[bot], 32, type); strcopy(g_LastSysPrompt[bot], 1024, sysP); strcopy(g_LastUserPrompt[bot], 1024, fullP); g_LastAskTime[bot] = GetGameTime();
+    RecordEvent(ev.context);
+}
+
+public Action Timer_PollResponses(Handle timer) { PollBotResponses(); return Plugin_Continue; }
+void PollBotResponses() {
+    char reply[2048]; any bot; char ts[32]; FormatTime(ts, sizeof(ts), "%H:%M:%S");
+    while (NVD_PollResponse(reply, sizeof(reply), bot)) {
+        if (StrContains(reply, "ERROR_") != -1 || !reply[0]) continue;
+        if (bot == 0 || !IsClientInGame(bot) || !IsFakeClient(bot)) {
+            int aB[MAXPLAYERS+1], aBC = 0;
+            for (int i=1; i<=MaxClients; i++) if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i)) aB[aBC++] = i;
+            if (!aBC) continue; bot = aB[GetRandomInt(0, aBC-1)];
+        }
+        char bName[32], clean[320]; GetClientName(bot, bName, sizeof(bName)); strcopy(clean, sizeof(clean), reply);
+        PrintToServer("[NVD_DEBUG] PollBotResponses: Bot %s, Reply: %s", bName, clean);
+        ReplaceString(clean, 320, "\"", ""); ReplaceString(clean, 320, "[", ""); ReplaceString(clean, 320, "]", ""); TrimString(clean);
+        if (!clean[0]) continue;
+        if (strlen(clean) > 180) clean[180] = '\0';
+        FakeClientCommand(bot, "say %s", clean); g_LastBotChat = GetGameTime();
+        RecordBotMessage(bName, clean);
+        PrintToServer("[BOT_CHAT] [%s] ✅ Sent: [BOT %s] %s", ts, bName, clean);
+    }
+}
+
+void LoadPersonalities() {
+    if (g_PersonalityKV != null) delete g_PersonalityKV;
+    g_PersonalityKV = new KeyValues("BotPersonalities");
+    char path[PLATFORM_MAX_PATH]; BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_personalities.txt");
+    if (FileExists(path)) g_PersonalityKV.ImportFromFile(path);
+}
+
+void GetBotPersonality(const char[] name, char[] pers, int pL, char[] cat, int cL, char[] sty, int sL, char[] beh, int bL) {
+    if (g_PersonalityKV == null) return;
+    g_PersonalityKV.Rewind(); if (g_PersonalityKV.JumpToKey(name)) {
+        g_PersonalityKV.GetString("personality", pers, pL); g_PersonalityKV.GetString("catchphrase", cat, cL);
+        g_PersonalityKV.GetString("style", sty, sL); g_PersonalityKV.GetString("behavior", beh, bL);
+    }
+}
+
+void LoadPromptTemplates() {
+    if (g_PromptKV != null) delete g_PromptKV;
+    g_PromptKV = new KeyValues("BotChatPrompts");
+    char path[PLATFORM_MAX_PATH]; BuildPath(Path_SM, path, sizeof(path), "configs/nvd_bot_chat_prompts.txt");
+    if (FileExists(path)) g_PromptKV.ImportFromFile(path);
 }

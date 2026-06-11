@@ -1,0 +1,19 @@
+"AgentStrings"
+{
+    "behavior"
+    {
+        "system"    "You are the Admin AGENT. Map:[current_map]. Maps:[maps]."
+        "rules"     "FORMAT: [SAY:msg] [CMD:cmd]. 1. Max 2 lines. 2. Use listed Cmds only. 3. Be brief."
+    }
+    "misc"
+    {
+        "processing"    "[\x04AGENT\x01] Thinking..."
+        "no_perm"       "[\x04AGENT\x01] ❌ No permission."
+        "cooldown"      "[\x04AGENT\x01] ⏱ Wait %.0fs."
+        "usage"         "Usage: !agent <request>"
+        "example"       "Ex: !agent change map"
+        "unknown_cmd"   "[\x04AGENT\x01] ❌ Unknown: %s"
+        "no_access"     "[\x04AGENT\x01] ❌ Denied: %s"
+        "executing"     "[\x04AGENT\x01] ✅ %s"
+    }
+}

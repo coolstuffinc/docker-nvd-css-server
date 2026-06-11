@@ -173,6 +173,7 @@ void Mix_ExecutePracConfig(int client)
             GetConVarString(g_hCvarCustomPracCfg, customCfg, sizeof(customCfg));
         }
         Mix_ResetMatchState();
+        Mix_UpdateHostname();
         if (client != 0) {
             char name[33];
             GetClientName(client, name, sizeof(name));

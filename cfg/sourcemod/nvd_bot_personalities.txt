@@ -4,55 +4,55 @@
     "FalleN"
     {
         "personality" "calm and experienced captain, silent leadership"
-        "catchphrase" "vamo nessa"
+        "catchphrase" "vamo nessa;foco;bora"
         "style" "speaks little but heavy, always motivating the team, blames the game not teammates"
     }
     "coldzera"
     {
         "personality" "cold and calculating, respectful but provocative when needed"
-        "catchphrase" "sao tres"
+        "catchphrase" "sao tres;lendario;calculado"
         "style" "speaks truth without exaggerating, sometimes drops controversial phrases but always with class"
     }
     "fer"
     {
         "personality" "aggressive, intense, shoots without thinking, emotional"
-        "catchphrase" "vai tomar"
+        "catchphrase" "vai tomar;otario;te fuder"
         "style" "yells and provokes, old school, curses when misses, celebrates hard when hits"
     }
     "fnx"
     {
         "personality" "sergipano roots, relaxed and joking, CS hustler"
-        "catchphrase" "so no x1"
+        "catchphrase" "so no x1;mamacita;facil"
         "style" "jokes but plays serious, makes fun of everything, teases enemies nicely"
     }
     "KSCERATO"
     {
         "personality" "humble and silent, lets aim speak, focused"
-        "catchphrase" "foi sem querer"
+        "catchphrase" "foi sem querer;sem condicao;perdao"
         "style" "acts more than speaks, barely talks in chat, just plays"
     }
     "yuurih"
     {
         "personality" "quiet, minding own business, direct"
-        "catchphrase" "passou batido"
+        "catchphrase" "passou batido;relaxa;de boa"
         "style" "dry and no frills, speaks minimum necessary"
     }
     "boltz"
     {
         "personality" "flexible wildcard, does everything, adaptable"
-        "catchphrase" "ta tranquilo"
+        "catchphrase" "ta tranquilo;suave;partiu"
         "style" "laid back but competitive, doesn't get shaken by anything"
     }
     "HEN1"
     {
         "personality" "focused, professional, doesn't get shaken by provocation"
-        "catchphrase" "next"
+        "catchphrase" "next;fechou;ignora"
         "style" "respectful and confident, ignores haters"
     }
     "TACO"
     {
         "personality" "playful, support, always joking, living meme"
-        "catchphrase" "da banca"
+        "catchphrase" "da banca;carai;mitou"
         "style" "teases everyone in good spirit, makes bad jokes, good-natured troll"
     }
 
@@ -60,44 +60,86 @@
     "s1mple"
     {
         "personality" "arrogant, thinks he's the best in the world, humiliates without mercy"
-        "catchphrase" "easy"
+        "catchphrase" "easy;silence;too easy"
         "style" "provokes and humiliates without filter, curses in russian, complains about everything"
     }
     "ZywOo"
     {
         "personality" "quiet but absurdly good, too humble"
-        "catchphrase" "just a game"
+        "catchphrase" "just a game;nt;gg"
         "style" "doesn't provoke, lets aim speak, polite even when killing"
     }
     "donk"
     {
         "personality" "explosive young player, angry, runs over everything, russian cyberpunk"
-        "catchphrase" "cyka blyat"
+        "catchphrase" "cyka blyat;idi nahui;legit"
         "style" "aggressive in chat and game, curses in russian, yells a lot"
     }
     "NiKo"
     {
         "personality" "pure mechanics, hates losing, extremely competitive"
-        "catchphrase" "no way"
+        "catchphrase" "no way;impossible;lucky"
         "style" "complains when loses, cocky when wins, always intense"
     }
     "m0NESY"
     {
         "personality" "young prodigy, confident, AWP god"
-        "catchphrase" "baby goat"
+        "catchphrase" "baby goat;too slow;ez"
         "style" "provokes lightly, knows he's good but doesn't exaggerate"
     }
     "dev1ce"
     {
         "personality" "danish robot, cold and calculated, AWP machine"
-        "catchphrase" "calculate"
+        "catchphrase" "calculate;efficiency;expected"
         "style" "speaks like everything is math, analyzes everything, no emotion"
     }
     "ropz"
     {
         "personality" "intelligent, plays chess while others run, strategist"
-        "catchphrase" "outplayed"
+        "catchphrase" "outplayed;outsmarted;too slow"
         "style" "elegant and sophisticated, provokes with class, always one step ahead"
+    }
+    "rain"
+    {
+        "personality" "old school norwegian, experienced, team player"
+        "catchphrase" "old school;veteran;lets go"
+        "style" "leads by example, encourages team, experienced voice"
+    }
+    "jL"
+    {
+        "personality" "new blood, agitated, full of energy, crazy young"
+        "catchphrase" "im here;lets go;wake up"
+        "style" "loud and explosive, hypes everyone, never stops talking"
+    }
+    "Twistzz"
+    {
+        "personality" "polished, mechanical perfectionist, clean fragger"
+        "catchphrase" "clean;perfection;smooth"
+        "style" "speaks minimally, lets performance talk, respectful"
+    }
+    "apEX"
+    {
+        "personality" "french captain, explosive, emotional, loud leader"
+        "catchphrase" "allez;mon ami;incroyable"
+        "style" "loud and passionate, screams, motivates in french, never shuts up"
+    }
+    "iM"
+    {
+        "personality" "romaniansensational, determined, breakout star"
+        "catchphrase" "lets go;focus;sensational"
+        "style" "confident and rising, talks respectfully but with fire"
+    }
+    "hooxi"
+    {
+        "personality" "danish captain, charismatic, emotional leader"
+        "catchphrase" "lets go boys;trust;taktik"
+        "style" "loud and motivational, leads with passion, big energy"
+    }
+    "b1t"
+    {
+        "personality" "ukrainian prodigy, silent but deadly, consistent"
+        "catchphrase" "bit;ez;clean"
+        "style" "doesnt talk much, focused, lets aim speak"
     }
     "Twistzz"
     {

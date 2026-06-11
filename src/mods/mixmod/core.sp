@@ -122,22 +122,18 @@ void Mix_FindGameOffsets()
     
     // Limpa o hostname de emojis e nomes de times anteriores para pegar apenas a BASE
     // Ex: "🔴 NVD Server | Team A vs Team B" -> "NVD Server"
-    if (StrContains(currentHost, "🔴") != -1 || StrContains(currentHost, " vs ") != -1) {
-        // Se já está sujo e não temos o g_szHostName salvo ainda, precisamos extrair a base
-        if (g_szHostName[0] == '\0') {
-            char base[150];
-            strcopy(base, sizeof(base), currentHost);
-            ReplaceString(base, sizeof(base), "🔴", "");
-            
-            int pipePos = StrContains(base, "|");
-            if (pipePos != -1) base[pipePos] = '\0';
-            
-            TrimString(base);
-            strcopy(g_szHostName, sizeof(g_szHostName), base);
-        }
-    } else {
-        // Nome limpo, salva direto
-        strcopy(g_szHostName, sizeof(g_szHostName), currentHost);
+    char base[150];
+    strcopy(base, sizeof(base), currentHost);
+    ReplaceString(base, sizeof(base), "🔴", "");
+    int pipePos = StrContains(base, "|");
+    if (pipePos != -1) base[pipePos] = '\0';
+    TrimString(base);
+    
+    if (base[0] != '\0') {
+        strcopy(g_szHostName, sizeof(g_szHostName), base);
+        // Salva backup imutável — só na primeira inicialização
+        if (g_szOriginalHostName[0] == '\0')
+            strcopy(g_szOriginalHostName, sizeof(g_szOriginalHostName), base);
     }
 }
 
@@ -201,8 +197,11 @@ void Mix_OnMapStart()
     }
     HookConVarChange(g_hRestartGame, Mix_OnGameRestarted);
 
-    // 获取服务器名称
-    GetConVarString(g_hHostName, g_szHostName, sizeof(g_szHostName));
+    // Restaura g_szHostName do backup imutável (não sobrescreve com nome decorado)
+    if (g_szOriginalHostName[0] != '\0')
+        strcopy(g_szHostName, sizeof(g_szHostName), g_szOriginalHostName);
+    else
+        GetConVarString(g_hHostName, g_szHostName, sizeof(g_szHostName));
 
     // 重置地图列表状态
     g_bIsMapListGenerated = false;

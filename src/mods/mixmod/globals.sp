@@ -132,6 +132,7 @@ int g_iReadyPlayersData[MAXPLAYERS+1] = {-1, ...};
 bool g_bAllowReady = true;
 bool g_bIsItManual = true;
 char g_szHostName[150];
+char g_szOriginalHostName[150]; // backup imutável — setado uma vez no init, nunca sobrescrito
 Handle g_hReadyStatus = INVALID_HANDLE;
 
 // =============================================================================

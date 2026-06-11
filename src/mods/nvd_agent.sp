@@ -7,381 +7,234 @@
 
 #define MAX_PLAYERS 65
 #define MAX_MAPS 50
-#define MAX_CTX 2048
+#define MAX_CTX 3072
 #define AGENT_COOLDOWN 8.0
+
+// Cache para RCON
+char g_LastRconResponse[2048];
 
 // Estado do agente por jogador
 float g_PlayerLastAgent[MAXPLAYERS + 1];
 
-// Comandos e permissões (arrays paralelas, compatível com SourcePawn 1.12)
-enum AgentCmdLevel
-{
-    CmdLevel_All = 0,       // Qualquer um pode votar
-    CmdLevel_Admin = 1,     // Requer flag de admin
-    CmdLevel_Root = 2,      // Requer flag de root
-};
-
+// Comandos e permissões
 static const char g_CommandNames[][] = {
     "sm_votemap", "sm_votekick", "sm_voteban", 
-    "sm_cvar", "sm_plugins", "sm_reloadadmin"
+    "sm_cvar", "sm_plugins", "sm_reloadadmin",
+    "sm_rr", "sm_swap", "sm_live", "sm_prac",
+    "bot_quota", "bot_add", "bot_kick", "bot_join_after_player",
+    "mp_autoteambalance", "mp_limitteams", "mp_friendlyfire"
 };
 
-static const AgentCmdLevel g_CommandLevels[] = {
-    CmdLevel_All,    // sm_votemap
-    CmdLevel_Admin,  // sm_votekick
-    CmdLevel_Admin,  // sm_voteban
-    CmdLevel_Root,   // sm_cvar
-    CmdLevel_Admin,  // sm_plugins
-    CmdLevel_Root,   // sm_reloadadmin
-};
-
-static const char g_CommandDescs[][] = {
-    "Iniciar votação de mapa",
-    "Iniciar votação de kick",
-    "Iniciar votação de ban",
-    "Alterar cvar do servidor",
-    "Listar plugins",
-    "Recarregar admins",
-};
-
-#define COMMAND_COUNT 6
+#define COMMAND_COUNT 17
 
 // Cache de mapas
 char g_MapList[MAX_MAPS][64];
 int g_MapCount = 0;
 
+public Plugin myinfo =
+{
+	name = "NVD Admin Agent",
+	author = "OpenCode",
+	description = "AI Admin Assistant with centralized strings",
+	version = "3.2.0",
+	url = "https://github.com/coolstuffinc/docker-nvd-css-server"
+};
+
 public void OnPluginStart()
 {
-    RegConsoleCmd("sm_agent", Command_Agent, "AI Admin Agent - ask the AI for help");
-    RegConsoleCmd("sm_agent_help", Command_AgentHelp, "Show available agent commands");
-    LoadValidMaps();
+	RegConsoleCmd("sm_agent", Command_Agent, "AI Admin Agent - ask the IA for help");
+	RegConsoleCmd("sm_agent_help", Command_AgentHelp, "Show available agent commands");
+	RegConsoleCmd("sm_agent_check", Command_AgentCheck, "Poll for the last RCON response");
+	
+	LoadValidMaps();
+	NVD_RegisterStrings("nvd_agent");
+
+	// Inicia timer de polling
+	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT);
+}
+
+stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen, const char[] fallback = "")
+{
+    NVD_GetStr("nvd_agent", section, key, buffer, maxlen, fallback);
 }
 
 public void OnMapStart()
 {
-    LoadValidMaps();
+	LoadValidMaps();
 }
 
-// ============================================================================
-// COMANDOS
-// ============================================================================
 public Action Command_AgentHelp(int client, int args)
 {
-    ReplyToCommand(client, "[\x04AGENT\x01] ═══ Comandos do Agente ═══");
-    ReplyToCommand(client, "[\x04AGENT\x01] !agent <pedido> - Pergunte algo à IA");
-    ReplyToCommand(client, "[\x04AGENT\x01] A IA pode sugerir comandos como:");
-    
-    for (int i = 0; i < COMMAND_COUNT; i++)
-    {
-        int flags = GetCommandFlags(g_CommandNames[i]);
-        bool hasAccess = (flags == INVALID_FCVAR_FLAGS) || CheckCommandAccess(client, g_CommandNames[i], 0);
-        
-        if (hasAccess)
-            ReplyToCommand(client, "[\x04AGENT\x01]   • [%s] %s", g_CommandNames[i], g_CommandDescs[i]);
-    }
-    
-    ReplyToCommand(client, "[\x04AGENT\x01] ════════════════════════════");
-    return Plugin_Handled;
+	ReplyToCommand(client, "[\x04AGENT\x01] ═══ Comandos que posso sugerir ═══");
+	for (int i = 0; i < COMMAND_COUNT; i++)
+	{
+		ReplyToCommand(client, "[\x04AGENT\x01]   • [%s]", g_CommandNames[i]);
+	}
+	return Plugin_Handled;
+}
+
+public Action Command_AgentCheck(int client, int args)
+{
+	if (g_LastRconResponse[0] == '\0') ReplyToCommand(client, "PENDING");
+	else {
+		ReplyToCommand(client, "%s", g_LastRconResponse);
+		g_LastRconResponse[0] = '\0';
+	}
+	return Plugin_Handled;
 }
 
 public Action Command_Agent(int client, int args)
 {
-    if (!CheckCommandAccess(client, "sm_agent", ADMFLAG_KICK))
-    {
-        ReplyToCommand(client, "[\x04AGENT\x01] ❌ Você não tem permissão para usar este comando.");
-        return Plugin_Handled;
-    }
-    
-    // Rate limiting
-    if (!NVD_CanRequest(client))
-    {
-        float timeLeft = AGENT_COOLDOWN - (GetGameTime() - g_PlayerLastAgent[client]);
-        if (timeLeft < 0) timeLeft = 0.0;
-        ReplyToCommand(client, "[\x04AGENT\x01] ⏱ Aguarde %.0fs antes de fazer outra requisição.", timeLeft);
-        return Plugin_Handled;
-    }
-    
-    // Cooldown
-    if (GetGameTime() - g_PlayerLastAgent[client] < AGENT_COOLDOWN)
-    {
-        float timeLeft = AGENT_COOLDOWN - (GetGameTime() - g_PlayerLastAgent[client]);
-        ReplyToCommand(client, "[\x04AGENT\x01] ⏱ Aguarde %.0fs antes de fazer outra requisição.", timeLeft);
-        return Plugin_Handled;
-    }
-    
-    if (args < 1)
-    {
-        ReplyToCommand(client, "[\x04AGENT\x01] Uso: !agent <seu pedido>");
-        ReplyToCommand(client, "[\x04AGENT\x01] Ex: !agent trocar mapa");
-        return Plugin_Handled;
-    }
-    
-    char request[512];
-    GetCmdArgString(request, sizeof(request));
-    StripQuotes(request);
-    TrimString(request);
-    
-    g_PlayerLastAgent[client] = GetGameTime();
-    PrintToChat(client, "[\x04AGENT\x01] Processando...");
+	if (!CheckCommandAccess(client, "sm_agent", ADMFLAG_KICK))
+	{
+		char msg[128]; GetStr("misc", "no_perm", msg, sizeof(msg), "No permission.");
+		ReplyToCommand(client, msg);
+		return Plugin_Handled;
+	}
+	
+	float now = GetGameTime();
+	if (client > 0 && now - g_PlayerLastAgent[client] < AGENT_COOLDOWN)
+	{
+		char msg[128]; GetStr("misc", "cooldown", msg, sizeof(msg), "Wait %.0fs.");
+		ReplyToCommand(client, msg, AGENT_COOLDOWN - (now - g_PlayerLastAgent[client]));
+		return Plugin_Handled;
+	}
+	
+	if (args < 1)
+	{
+		char usage[64], example[64];
+		GetStr("misc", "usage", usage, sizeof(usage), "Usage: !agent <request>");
+		GetStr("misc", "example", example, sizeof(example), "Example: !agent change map");
+		ReplyToCommand(client, "[\x04AGENT\x01] %s", usage);
+		ReplyToCommand(client, "[\x04AGENT\x01] %s", example);
+		return Plugin_Handled;
+	}
+	
+	char request[512];
+	GetCmdArgString(request, sizeof(request));
+	StripQuotes(request);
+	TrimString(request);
+	
+	if (client > 0) g_PlayerLastAgent[client] = now;
+	char proc[64]; GetStr("misc", "processing", proc, sizeof(proc), "Thinking...");
+	ReplyToCommand(client, proc);
 
-    // 1. Coleta contexto
-    char context[MAX_CTX];
-    BuildContext(context, sizeof(context), request, client);
+	char context[MAX_CTX];
+	BuildContext(context, sizeof(context), request, client);
 
-    // 2. Chama IA (com client ID para rate limit)
-    NVD_AskAI(context, 
-        "Você é um agente admin de CS:S. Use [CMD:comando] para ações ou [SAY:mensagem] para chat. Máx 2 linhas. PT-BR ou EN. Seja breve.", 
-        Agent_Callback, client, client);
-        
-    return Plugin_Handled;
+	char sysBase[1024], sysRules[1024], systemPrompt[2048];
+	GetStr("behavior", "system", sysBase, sizeof(sysBase), "You are the Admin AGENT. Map:[map].");
+	GetStr("behavior", "rules", sysRules, sizeof(sysRules), "FORMAT: [SAY:msg] [CMD:cmd].");
+	Format(systemPrompt, sizeof(systemPrompt), "%s %s", sysBase, sysRules);
+
+	NVD_AskAI(context, systemPrompt, INVALID_FUNCTION, client, client);
+	return Plugin_Handled;
 }
 
-// ============================================================================
-// CONSTRUÇÃO DO CONTEXTO
-// ============================================================================
 void BuildContext(char[] buffer, int maxlen, const char[] request, int client)
 {
-    int pos = 0;
-    char playerName[MAX_NAME_LENGTH];
-    
-    if (client > 0 && IsClientInGame(client))
-        GetClientName(client, playerName, sizeof(playerName));
-    else
-        playerName = "Console";
-    
-    // 1. Quem pediu
-    pos += Format(buffer[pos], maxlen - pos, "REQUESTER: %s\n", playerName);
-    
-    // 2. Lista de jogadores
-    pos += Format(buffer[pos], maxlen - pos, "PLAYERS:\n");
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (!IsClientInGame(i) || IsFakeClient(i)) continue;
-        
-        char name[MAX_NAME_LENGTH];
-        GetClientName(i, name, sizeof(name));
-        int team = GetClientTeam(i);
-        
-        char teamName[8];
-        if (team == 2) teamName = "T";
-        else if (team == 3) teamName = "CT";
-        else teamName = "SPEC";
-        
-        char isAdmin[12];
-        if (CheckCommandAccess(i, "sm_kick", ADMFLAG_KICK))
-            isAdmin = " [ADMIN]";
-        else
-            isAdmin = "";
-        
-        pos += Format(buffer[pos], maxlen - pos, "[%d] %s (%s)%s\n", i, name, teamName, isAdmin);
-    }
-    
-    // 3. Lista de mapas válidos
-    pos += Format(buffer[pos], maxlen - pos, "VALID MAPS: ");
-    for (int i = 0; i < g_MapCount; i++)
-    {
-        pos += Format(buffer[pos], maxlen - pos, "%s%s", i == 0 ? "" : ", ", g_MapList[i]);
-        if (pos >= maxlen - 60) break;
-    }
-    
-    // 4. Mapa atual
-    char currentMap[64];
-    GetCurrentMap(currentMap, sizeof(currentMap));
-    pos += Format(buffer[pos], maxlen - pos, "\nCURRENT: %s\n", currentMap);
-    
-    // 5. Comandos disponíveis para este jogador
-    pos += Format(buffer[pos], maxlen - pos, "AVAILABLE COMMANDS for %s:\n", playerName);
-    for (int i = 0; i < COMMAND_COUNT; i++)
-    {
-        bool canUse = false;
-        switch (g_CommandLevels[i])
-        {
-            case CmdLevel_All:   canUse = true;
-            case CmdLevel_Admin: canUse = client > 0 && CheckCommandAccess(client, g_CommandNames[i], ADMFLAG_KICK);
-            case CmdLevel_Root:  canUse = client > 0 && CheckCommandAccess(client, g_CommandNames[i], ADMFLAG_ROOT);
-        }
-        
-        if (canUse)
-            pos += Format(buffer[pos], maxlen - pos, "  - %s\n", g_CommandNames[i]);
-    }
-    
-    // 6. Conexões SSH ativas (se aplicável)
-    pos += Format(buffer[pos], maxlen - pos, "SSH TUNNELS: fermi-ollama (11434), fermi-webapp (8888)\n");
-    
-    // 7. Instruções finais
-    pos += Format(buffer[pos], maxlen - pos, "\nREQUEST: %s\n", request);
-    pos += Format(buffer[pos], maxlen - pos, "RULES:\n");
-    pos += Format(buffer[pos], maxlen - pos, "1. Use [CMD: <comando>] OU [SAY: <mensagem>].\n");
-    pos += Format(buffer[pos], maxlen - pos, "2. Só use comandos listados em AVAILABLE COMMANDS.\n");
-    pos += Format(buffer[pos], maxlen - pos, "3. Máximo 2 linhas.\n");
-    pos += Format(buffer[pos], maxlen - pos, "4. NUNCA invente comandos ou mapas.\n");
-    pos += Format(buffer[pos], maxlen - pos, "5. Responda no mesmo idioma do pedido.");
+	int pos = 0;
+	char name[32]; 
+	if (client > 0) GetClientName(client, name, sizeof(name));
+	else strcopy(name, sizeof(name), "RCON");
+	
+	pos += Format(buffer[pos], maxlen - pos, "User:%s\nPlayers:", name);
+	for (int i = 1; i <= MaxClients; i++) {
+		if (IsClientInGame(i) && !IsFakeClient(i)) {
+			char pName[20]; GetClientName(i, pName, sizeof(pName));
+			int team = GetClientTeam(i);
+			pos += Format(buffer[pos], maxlen - pos, "%d:%s(%s)%s ", i, pName, team==2?"T":"CT", CheckCommandAccess(i, "sm_kick", ADMFLAG_KICK)?"*":"");
+		}
+	}
+	
+	pos += Format(buffer[pos], maxlen - pos, "\nCmds:");
+	for (int i = 0; i < COMMAND_COUNT; i++) {
+		if (CheckCommandAccess(client, g_CommandNames[i], ADMFLAG_KICK)) {
+			pos += Format(buffer[pos], maxlen - pos, "%s,", g_CommandNames[i]);
+		}
+	}
+
+	pos += Format(buffer[pos], maxlen - pos, "\nReq:%s", request);
 }
 
-// ============================================================================
-// CALLBACK DA IA
-// ============================================================================
-public void Agent_Callback(const char[] response, any data)
+public Action Timer_PollResponses(Handle timer)
 {
-    int client = view_as<int>(data);
-    
-    if (!IsClientInGame(client) && client != 0)
-    {
-        // Print to server console if client disconnected
-        if (response[0] != '\0' && StrContains(response, "ERROR_") != 0)
-            PrintToServer("[AGENT] Response (client gone): %s", response);
-        return;
-    }
-
-    bool executed = false;
-    char line[256];
-    int len = strlen(response);
-    int start = 0;
-    
-    while (start < len)
-    {
-        int end = FindCharInString(response[start], '\n', false);
-        if (end == -1) end = strlen(response) - start;
-        
-        strcopy(line, sizeof(line), response[start]);
-        line[end] = '\0';
-        TrimString(line);
-        start += end + 1;
-        
-        if (line[0] == '\0') continue;
-        
-        // Extrai [SAY: ...]
-        if (StrContains(line, "[SAY:") == 0)
-        {
-            char msg[256];
-            int tagEnd = StrContains(line, "]");
-            if (tagEnd != -1)
-            {
-                strcopy(msg, sizeof(msg), line[tagEnd + 1]);
-                TrimString(msg);
-                if (msg[0] != '\0')
-                {
-                    PrintToChatAll("[\x04AGENT\x01] %s", msg);
-                    executed = true;
-                }
-            }
-        }
-        // Extrai [CMD: ...]
-        else if (StrContains(line, "[CMD:") == 0)
-        {
-            char cmd[256];
-            int tagEnd = StrContains(line, "]");
-            if (tagEnd != -1)
-            {
-                strcopy(cmd, sizeof(cmd), line[5]);
-                cmd[tagEnd - 5] = '\0';
-                TrimString(cmd);
-                
-                if (cmd[0] != '\0')
-                {
-                    char base[64];
-                    strcopy(base, sizeof(base), cmd);
-                    int space = StrContains(base, " ");
-                    if (space != -1) base[space] = '\0';
-                    
-                    // Verifica se o comando é permitido e usuário tem acesso
-                    int cmdIndex = -1;
-                    for (int i = 0; i < COMMAND_COUNT; i++)
-                    {
-                        if (StrEqual(base, g_CommandNames[i], false))
-                        {
-                            cmdIndex = i;
-                            break;
-                        }
-                    }
-                    
-                    if (cmdIndex == -1)
-                    {
-                        PrintToChat(client, "[\x04AGENT\x01] ❌ Comando não reconhecido: %s", base);
-                        continue;
-                    }
-                    
-                    // Verifica permissão
-                    bool hasPerm = false;
-                    switch (g_CommandLevels[cmdIndex])
-                    {
-                        case CmdLevel_All:   hasPerm = true;
-                        case CmdLevel_Admin: hasPerm = CheckCommandAccess(client, base, ADMFLAG_KICK);
-                        case CmdLevel_Root:  hasPerm = CheckCommandAccess(client, base, ADMFLAG_ROOT);
-                    }
-                    
-                    if (!hasPerm)
-                    {
-                        PrintToChat(client, "[\x04AGENT\x01] ❌ Sem permissão para: %s", base);
-                        continue;
-                    }
-                    
-                    // Força votação para comandos destrutivos
-                    char finalCmd[256];
-                    if (StrContains(cmd, "sm_kick") == 0)
-                        Format(finalCmd, sizeof(finalCmd), "sm_votekick %s", cmd[8]);
-                    else if (StrContains(cmd, "sm_ban") == 0)
-                        Format(finalCmd, sizeof(finalCmd), "sm_voteban %s", cmd[7]);
-                    else if (StrContains(cmd, "sm_map") == 0)
-                        Format(finalCmd, sizeof(finalCmd), "sm_votemap %s", cmd[7]);
-                    else
-                        strcopy(finalCmd, sizeof(finalCmd), cmd);
-
-                    LogAction(-1, -1, "[AGENT] %L executed: %s", client, finalCmd);
-                    PrintToChat(client, "[\x04AGENT\x01] ✅ Executando: %s", finalCmd);
-                    ServerCommand("%s", finalCmd);
-                    executed = true;
-                }
-            }
-        }
-    }
-    
-    // Fallback
-    if (!executed && response[0] != '\0')
-    {
-        if (StrContains(response, "ERROR_") != 0)
-            PrintToChat(client, "[\x04AGENT\x01] %s", response);
-        else
-            PrintToChat(client, "[\x04AGENT\x01] ❌ Erro: %s", response);
-    }
+	char reply[2048];
+	any data;
+	while (NVD_PollResponse(reply, sizeof(reply), data))
+	{
+		ProcessResponse(reply, data);
+	}
+	return Plugin_Continue;
 }
 
-// ============================================================================
-// UTILITÁRIOS
-// ============================================================================
+void ProcessResponse(const char[] response, any data)
+{
+	int client = view_as<int>(data);
+	if (client == 0) strcopy(g_LastRconResponse, sizeof(g_LastRconResponse), response);
+	if (client != 0 && !IsClientInGame(client)) return;
+
+	char line[256], unknownMsg[128], noAccMsg[128], execMsg[128];
+	GetStr("misc", "unknown_cmd", unknownMsg, sizeof(unknownMsg), "Unknown: %s");
+	GetStr("misc", "no_access", noAccMsg, sizeof(noAccMsg), "Denied: %s");
+	GetStr("misc", "executing", execMsg, sizeof(execMsg), "Executing: %s");
+
+	int start = 0, len = strlen(response);
+	while (start < len) {
+		int end = FindCharInString(response[start], '\n');
+		if (end == -1) end = strlen(response) - start;
+		strcopy(line, sizeof(line), response[start]);
+		line[end] = '\0'; TrimString(line);
+		start += end + 1;
+		if (!line[0]) continue;
+
+		if (StrContains(line, "[SAY:") == 0) {
+			char msg[256];
+			int tagEnd = StrContains(line, "]");
+			if (tagEnd != -1) {
+				strcopy(msg, sizeof(msg), line[5]);
+				msg[tagEnd - 5] = '\0'; TrimString(msg);
+				if (msg[0]) {
+					PrintToChatAll("[\x04AGENT\x01] %s", msg);
+					PrintToServer("[AGENT] 💬 Mensagem: %s", msg);
+				}
+			}
+		} else if (StrContains(line, "[CMD:") == 0) {
+			char cmd[256];
+			int tagEnd = StrContains(line, "]");
+			if (tagEnd != -1) {
+				strcopy(cmd, sizeof(cmd), line[5]);
+				cmd[tagEnd - 5] = '\0'; TrimString(cmd);
+				if (cmd[0]) {
+					PrintToServer("[AGENT] ⚡ Comando: %s", cmd);
+					char base[64]; strcopy(base, sizeof(base), cmd);
+					int sp = StrContains(base, " "); if (sp != -1) base[sp] = '\0';
+					
+					bool found = false;
+					for (int i=0; i<COMMAND_COUNT; i++) if (StrEqual(base, g_CommandNames[i], false)) { found = true; break; }
+					
+					if (!found) { ReplyToCommand(client, unknownMsg, base); continue; }
+					if (!CheckCommandAccess(client, base, ADMFLAG_KICK)) { ReplyToCommand(client, noAccMsg, base); continue; }
+					
+					ReplyToCommand(client, execMsg, cmd);
+					ServerCommand("%s", cmd);
+				}
+			}
+		}
+	}
+}
+
 void LoadValidMaps()
 {
-    g_MapCount = 0;
-    char path[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, path, sizeof(path), "configs/maplist.txt");
-    
-    File f = OpenFile(path, "r");
-    if (f == null)
-    {
-        static const char defaultMaps[][] = {
-            "de_dust2", "de_inferno", "de_nuke", "de_train", "de_tides", 
-            "cs_italy", "cs_office", "de_cbble", "de_aztec"
-        };
-        for (int i = 0; i < sizeof(defaultMaps); i++)
-        {
-            if (g_MapCount < MAX_MAPS)
-            {
-                strcopy(g_MapList[g_MapCount], 64, defaultMaps[i]);
-                g_MapCount++;
-            }
-        }
-        return;
-    }
-    
-    char line[64];
-    while (f.ReadLine(line, sizeof(line)) && g_MapCount < MAX_MAPS)
-    {
-        TrimString(line);
-        if (line[0] != '\0' && line[0] != '/' && line[1] != '/')
-        {
-            strcopy(g_MapList[g_MapCount], 64, line);
-            g_MapCount++;
-        }
-    }
-    delete f;
+	g_MapCount = 0;
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "configs/maplist.txt");
+	File f = OpenFile(path, "r");
+	if (f == null) return;
+	char line[64];
+	while (f.ReadLine(line, sizeof(line)) && g_MapCount < MAX_MAPS) {
+		TrimString(line);
+		if (line[0] != '\0' && line[0] != '/') strcopy(g_MapList[g_MapCount++], 64, line);
+	}
+	delete f;
 }
