@@ -13,7 +13,13 @@
  * @param priority     Interest score 0-100 (higher = more likely to be chosen)
  * @param eventType    Template event type for prompt, or "" for "default"
  */
-native void NVD_SubmitChatEvent(const char[] context, int preferredBot = -1, int priority = 50, const char[] eventType = "");
+native void NVD_SubmitChatEvent(const char[] context, int preferredBot = -1, int priority = 50, const char[] eventType = "", int enemies = 0, int allies = 0);
+
+/**
+ * Retrieves a cached AI response for a given bot and (enemies, allies) scenario.
+ * Returns true and fills the buffer if a cached response exists.
+ */
+native bool NVD_GetCachedResponse(int bot, int enemies, int allies, char[] buffer, int maxlen);
 
 public SharedPlugin __pl_nvd_bot_chat =
 {

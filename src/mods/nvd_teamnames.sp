@@ -218,7 +218,7 @@ void QueryOllama(const char[] team)
 	char sys[256] = "You are a Brazilian CS commentator. Generate 1 creative e-sports team name in Portuguese (max 20 chars). Return ONLY the name, no quotes or explanations.";
 
 	any teamData = StrEqual(team, "CT") ? 1 : 0;
-	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, 0, 300.0);
+	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, "", 0, 0.0);
 }
 
 public Action Timer_PollResponses(Handle timer)

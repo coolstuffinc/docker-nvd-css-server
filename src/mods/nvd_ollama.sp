@@ -43,18 +43,27 @@ enum struct PendingRequest
 {
 	Function callback;
 	any callbackData;
-	char ownerName[64]; // Nome do plugin para polling persistente
-	Handle plugin;     // Handle original para callbacks (apenas se for a mesma instância)
+	char ownerName[64];
+	Handle plugin;
 	char playerName[32];
 	int playerId;
 	float requestTime;
+	float timeout;
 	char retryUrl[256];
 	char retryBody[4096];
+	char prompt[256];
+	char response[512];
 	int retries;
 	bool inUse;
+
+	char origPrompt[512];
+	char origSystem[2048];
+	char origModel[64];
+	char origEndpoint[32];
+	char origHistory[2048];
 }
 
-#define MAX_PENDING 8
+#define MAX_PENDING 64
 PendingRequest g_PendingRequests[MAX_PENDING];
 
 // ── Rate Limiting ──
@@ -64,9 +73,22 @@ float g_PlayerLastRequest[MAXPLAYERS + 1];
 int g_PlayerRequestCount[MAXPLAYERS + 1];
 float g_WindowStart[MAXPLAYERS + 1];
 
+#define MAX_OLLAMA_HISTORY 10
+enum struct OllamaHistoryEntry
+{
+	char prompt[256];
+	char response[512];
+	char owner[64];
+	float duration;
+	bool success;
+}
+OllamaHistoryEntry g_OllamaHistory[MAX_OLLAMA_HISTORY];
+int g_OllamaHistoryIdx = 0;
+int g_OllamaHistoryCount = 0;
+
 HTTPClient g_HttpClient;
 ConVar g_IpCvar, g_PortCvar, g_ModelCvar, g_EndpointCvar, g_DebugCvar, g_DumpCvar;
-ConVar g_ConcurrencyCvar;
+ConVar g_ConcurrencyCvar, g_MaxPendingCvar, g_MaxRetriesCvar;
 char g_BaseUrl[256];
 
 // ── NOVA FILA DE REQUISIÇÕES ──
@@ -250,7 +272,9 @@ public void OnPluginStart()
 	g_EndpointCvar = CreateConVar("nvd_ollama_endpoint", "chat");
 	g_DebugCvar = CreateConVar("nvd_ollama_debug", "1");
 	g_DumpCvar = CreateConVar("nvd_ollama_dump", "1", "Dump full request JSON to logs/nvd_ollama_dump.jsonl");
-	g_ConcurrencyCvar = CreateConVar("nvd_ollama_concurrency", "2", "Max concurrent AI requests (1-8)");
+	g_ConcurrencyCvar = CreateConVar("nvd_ollama_concurrency", "1", "Max concurrent AI requests (Set to 1 for sequential)");
+	g_MaxPendingCvar = CreateConVar("nvd_ollama_max_pending", "16", "Max pending slot pool (4-64)");
+	g_MaxRetriesCvar = CreateConVar("nvd_ollama_max_retries", "10", "Max retries per request for 307 errors");
 
 	g_LangCvar = CreateConVar("nvd_language", "default", "Global language for all NVD plugins");
 	g_LangCvar.AddChangeHook(OnGlobalLanguageChanged);
@@ -258,6 +282,8 @@ public void OnPluginStart()
 	RegAdminCmd("sm_ollama_test", Command_OllamaTest, ADMFLAG_KICK);
 	RegAdminCmd("sm_ollama_status", Command_OllamaStatus, ADMFLAG_GENERIC);
 	RegAdminCmd("sm_ollama_reload", Command_OllamaReload, ADMFLAG_KICK);
+	RegAdminCmd("sm_ollama_history", Command_OllamaHistory, ADMFLAG_GENERIC);
+	RegAdminCmd("sm_llama_history", Command_OllamaHistory, ADMFLAG_GENERIC);
 
 	for (int i = 0; i < MAX_PENDING; i++)
 		g_PendingRequests[i].inUse = false;
@@ -265,6 +291,33 @@ public void OnPluginStart()
 	g_RequestQueue = new ArrayList();
 
 	CreateTimer(15.0, Timer_CleanupQueue, _, TIMER_REPEAT);
+	CreateTimer(5.0, Timer_CleanupStaleSlots, _, TIMER_REPEAT);
+}
+
+int GetMaxPending()
+{
+	int v = g_MaxPendingCvar.IntValue;
+	return (v < 4) ? 4 : (v > MAX_PENDING ? MAX_PENDING : v);
+}
+
+public Action Timer_CleanupStaleSlots(Handle timer)
+{
+	int maxSlots = GetMaxPending();
+	for (int i = 0; i < maxSlots; i++) {
+		if (!g_PendingRequests[i].inUse) continue;
+		float elapsed = GetGameTime() - g_PendingRequests[i].requestTime;
+		
+		// Global safety timeout (5 minutes) or per-request timeout
+		if (elapsed > 300.0 || (g_PendingRequests[i].timeout > 0.0 && elapsed >= g_PendingRequests[i].timeout)) {
+			PrintToServer("[NVD] ⏰ Slot %d timed out (%.0fs), freeing", i, elapsed);
+			strcopy(g_PendingRequests[i].response, 512, "TIMEOUT");
+			RecordOllamaHistory(i, false);
+			Function cb; any data; Handle plugin; char ownerName[64];
+			FreeSlot(i, cb, data, plugin, ownerName);
+			QueueResponse(ownerName, "ERROR_TIMEOUT", data);
+		}
+	}
+	return Plugin_Continue;
 }
 
 public void OnGlobalLanguageChanged(ConVar convar, const char[] oldVal, const char[] newVal)
@@ -400,23 +453,61 @@ public Action Command_OllamaTest(int client, int args)
 	return Plugin_Handled;
 }
 
+void RecordOllamaHistory(int slot, bool success)
+{
+	int idx = g_OllamaHistoryIdx;
+	strcopy(g_OllamaHistory[idx].prompt, sizeof(g_OllamaHistory[].prompt), g_PendingRequests[slot].prompt);
+	strcopy(g_OllamaHistory[idx].response, sizeof(g_OllamaHistory[].response), g_PendingRequests[slot].response);
+	strcopy(g_OllamaHistory[idx].owner, sizeof(g_OllamaHistory[].owner), g_PendingRequests[slot].ownerName);
+	g_OllamaHistory[idx].duration = GetGameTime() - g_PendingRequests[slot].requestTime;
+	g_OllamaHistory[idx].success = success;
+
+	g_OllamaHistoryIdx = (g_OllamaHistoryIdx + 1) % MAX_OLLAMA_HISTORY;
+	if (g_OllamaHistoryCount < MAX_OLLAMA_HISTORY) g_OllamaHistoryCount++;
+}
+
+public Action Command_OllamaHistory(int client, int args)
+{
+	ReplyToCommand(client, "[NVD] ═══ Ollama Request History (Last %d) ═══", g_OllamaHistoryCount);
+	if (g_OllamaHistoryCount == 0) {
+		ReplyToCommand(client, "[NVD] (empty)");
+		return Plugin_Handled;
+	}
+
+	for (int i = 0; i < g_OllamaHistoryCount; i++) {
+		int idx = (g_OllamaHistoryIdx - g_OllamaHistoryCount + i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
+		ReplyToCommand(client, "[NVD] #%d | %s | %s | %s", i + 1, g_OllamaHistory[idx].success ? "✅" : "❌", g_OllamaHistory[idx].owner, g_OllamaHistory[idx].prompt);
+		ReplyToCommand(client, "[NVD]     Res: %s", g_OllamaHistory[idx].response[0] ? g_OllamaHistory[idx].response : "(no response)");
+	}
+	return Plugin_Handled;
+}
+
 public Action Command_OllamaStatus(int client, int args)
 {
+	int maxSlots = GetMaxPending();
 	int used = 0;
-	for (int i = 0; i < MAX_PENDING; i++)
+	for (int i = 0; i < maxSlots; i++)
 		if (g_PendingRequests[i].inUse) used++;
 
 	ReplyToCommand(client, "[NVD] ═══ Ollama Status ═══");
 	char model[64]; g_ModelCvar.GetString(model, sizeof(model));
 	ReplyToCommand(client, "[NVD] Model: %s", model);
 	int respLen = (g_PendingResponses != null) ? g_PendingResponses.Length : 0;
-	ReplyToCommand(client, "[NVD] Queue: %d/%d active | %d waiting | %d pending", used, g_ConcurrencyCvar.IntValue, g_RequestQueue.Length, respLen);
+	ReplyToCommand(client, "[NVD] Queue: %d active (concurrency %d) | %d waiting | %d pending | pool %d/%d", used, g_ConcurrencyCvar.IntValue, g_RequestQueue.Length, respLen, maxSlots, MAX_PENDING);
+	for (int i = 0; i < maxSlots; i++) {
+		if (!g_PendingRequests[i].inUse) continue;
+		float elapsed = GetGameTime() - g_PendingRequests[i].requestTime;
+		char timeoutStr[8]; Format(timeoutStr, sizeof(timeoutStr), "%.0f", g_PendingRequests[i].timeout);
+		if (g_PendingRequests[i].timeout == 0.0) strcopy(timeoutStr, sizeof(timeoutStr), "∞");
+		ReplyToCommand(client, "[NVD] Slot %d: %s | retry %d | %.0fs/%s | prompt: %s | response: %s", i, g_PendingRequests[i].ownerName, g_PendingRequests[i].retries, elapsed, timeoutStr, g_PendingRequests[i].prompt, g_PendingRequests[i].response);
+	}
 	return Plugin_Handled;
 }
 
 public Action Command_OllamaReload(int client, int args)
 {
-	for (int i = 0; i < MAX_PENDING; i++)
+	int maxSlots = GetMaxPending();
+	for (int i = 0; i < maxSlots; i++)
 	{
 		if (g_PendingRequests[i].inUse)
 		{
@@ -489,6 +580,8 @@ public int Native_AskAI(Handle plugin, int numParams)
 	Function cb = GetNativeFunction(3);
 	any cbData = GetNativeCell(4);
 	if (numParams >= 5) GetNativeString(5, historyJSON, sizeof(historyJSON));
+	int priority = (numParams >= 6) ? GetNativeCell(6) : 0;
+	float timeout = (numParams >= 7) ? GetNativeCell(7) : 120.0;
 
 	char model[64], endpoint[32], ownerName[64];
 	g_ModelCvar.GetString(model, sizeof(model));
@@ -511,18 +604,30 @@ public int Native_AskAI(Handle plugin, int numParams)
 		pack.WriteString(endpoint);
 		pack.WriteString(ownerName);
 		pack.WriteString(historyJSON);
+		pack.WriteCell(priority);
+		pack.WriteFloat(timeout);
+		pack.WriteCell(0); // retries
+		pack.WriteFloat(GetGameTime()); // startTime
 		g_RequestQueue.Push(pack);
 		return 1;
 	}
 
 	int slot = AllocateSlot(cb, cbData, plugin, ownerName);
 	if (slot == -1) return 0;
-	SendRequest(slot, prompt, system, model, endpoint, historyJSON);
+	g_PendingRequests[slot].retries = 0;
+	g_PendingRequests[slot].requestTime = GetGameTime();
+	SendRequest(slot, prompt, system, model, endpoint, historyJSON, timeout);
 	return 1;
 }
 
-void SendRequest(int slot, const char[] prompt, const char[] system, const char[] model, const char[] endpoint, const char[] historyJSON = "")
+void SendRequest(int slot, const char[] prompt, const char[] system, const char[] model, const char[] endpoint, const char[] historyJSON = "", float timeout = 120.0)
 {
+	strcopy(g_PendingRequests[slot].origPrompt, 512, prompt);
+	strcopy(g_PendingRequests[slot].origSystem, 2048, system);
+	strcopy(g_PendingRequests[slot].origModel, 64, model);
+	strcopy(g_PendingRequests[slot].origEndpoint, 32, endpoint);
+	strcopy(g_PendingRequests[slot].origHistory, 2048, historyJSON);
+
 	char finalPrompt[1024], finalSystem[3072];
 	strcopy(finalPrompt, sizeof(finalPrompt), prompt);
 	strcopy(finalSystem, sizeof(finalSystem), system);
@@ -642,6 +747,10 @@ void SendRequest(int slot, const char[] prompt, const char[] system, const char[
 	payload.ToString(g_PendingRequests[slot].retryBody, sizeof(g_PendingRequests[slot].retryBody));
 	strcopy(g_PendingRequests[slot].retryUrl, sizeof(g_PendingRequests[slot].retryUrl), url);
 	g_PendingRequests[slot].retries = 0;
+	g_PendingRequests[slot].timeout = timeout;
+	g_PendingRequests[slot].requestTime = GetGameTime();
+	strcopy(g_PendingRequests[slot].prompt, sizeof(g_PendingRequests[slot].prompt), finalPrompt);
+	g_PendingRequests[slot].response[0] = '\0';
 
 	g_HttpClient.Post(url, payload, OnOllamaResponse, slot);
 	delete payload;
@@ -699,7 +808,8 @@ bool CheckRateLimit(int client)
 
 int AllocateSlot(Function cb, any data, Handle plugin, const char[] ownerName)
 {
-	for (int i = 0; i < MAX_PENDING; i++) if (!g_PendingRequests[i].inUse) {
+	int maxSlots = GetMaxPending();
+	for (int i = 0; i < maxSlots; i++) if (!g_PendingRequests[i].inUse) {
 		g_PendingRequests[i].callback = cb; g_PendingRequests[i].callbackData = data;
 		g_PendingRequests[i].plugin = plugin; g_PendingRequests[i].inUse = true;
 		strcopy(g_PendingRequests[i].ownerName, 64, ownerName);
@@ -711,7 +821,7 @@ int AllocateSlot(Function cb, any data, Handle plugin, const char[] ownerName)
 
 bool FreeSlot(int id, Function &cb, any &data, Handle &plugin, char[] ownerName)
 {
-	if (id < 0 || id >= MAX_PENDING || !g_PendingRequests[id].inUse) return false;
+	if (id < 0 || id >= GetMaxPending() || !g_PendingRequests[id].inUse) return false;
 	cb = g_PendingRequests[id].callback; data = g_PendingRequests[id].callbackData; 
 	plugin = g_PendingRequests[id].plugin;
 	strcopy(ownerName, 64, g_PendingRequests[id].ownerName);
@@ -723,18 +833,42 @@ bool FreeSlot(int id, Function &cb, any &data, Handle &plugin, char[] ownerName)
 void ProcessQueue()
 {
 	if (g_RequestQueue == null || g_RequestQueue.Length == 0) return;
-	int active = 0; for (int i = 0; i < MAX_PENDING; i++) if (g_PendingRequests[i].inUse) active++;
+	int maxSlots = GetMaxPending();
+	int active = 0; for (int i = 0; i < maxSlots; i++) if (g_PendingRequests[i].inUse) active++;
 	if (active < g_ConcurrencyCvar.IntValue) {
-		DataPack pack = view_as<DataPack>(g_RequestQueue.Get(0)); g_RequestQueue.Erase(0); pack.Reset();
-		Handle ownerPlugin = view_as<Handle>(pack.ReadCell()); Function cb = pack.ReadFunction(); any cbData = pack.ReadCell();
-		char prompt[512], system[2048], model[64], endpoint[32], ownerName[64], historyJSON[2048];
-		pack.ReadString(prompt, sizeof(prompt)); pack.ReadString(system, sizeof(system));
-		pack.ReadString(model, sizeof(model)); pack.ReadString(endpoint, sizeof(endpoint));
-		pack.ReadString(ownerName, sizeof(ownerName));
-		pack.ReadString(historyJSON, sizeof(historyJSON));
-		delete pack;
-		int slot = AllocateSlot(cb, cbData, ownerPlugin, ownerName);
-		if (slot != -1) SendRequest(slot, prompt, system, model, endpoint, historyJSON);
+	int bestIdx = -1; int bestPrio = -1;
+	for (int i = 0; i < g_RequestQueue.Length; i++) {
+		DataPack dp = view_as<DataPack>(g_RequestQueue.Get(i)); dp.Reset();
+		dp.ReadCell(); dp.ReadFunction(); dp.ReadCell(); // skip plugin, cb, cbData
+		char dummy[16]; dp.ReadString(dummy, sizeof(dummy)); // skip prompt
+		dp.ReadString(dummy, sizeof(dummy)); // skip system
+		dp.ReadString(dummy, sizeof(dummy)); // skip model
+		dp.ReadString(dummy, sizeof(dummy)); // skip endpoint
+		dp.ReadString(dummy, sizeof(dummy)); // skip ownerName
+		dp.ReadString(dummy, sizeof(dummy)); // skip historyJSON
+		int prio = (dp.ReadCell() > 0) ? 1 : 0;
+		if (prio > bestPrio) { bestPrio = prio; bestIdx = i; }
+	}
+	if (bestIdx == -1) bestIdx = 0;
+	DataPack pack = view_as<DataPack>(g_RequestQueue.Get(bestIdx)); g_RequestQueue.Erase(bestIdx); pack.Reset();
+	Handle ownerPlugin = view_as<Handle>(pack.ReadCell()); Function cb = pack.ReadFunction(); any cbData = pack.ReadCell();
+	char prompt[512], system[2048], model[64], endpoint[32], ownerName[64], historyJSON[2048];
+	pack.ReadString(prompt, sizeof(prompt)); pack.ReadString(system, sizeof(system));
+	pack.ReadString(model, sizeof(model)); pack.ReadString(endpoint, sizeof(endpoint));
+	pack.ReadString(ownerName, sizeof(ownerName));
+	pack.ReadString(historyJSON, sizeof(historyJSON));
+	pack.ReadCell(); // skip priority
+	float timeout = pack.ReadFloat();
+	int retries = pack.ReadCell();
+	float startTime = pack.ReadFloat();
+	delete pack;
+
+	int slot = AllocateSlot(cb, cbData, ownerPlugin, ownerName);
+	if (slot != -1) {
+		g_PendingRequests[slot].retries = retries;
+		g_PendingRequests[slot].requestTime = startTime;
+		SendRequest(slot, prompt, system, model, endpoint, historyJSON, timeout);
+	}
 	}
 }
 
@@ -766,6 +900,45 @@ public Action Timer_RetryRequest(Handle timer, DataPack pack)
 	return Plugin_Stop;
 }
 
+public Action Timer_RequeueRequest(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	Handle plugin = pack.ReadCell();
+	Function cb = pack.ReadFunction();
+	any cbData = pack.ReadCell();
+	char prompt[1024], system[3072], model[64], endpoint[32], ownerName[64], historyJSON[2048];
+	pack.ReadString(prompt, sizeof(prompt));
+	pack.ReadString(system, sizeof(system));
+	pack.ReadString(model, sizeof(model));
+	pack.ReadString(endpoint, sizeof(endpoint));
+	pack.ReadString(ownerName, sizeof(ownerName));
+	pack.ReadString(historyJSON, sizeof(historyJSON));
+	float timeout = pack.ReadFloat();
+	int retries = pack.ReadCell();
+	float startTime = pack.ReadFloat();
+	delete pack;
+
+	DataPack newPack = new DataPack();
+	newPack.WriteCell(plugin);
+	newPack.WriteFunction(cb);
+	newPack.WriteCell(cbData);
+	newPack.WriteString(prompt);
+	newPack.WriteString(system);
+	newPack.WriteString(model);
+	newPack.WriteString(endpoint);
+	newPack.WriteString(ownerName);
+	newPack.WriteString(historyJSON);
+	newPack.WriteCell(1); // priority high for retries
+	newPack.WriteFloat(timeout);
+	newPack.WriteCell(retries);
+	newPack.WriteFloat(startTime);
+	
+	g_RequestQueue.ShiftUp(0);
+	g_RequestQueue.Set(0, newPack);
+	ProcessQueue();
+	return Plugin_Stop;
+}
+
 public void OnOllamaResponse(HTTPResponse response, any slotId)
 {
 	if (slotId < 0 || slotId >= MAX_PENDING || !g_PendingRequests[slotId].inUse) return;
@@ -774,33 +947,58 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
 	PrintToServer("[NVD] Latency: %.2fs", latency);
 
 	if (view_as<int>(response.Status) == 307) {
-		if (g_PendingRequests[slotId].retries < 10) {
-			g_PendingRequests[slotId].retries++;
+		float elapsed = GetGameTime() - g_PendingRequests[slotId].requestTime;
+		if (g_PendingRequests[slotId].retries < g_MaxRetriesCvar.IntValue && (g_PendingRequests[slotId].timeout == 0.0 || elapsed < g_PendingRequests[slotId].timeout)) {
+			int retries = g_PendingRequests[slotId].retries + 1;
 			float delay = 6.0;
-			PrintToServer("[NVD] ⏳ Model loading (307), retry %d in %.0fs...", g_PendingRequests[slotId].retries, delay);
+			PrintToServer("[NVD] ⏳ Model loading (307), retry %d in %.0fs... (re-queueing)", retries, delay);
+
 			DataPack retryPack = new DataPack();
-			retryPack.WriteCell(slotId);
-			CreateTimer(delay, Timer_RetryRequest, retryPack);
+			retryPack.WriteString(g_PendingRequests[slotId].origPrompt);
+			retryPack.WriteString(g_PendingRequests[slotId].origSystem);
+			retryPack.WriteString(g_PendingRequests[slotId].origModel);
+			retryPack.WriteString(g_PendingRequests[slotId].origEndpoint);
+			retryPack.WriteString(g_PendingRequests[slotId].ownerName);
+			retryPack.WriteString(g_PendingRequests[slotId].origHistory);
+			retryPack.WriteCell(g_PendingRequests[slotId].plugin);
+			retryPack.WriteFunction(g_PendingRequests[slotId].callback);
+			retryPack.WriteCell(g_PendingRequests[slotId].callbackData);
+			retryPack.WriteFloat(g_PendingRequests[slotId].timeout);
+			retryPack.WriteCell(retries);
+			retryPack.WriteFloat(g_PendingRequests[slotId].requestTime); // Preserve original start time
+			
+			CreateTimer(delay, Timer_RequeueRequest, retryPack);
+
+			Function cb; any data; Handle plugin; char ownerName[64];
+			FreeSlot(slotId, cb, data, plugin, ownerName); // Free slot immediately so others can use it
+			return;
 		} else {
-			PrintToServer("[NVD] ❌ Model loading failed after 10 retries (Slot %d)", slotId);
+			PrintToServer("[NVD] ❌ Model loading failed after maximum retries (Slot %d)", slotId);
+			strcopy(g_PendingRequests[slotId].response, 512, "MAX_RETRIES_REACHED");
+			RecordOllamaHistory(slotId, false);
 			Function cb; any data; Handle plugin; char ownerName[64];
 			FreeSlot(slotId, cb, data, plugin, ownerName);
 			QueueResponse(ownerName, "ERROR_TIMEOUT", data);
+			return;
 		}
-		return;
 	}
 
-	Function cb; any data; Handle plugin; char ownerName[64];
-	if (!FreeSlot(slotId, cb, data, plugin, ownerName)) return;
-
 	if (response.Status != HTTPStatus_OK) { 
-		PrintToServer("[NVD] ❌ Ollama HTTP Error: %d (Slot %d, Plugin %s)", response.Status, slotId, ownerName);
+		PrintToServer("[NVD] ❌ Ollama HTTP Error: %d (Slot %d, Plugin %s)", response.Status, slotId, g_PendingRequests[slotId].ownerName);
+		strcopy(g_PendingRequests[slotId].response, 512, "HTTP_ERROR");
+		RecordOllamaHistory(slotId, false);
+		Function cb; any data; Handle plugin; char ownerName[64];
+		FreeSlot(slotId, cb, data, plugin, ownerName);
 		QueueResponse(ownerName, "ERROR_HTTP", data); 
 		return; 
 	}
 	JSONObject json = view_as<JSONObject>(response.Data);
 	if (json == null) {
-		PrintToServer("[NVD] ❌ Ollama Error: Invalid JSON response (Plugin %s)", ownerName);
+		PrintToServer("[NVD] ❌ Ollama Error: Invalid JSON response (Plugin %s)", g_PendingRequests[slotId].ownerName);
+		strcopy(g_PendingRequests[slotId].response, 512, "JSON_ERROR");
+		RecordOllamaHistory(slotId, false);
+		Function cb; any data; Handle plugin; char ownerName[64];
+		FreeSlot(slotId, cb, data, plugin, ownerName);
 		QueueResponse(ownerName, "ERROR_JSON", data);
 		return;
 	}
@@ -838,6 +1036,13 @@ public void OnOllamaResponse(HTTPResponse response, any slotId)
 		}
 	}
 	delete json;
+
+	strcopy(g_PendingRequests[slotId].response, 512, reply);
+	RecordOllamaHistory(slotId, reply[0] != '\0');
+
+	Function cb; any data; Handle plugin; char ownerName[64];
+	if (!FreeSlot(slotId, cb, data, plugin, ownerName)) return;
+
 	if (!reply[0]) return;
 	if (cb != INVALID_FUNCTION)
 	{

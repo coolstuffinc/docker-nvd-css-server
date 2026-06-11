@@ -91,6 +91,7 @@
         "round_end_user"	"Trash talk about the round result."
         "bomb_planted_user"	"Trash talk about planting the bomb."
         "bomb_defused_user"	"Trash talk about defusing the bomb."
+        "enemies_left_user"	"React to |enemies| enemies remaining, |allies| allies alive."
         "default_user"	"React trash talk to |event|. |state| |mood|."
     }
     "misc"

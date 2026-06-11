@@ -1,7 +1,10 @@
-#define VERSION "1.1"
+#define VERSION "2.0"
 #include <sourcemod>
 #include <cstrike>
 #include <sdktools>
+#undef REQUIRE_PLUGIN
+#include <nvd_bot_chat>
+#define REQUIRE_PLUGIN
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -9,13 +12,14 @@
 public Plugin myinfo = {
   name = "Enemies left",
   author = "Axel Juan Nieves",
-  description = "Bots call out remaining enemies via chat",
+  description = "Bots call out remaining enemies via AI chat with fallback",
   version = VERSION
 };
 
 ConVar g_CvarChat;
 ConVar g_CvarRadio;
 ConVar g_CvarBlind;
+bool g_NvdAvailable;
 
 public void OnPluginStart()
 {
@@ -24,6 +28,7 @@ public void OnPluginStart()
   g_CvarRadio = CreateConVar("sm_eleft_radio", "1", "Executes radio command on kill (contextual by remaining enemies).");
   g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you.");
   CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
+  g_NvdAvailable = (GetFeatureStatus(FeatureType_Native, "NVD_SubmitChatEvent") == FeatureStatus_Available);
 
   HookEvent("player_death", Event_PlayerDeath);
   HookEvent("player_blind", OnPlayerBlind);
@@ -37,6 +42,33 @@ int FindBotOnTeam(int team)
       return i;
   }
   return -1;
+}
+
+void SayEnemiesFallback(int bot, int enemies)
+{
+  char msg[64];
+  if (enemies > 2)
+    Format(msg, sizeof(msg), "say_team %T", "CountMany", LANG_SERVER, enemies);
+  else if (enemies == 2)
+    Format(msg, sizeof(msg), "say_team %T", "Count2", LANG_SERVER);
+  else if (enemies == 1)
+    Format(msg, sizeof(msg), "say_team %T", "Count1", LANG_SERVER);
+  else
+    Format(msg, sizeof(msg), "say_team %T", "Count0", LANG_SERVER);
+  FakeClientCommand(bot, msg);
+}
+
+void SayTeammateFallback(int bot, int allies)
+{
+  char msg[64];
+  if (allies > 2)
+    Format(msg, sizeof(msg), "say_team %T", "VictimMany", LANG_SERVER, allies);
+  else if (allies == 2)
+    Format(msg, sizeof(msg), "say_team %T", "Victim2", LANG_SERVER);
+  else if (allies == 1)
+    Format(msg, sizeof(msg), "say_team %T", "Victim1", LANG_SERVER);
+  if (allies > 0)
+    FakeClientCommand(bot, msg);
 }
 
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -54,27 +86,24 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
   if (victimTeam != attackerTeam)
   {
-    int iAttackerSideAlive = 0;
-    int iVictimSideAlive = 0;
+    int alliesCount = 0;
+    int enemiesCount = 0;
     for (int i = 1; i <= MaxClients; i++)
     {
       if (!IsClientInGame(i) || !IsPlayerAlive(i))
         continue;
       int team = GetClientTeam(i);
       if (team == attackerTeam)
-        iAttackerSideAlive++;
+        alliesCount++;
       else if (team == victimTeam)
-        iVictimSideAlive++;
+        enemiesCount++;
     }
-    // iVictimSideAlive = how many enemies the attacker's team still faces
-    // iAttackerSideAlive = how many enemies the victim's team still faces
 
     if (g_CvarRadio.BoolValue)
     {
-      int enemiesForAttacker = iVictimSideAlive;
-      if (enemiesForAttacker <= 1)
+      if (enemiesCount <= 1)
         FakeClientCommand(attackerClient, "sectorclear");
-      else if (enemiesForAttacker == 2)
+      else if (enemiesCount == 2)
         FakeClientCommand(attackerClient, "enemydown");
       else
         FakeClientCommand(attackerClient, "needbackup");
@@ -83,36 +112,57 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     if (g_CvarChat.BoolValue)
     {
       int attackerBot = FindBotOnTeam(attackerTeam);
-      int victimBot = FindBotOnTeam(victimTeam);
-      char msg[64];
-
       if (attackerBot != -1)
       {
-        int n = iVictimSideAlive;
-        if (n > 2)
-          Format(msg, sizeof(msg), "say_team %T", "CountMany", LANG_SERVER, n);
-        else if (n == 2)
-          Format(msg, sizeof(msg), "say_team %T", "Count2", LANG_SERVER);
-        else if (n == 1)
-          Format(msg, sizeof(msg), "say_team %T", "Count1", LANG_SERVER);
-        else
-          Format(msg, sizeof(msg), "say_team %T", "Count0", LANG_SERVER);
-        FakeClientCommand(attackerBot, msg);
+        bool used = false;
+        if (g_NvdAvailable)
+        {
+          char cached[320];
+          if (NVD_GetCachedResponse(attackerBot, enemiesCount, alliesCount, cached, sizeof(cached)) && cached[0])
+          {
+            char clean[320]; strcopy(clean, sizeof(clean), cached);
+            ReplaceString(clean, 320, "\"", ""); ReplaceString(clean, 320, "[", ""); ReplaceString(clean, 320, "]", ""); TrimString(clean);
+            if (clean[0]) { FakeClientCommand(attackerBot, "say %s", clean); used = true; }
+          }
+        }
+        if (!used)
+        {
+          SayEnemiesFallback(attackerBot, enemiesCount);
+          if (g_NvdAvailable)
+          {
+            char context[128];
+            Format(context, sizeof(context), "%d enemies remaining, %d allies alive", enemiesCount, alliesCount);
+            NVD_SubmitChatEvent(context, attackerBot, 40, "enemies_left", enemiesCount, alliesCount);
+          }
+        }
       }
 
+      int victimBot = FindBotOnTeam(victimTeam);
       if (victimBot != -1)
       {
-        int n = iVictimSideAlive; // Conta quantos sobraram no PRÓPRIO time da vítima
-        if (n > 2)
-          Format(msg, sizeof(msg), "say_team %T", "VictimMany", LANG_SERVER, n);
-        else if (n == 2)
-          Format(msg, sizeof(msg), "say_team %T", "Victim2", LANG_SERVER);
-        else if (n == 1)
-          Format(msg, sizeof(msg), "say_team %T", "Victim1", LANG_SERVER);
-        
-        // Se n == 0, o próprio bot estaria morto e não passaria na checagem do FindBotOnTeam (IsPlayerAlive)
-        if (n > 0)
-          FakeClientCommand(victimBot, msg);
+        int vEnemies = alliesCount;
+        int vAllies = enemiesCount;
+        bool used = false;
+        if (g_NvdAvailable)
+        {
+          char cached[320];
+          if (NVD_GetCachedResponse(victimBot, vEnemies, vAllies, cached, sizeof(cached)) && cached[0])
+          {
+            char clean[320]; strcopy(clean, sizeof(clean), cached);
+            ReplaceString(clean, 320, "\"", ""); ReplaceString(clean, 320, "[", ""); ReplaceString(clean, 320, "]", ""); TrimString(clean);
+            if (clean[0]) { FakeClientCommand(victimBot, "say %s", clean); used = true; }
+          }
+        }
+        if (!used)
+        {
+          SayTeammateFallback(victimBot, vAllies);
+          if (g_NvdAvailable)
+          {
+            char context[128];
+            Format(context, sizeof(context), "%d enemies remaining, %d allies alive", vEnemies, vAllies);
+            NVD_SubmitChatEvent(context, victimBot, 35, "enemies_left", vEnemies, vAllies);
+          }
+        }
       }
     }
   }	

@@ -79,10 +79,13 @@ reload:
 	@uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "sm plugins reload nvd_ollama" || true
 	@for mod in $(MODS); do \
 		name=$$(basename $$mod .sp); \
-		if [ "$$name" = "nvd_ollama" ]; then continue; fi; \
+		if [ "$$name" = "nvd_ollama" ] || [ "$$name" = "enemies_left" ]; then continue; fi; \
 		echo "Reloading $$name..."; \
 		uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "sm plugins reload $$name" || true; \
 	done
+	@echo "Reloading enemies_left last (depends on nvd_bot_chat)..."
+	@uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "sm plugins unload enemies_left; sm plugins load enemies_left" || true
+	@uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "sm plugins unload nvd_teamnames; sm plugins load nvd_teamnames" || true
 
 # Atalho para o fluxo completo
 mods: compile deploy reload

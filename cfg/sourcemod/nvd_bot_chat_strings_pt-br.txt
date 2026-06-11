@@ -73,6 +73,7 @@
         "round_end_user"	"Zoeira sobre o resultado do round."
         "bomb_planted_user"	"Zoeira por plantar a bomba."
         "bomb_defused_user"	"Zoeira por desarmar a bomba."
+        "enemies_left_user"	"Reagir a |enemies| inimigos restantes, |allies| aliados vivos."
         "default_user"	"Zoeira sobre |event|. |state| |mood|."
     }
     "funfacts"

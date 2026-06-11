@@ -127,7 +127,7 @@ public Action Command_Agent(int client, int args)
 	GetStr("behavior", "rules", sysRules, sizeof(sysRules), "FORMAT: [SAY:msg] [CMD:cmd].");
 	Format(systemPrompt, sizeof(systemPrompt), "%s %s", sysBase, sysRules);
 
-	NVD_AskAI(context, systemPrompt, INVALID_FUNCTION, client, client);
+	NVD_AskAI(context, systemPrompt, INVALID_FUNCTION, client);
 	return Plugin_Handled;
 }
 

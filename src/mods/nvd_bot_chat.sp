@@ -10,9 +10,24 @@
 
 ConVar g_CvarEnabled;
 ConVar g_CvarCooldown;
+ConVar g_CvarTimeout;
 KeyValues g_PromptKV = null;
 KeyValues g_PersonalityKV = null;
 KeyValues g_GameKV = null;
+
+enum struct BotCacheEntry {
+    int enemies;
+    int allies;
+    char response[320];
+    bool valid;
+}
+enum struct BotCache {
+    BotCacheEntry entries[30];
+    int count;
+}
+BotCache g_BotCache[MAXPLAYERS + 1];
+int g_LastEnemies[MAXPLAYERS + 1];
+int g_LastAllies[MAXPLAYERS + 1];
 
 float g_LastBotChat;
 Handle g_RoundStartTimer;
@@ -52,6 +67,7 @@ public Plugin myinfo =
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	CreateNative("NVD_SubmitChatEvent", Native_SubmitChatEvent);
+	CreateNative("NVD_GetCachedResponse", Native_GetCachedResponse);
 	RegPluginLibrary("nvd_bot_chat");
 	return APLRes_Success;
 }
@@ -67,6 +83,7 @@ public void OnPluginStart()
 {
 	g_CvarEnabled = CreateConVar("nvd_bot_chat", "1", "Enable AI bot chat messages");
 	g_CvarCooldown = CreateConVar("nvd_bot_chat_cooldown", "12.0", "Min seconds between bot messages");
+	g_CvarTimeout = CreateConVar("nvd_bot_chat_timeout", "120.0", "Max seconds to wait for AI response before giving up");
 	
 	AutoExecConfig(true, "nvd_bot_chat");
 
@@ -87,6 +104,9 @@ public void OnPluginStart()
 	
 	// Comando para recarregar templates
 	RegAdminCmd("sm_botchat_reload", Command_ReloadPrompts, ADMFLAG_GENERIC);
+	RegAdminCmd("sm_botchat_history", Command_BotChatHistory, ADMFLAG_GENERIC);
+
+	// Comando para recarregar templates
 }
 
 public Action Timer_DelayedReRegister(Handle timer)
@@ -102,7 +122,7 @@ public void OnMapStart()
 	g_CurrentRound = 0;
 	g_BombPlanted = 0.0;
 
-	for (int i = 1; i <= MaxClients; i++) { g_BotKills[i] = 0; g_BotDeaths[i] = 0; }
+	for (int i = 1; i <= MaxClients; i++) { g_BotKills[i] = 0; g_BotDeaths[i] = 0; g_BotCache[i].count = 0; g_LastEnemies[i] = 0; g_LastAllies[i] = 0; }
 	g_HistIdx = 0; g_HistCount = 0;
 
 	delete g_GameKV;
@@ -170,6 +190,20 @@ public Action Command_ReloadPrompts(int client, int args)
     NVD_RegisterStrings("nvd_bot_chat");
     LoadMetaFromStrings();
     ReplyToCommand(client, "[BOT_CHAT] +- Prompts and strings reloaded");
+    return Plugin_Handled;
+}
+
+public Action Command_BotChatHistory(int client, int args)
+{
+    ReplyToCommand(client, "[BOT_CHAT] ═══ History (last %d) ═══", g_HistCount);
+    if (g_HistCount == 0) { ReplyToCommand(client, "[BOT_CHAT] (empty)"); return Plugin_Handled; }
+    int take = g_HistCount > 8 ? 8 : g_HistCount;
+    int start = (g_HistIdx - take + MAX_HISTORY_ENTRIES) % MAX_HISTORY_ENTRIES;
+    for (int i = 0; i < take; i++) {
+        int idx = (start + i) % MAX_HISTORY_ENTRIES;
+        if (g_History[idx].content[0] == '\0') continue;
+        ReplyToCommand(client, "[BOT_CHAT] %s: %s", g_History[idx].role, g_History[idx].content);
+    }
     return Plugin_Handled;
 }
 
@@ -526,12 +560,29 @@ public int Native_SubmitChatEvent(Handle plugin, int numParams)
 	int bot = GetNativeCell(2);
 	int priority = GetNativeCell(3);
 	GetNativeString(4, eventType, sizeof(eventType));
+	int enemies = (numParams >= 5) ? GetNativeCell(5) : 0;
+	int allies = (numParams >= 6) ? GetNativeCell(6) : 0;
 	if (!eventType[0]) strcopy(eventType, sizeof(eventType), "default");
 	if (!RollInterest(priority > 0 ? priority : IntBase_External)) return 0;
-	if (!CanBotChat()) return 0;
-	GameEvent ev; strcopy(ev.context, sizeof(ev.context), context); ev.preferredBot = bot; strcopy(ev.eventType, sizeof(ev.eventType), eventType);
+	if (!StrEqual(eventType, "enemies_left") && !CanBotChat()) return 0;
+	GameEvent ev; strcopy(ev.context, sizeof(ev.context), context); ev.preferredBot = bot; strcopy(ev.eventType, sizeof(ev.eventType), eventType); ev.enemies = enemies; ev.allies = allies;
 	AskBotChat(ev);
 	return 1;
+}
+
+public int Native_GetCachedResponse(Handle plugin, int numParams)
+{
+	int bot = GetNativeCell(1);
+	int enemies = GetNativeCell(2);
+	int allies = GetNativeCell(3);
+	if (bot < 1 || bot > MaxClients) return false;
+	for (int i = 0; i < g_BotCache[bot].count; i++) {
+		if (g_BotCache[bot].entries[i].enemies == enemies && g_BotCache[bot].entries[i].allies == allies) {
+			SetNativeString(4, g_BotCache[bot].entries[i].response, GetNativeCell(5));
+			return true;
+		}
+	}
+	return false;
 }
 
 // ── Timeline History for multi-turn API ──
@@ -541,6 +592,8 @@ enum struct GameEvent {
     char eventType[32];
     char weapon[32];
     char targetName[32];
+    int enemies;
+    int allies;
 }
 void RecordEvent(const char[] description)
 {
@@ -658,12 +711,22 @@ void AskBotChat(GameEvent ev) {
     ReplaceString(sysP, sizeof(sysP), "|kills|", kStr);
     ReplaceString(sysP, sizeof(sysP), "|deaths|", dStr);
 
+    char eStr[8];
+    IntToString(ev.enemies, eStr, sizeof(eStr));
+    ReplaceString(sysP, sizeof(sysP), "|enemies|", eStr);
+
+    char aStr[8];
+    IntToString(ev.allies, aStr, sizeof(aStr));
+    ReplaceString(sysP, sizeof(sysP), "|allies|", aStr);
+
     ReplaceString(sysP, sizeof(sysP), "  ", " ");
     ReplaceString(sysP, sizeof(sysP), " .", ".");
     ReplaceString(sysP, sizeof(sysP), "..", ".");
 
     if (!GetPromptTemplate(type, "user", fullP, sizeof(fullP), bName, bTeam, target, sS, ev.context, "", g_CurrentRound, tS, ctS))
         Format(fullP, sizeof(fullP), "Speak as %s about %s", bName, ev.context);
+    ReplaceString(fullP, sizeof(fullP), "|enemies|", eStr);
+    ReplaceString(fullP, sizeof(fullP), "|allies|", aStr);
     ReplaceString(fullP, sizeof(fullP), "  ", " ");
     ReplaceString(fullP, sizeof(fullP), ". .", ".");
     ReplaceString(fullP, sizeof(fullP), " .", ".");
@@ -680,10 +743,39 @@ void AskBotChat(GameEvent ev) {
     char parts[3][32]; int n = ExplodeString(catchphrase, ";", parts, 3, 32);
     for (int i = 0; i < n; i++) { TrimString(parts[i]); if (parts[i][0]) { if (i > 0) StrCat(cpFormatted, sizeof(cpFormatted), " "); Format(cpFormatted, sizeof(cpFormatted), "%s\"%s\"", cpFormatted, parts[i]); } }
     ReplaceString(sysP, sizeof(sysP), "|catchphrase|", cpFormatted);
+
+    int cachedIdx = -1;
+    for (int i = 0; i < g_BotCache[bot].count; i++) {
+        if (g_BotCache[bot].entries[i].enemies == ev.enemies && g_BotCache[bot].entries[i].allies == ev.allies) {
+            cachedIdx = i;
+            break;
+        }
+    }
+    if (cachedIdx != -1)
+    {
+        char clean[320];
+        strcopy(clean, sizeof(clean), g_BotCache[bot].entries[cachedIdx].response);
+        ReplaceString(clean, 320, "\"", ""); ReplaceString(clean, 320, "[", ""); ReplaceString(clean, 320, "]", ""); TrimString(clean);
+        if (clean[0])
+        {
+            if (strlen(clean) > 180) clean[180] = '\0';
+            FakeClientCommand(bot, "say %s", clean); g_LastBotChat = GetGameTime();
+            RecordBotMessage(bName, clean);
+            char ts[32]; FormatTime(ts, sizeof(ts), "%H:%M:%S");
+            PrintToServer("[BOT_CHAT] [%s] ✅ Cached: [BOT %s] %s", ts, bName, clean);
+            RecordEvent(ev.context);
+            return;
+        }
+    }
+
     char historyBlock[1024];
     BuildHistoryBlock(historyBlock, sizeof(historyBlock), catchphrase, bName);
 
-    NVD_AskAI(fullP, sysP, INVALID_FUNCTION, bot, historyBlock);
+    g_LastEnemies[bot] = ev.enemies;
+    g_LastAllies[bot] = ev.allies;
+    int prio = StrEqual(type, "enemies_left") ? 0 : 1;
+    float timeout = StrEqual(type, "enemies_left") ? 0.0 : g_CvarTimeout.FloatValue;
+    NVD_AskAI(fullP, sysP, INVALID_FUNCTION, bot, historyBlock, prio, timeout);
     strcopy(g_LastEventType[bot], 32, type); strcopy(g_LastSysPrompt[bot], 1024, sysP); strcopy(g_LastUserPrompt[bot], 1024, fullP); g_LastAskTime[bot] = GetGameTime();
     RecordEvent(ev.context);
 }
@@ -692,16 +784,38 @@ public Action Timer_PollResponses(Handle timer) { PollBotResponses(); return Plu
 void PollBotResponses() {
     char reply[2048]; any bot; char ts[32]; FormatTime(ts, sizeof(ts), "%H:%M:%S");
     while (NVD_PollResponse(reply, sizeof(reply), bot)) {
-        if (StrContains(reply, "ERROR_") != -1 || !reply[0]) continue;
         if (bot == 0 || !IsClientInGame(bot) || !IsFakeClient(bot)) {
             int aB[MAXPLAYERS+1], aBC = 0;
             for (int i=1; i<=MaxClients; i++) if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i)) aB[aBC++] = i;
             if (!aBC) continue; bot = aB[GetRandomInt(0, aBC-1)];
         }
+        if (StrContains(reply, "ERROR_") != -1 || !reply[0]) {
+            if (g_BotCache[bot].count > 0) {
+                int ci = g_BotCache[bot].count - 1;
+                strcopy(reply, sizeof(reply), g_BotCache[bot].entries[ci].response);
+            } else {
+                continue;
+            }
+        }
         char bName[32], clean[320]; GetClientName(bot, bName, sizeof(bName)); strcopy(clean, sizeof(clean), reply);
         PrintToServer("[NVD_DEBUG] PollBotResponses: Bot %s, Reply: %s", bName, clean);
         ReplaceString(clean, 320, "\"", ""); ReplaceString(clean, 320, "[", ""); ReplaceString(clean, 320, "]", ""); TrimString(clean);
-        if (!clean[0]) continue;
+        if (!clean[0]) {
+            if (g_BotCache[bot].count > 0) {
+                int ci = g_BotCache[bot].count - 1;
+                strcopy(clean, sizeof(clean), g_BotCache[bot].entries[ci].response);
+            } else {
+                continue;
+            }
+        }
+        if (g_BotCache[bot].count < 30) {
+            int ci = g_BotCache[bot].count;
+            strcopy(g_BotCache[bot].entries[ci].response, sizeof(g_BotCache[bot].entries[ci].response), clean);
+            g_BotCache[bot].entries[ci].enemies = g_LastEnemies[bot];
+            g_BotCache[bot].entries[ci].allies = g_LastAllies[bot];
+            g_BotCache[bot].entries[ci].valid = true;
+            g_BotCache[bot].count++;
+        }
         if (strlen(clean) > 180) clean[180] = '\0';
         FakeClientCommand(bot, "say %s", clean); g_LastBotChat = GetGameTime();
         RecordBotMessage(bName, clean);
