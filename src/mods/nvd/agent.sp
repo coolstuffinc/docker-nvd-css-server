@@ -1,5 +1,6 @@
 #include <sourcemod>
-#include <nvd_core>
+#include <nvd/core>
+#include <nvd/strings>
 #include <sdktools>
 
 #pragma semicolon 1

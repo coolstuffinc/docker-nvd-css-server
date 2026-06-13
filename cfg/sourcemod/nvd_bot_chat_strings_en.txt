@@ -1,0 +1,23 @@
+"BotChatStrings"
+{
+    "prompts"
+    {
+        "system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: easy |target| EX: lets go"
+        "kill_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: easy |target| EX: |target| free"
+        "kill_user"	"Killed |target| with |weapon|. |state|"
+        "death_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: |target| lucky EX: lag"
+        "death_user"	"Died to |target| with |weapon|. |state|"
+        "round_start_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: lets go EX: ez"
+        "round_start_user"	"Round |round|. |state|"
+        "round_end_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: ez EX: too easy"
+        "round_end_user"	"Round ended. |state|"
+        "bomb_planted_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: bomb down EX: planted"
+        "bomb_planted_user"	"Planted bomb. |state|"
+        "bomb_defused_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: defused EX: too slow"
+        "bomb_defused_user"	"Defused bomb. |state|"
+        "enemies_left_system"	"|bot| from |team|. |rules| |critical| EX: 3 left EX: 2 alive EX: 1 remains"
+        "enemies_left_user"	"Report numbers: |enemies| enemies, |allies| allies. (Previous: |event|)"
+        "default_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: lets go"
+        "default_user"	"|event|. |state|"
+    }
+}

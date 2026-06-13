@@ -1,0 +1,80 @@
+"BotChatPrompts"
+{
+    "_meta"
+    {
+        "rules" "No meta. No self-name. No quotes. Max 10 words."
+        "critical" "Short phrase only."
+    }
+
+    "weapons"
+    {
+        "ak47"      { "name" "AK" }
+        "m4a1"      { "name" "M4" }
+        "awp"       { "name" "AWP" }
+        "deagle"    { "name" "deagle" }
+        "glock"     { "name" "glock" }
+        "usp"       { "name" "usp" }
+        "p228"      { "name" "p228" }
+        "hegrenade" { "name" "nade" }
+        "flashbang" { "name" "flash" }
+        "smokegrenade" { "name" "smoke" }
+        "knife"     { "name" "knife" }
+        "scout"     { "name" "scout" }
+        "sg552"     { "name" "SG" }
+        "aug"       { "name" "AUG" }
+        "famas"     { "name" "famas" }
+        "galil"     { "name" "galil" }
+        "m249"      { "name" "M249" }
+        "tmp"       { "name" "TMP" }
+        "mac10"     { "name" "MAC10" }
+        "ump45"     { "name" "UMP" }
+        "mp5navy"   { "name" "MP5" }
+        "p90"       { "name" "P90" }
+        "m3"        { "name" "shotgun" }
+        "xm1014"    { "name" "auto-shotgun" }
+        "g3sg1"     { "name" "G3" }
+        "sg550"     { "name" "SG550" }
+        "elite"     { "name" "dual-elite" }
+    }
+
+    "kill"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: easy |target| EX: |target| free"
+        "user" "Killed |target| with |weapon|. |state|"
+    }
+    "death"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: |target| lucky EX: lag"
+        "user" "Died to |target| with |weapon|. |state|"
+    }
+    "round_start"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: lets go EX: ez"
+        "user" "Round |round|. |state|"
+    }
+    "round_end"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: ez EX: too easy"
+        "user" "Round ended. |state|"
+    }
+    "bomb_planted"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: bomb down EX: planted"
+        "user" "Planted bomb. |state|"
+    }
+    "bomb_defused"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: defused EX: too slow"
+        "user" "Defused bomb. |state|"
+    }
+    "enemies_left"
+    {
+        "system" "|bot| from |team|. |rules| |critical| EX: 3 left EX: 2 alive EX: 1 remains"
+        "user" "Report numbers: |enemies| enemies, |allies| allies. (Previous: |event|)"
+    }
+    "default"
+    {
+        "system" "|bot| |team|. |personality|. |catchphrase|. |rules| |critical| EX: lets go"
+        "user" "|event|. |state|"
+    }
+}

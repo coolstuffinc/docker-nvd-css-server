@@ -1,12 +1,16 @@
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
-#include <nvd_core>
+#include <ripext>
+#include <nvd/core>
+#include <nvd/strings>
+#include <nvd/utils>
 
 #pragma semicolon 1
 #pragma newdecls required
 
 #define CHAT_COOLDOWN 12.0
+#define CONTEXT_PACK_VERSION 1
 
 ConVar g_CvarEnabled;
 ConVar g_CvarCooldown;
@@ -68,6 +72,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 {
 	CreateNative("NVD_SubmitChatEvent", Native_SubmitChatEvent);
 	CreateNative("NVD_GetCachedResponse", Native_GetCachedResponse);
+	CreateNative("NVD_BuildPrompts", Native_BuildPrompts);
 	RegPluginLibrary("nvd_bot_chat");
 	return APLRes_Success;
 }
@@ -221,31 +226,41 @@ bool GetPromptTemplate(const char[] eventType, const char[] promptType,
 {
     char template[2048];
     char langKey[64];
-    if (StrEqual(promptType, "system"))
-        strcopy(langKey, sizeof(langKey), "system");
-    else
-        Format(langKey, sizeof(langKey), "%s_%s", eventType, promptType);
-    GetStr("prompts", langKey, template, sizeof(template), "");
+    Format(langKey, sizeof(langKey), "%s_%s", eventType, promptType);
+    GetStr("prompts", langKey, template, sizeof(template));
+
+    // Fallback to global system if event-specific system is missing
+    if (template[0] == '\0' && StrEqual(promptType, "system"))
+    {
+        GetStr("prompts", "system", template, sizeof(template));
+    }
     
     if (template[0] == '\0')
     {
         if (g_PromptKV == null) return false;
         g_PromptKV.Rewind();
-        if (StrEqual(promptType, "system"))
+        
+        // Try event-specific prompt first
+        if (g_PromptKV.JumpToKey(eventType))
         {
-            g_PromptKV.GetString("system", template, sizeof(template));
-            if (template[0] == '\0') return false;
-        } else {
-            if (!g_PromptKV.JumpToKey(eventType))
-            {
-                g_PromptKV.Rewind();
-                if (!g_PromptKV.JumpToKey("default"))
-                    return false;
-            }
             g_PromptKV.GetString(promptType, template, sizeof(template));
-            if (template[0] == '\0')
-                return false;
         }
+        
+        // Fallback
+        if (template[0] == '\0')
+        {
+            g_PromptKV.Rewind();
+            if (StrEqual(promptType, "system"))
+            {
+                g_PromptKV.GetString("system", template, sizeof(template));
+            } else {
+                if (g_PromptKV.JumpToKey("default"))
+                {
+                    g_PromptKV.GetString(promptType, template, sizeof(template));
+                }
+            }
+        }
+        if (template[0] == '\0') return false;
     }
     
     ReplaceString(template, sizeof(template), "|bot|", bot);
@@ -338,7 +353,13 @@ void BuildContext(char[] buffer, int maxlen, const char[] event, int mainClient 
 
 void GetPlayerLocation(int client, char[] buffer, int maxlen) {
 	if (client > 0 && IsClientInGame(client)) {
-		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", buffer, maxlen);
+		char token[64];
+		GetEntPropString(client, Prop_Send, "m_szLastPlaceName", token, sizeof(token));
+		if (token[0] != '\0') {
+			GetLocationName(token, buffer, maxlen);
+		} else {
+			buffer[0] = '\0';
+		}
 	} else buffer[0] = '\0';
 }
 
@@ -355,7 +376,7 @@ public Action Timer_RoundStartMsg(Handle timer) {
 	GetStr("events", "round_start", rs, sizeof(rs), "The round has started.");
 	GetStr("events", "match_start", ms, sizeof(ms), "The match has started!");
 	BuildContext(ctx, sizeof(ctx), g_CurrentRound > 1 ? rs : ms);
-	GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "round_start");
+	GameEvent ev; strcopy(ev.description, sizeof(ev.description), ctx); ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "round_start");
 	AskBotChat(ev);
 	return Plugin_Stop;
 }
@@ -368,8 +389,8 @@ public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	GetStr("events", "tr_win", trW, sizeof(trW), "TR won the round.");
 	GetStr("events", "ct_win", ctW, sizeof(ctW), "CT won the round.");
 	GameEvent ev; ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "round_end");
-	if (winner == 2) { BuildContext(ctx, sizeof(ctx), trW); strcopy(ev.context, sizeof(ev.context), ctx); }
-	else if (winner == 3) { BuildContext(ctx, sizeof(ctx), ctW); strcopy(ev.context, sizeof(ev.context), ctx); }
+	if (winner == 2) { BuildContext(ctx, sizeof(ctx), trW); strcopy(ev.description, sizeof(ev.description), ctx); }
+	else if (winner == 3) { BuildContext(ctx, sizeof(ctx), ctW); strcopy(ev.description, sizeof(ev.description), ctx); }
 	else return;
 	AskBotChat(ev);
 }
@@ -384,7 +405,7 @@ public void Event_BombPlanted(Event event, const char[] name, bool dontBroadcast
 		BuildContext(ctx, sizeof(ctx), bp, client);
 		GetPlayerLocation(client, loc, sizeof(loc));
 		if (loc[0]) { char tmp[640]; Format(tmp, sizeof(tmp), ls, ctx, loc); strcopy(ctx, sizeof(ctx), tmp); }
-		GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = client; strcopy(ev.eventType, sizeof(ev.eventType), "bomb_planted");
+		GameEvent ev; strcopy(ev.description, sizeof(ev.description), ctx); ev.preferredBot = client; strcopy(ev.eventType, sizeof(ev.eventType), "bomb_planted");
 		AskBotChat(ev);
 	}
 }
@@ -399,7 +420,7 @@ public void Event_BombDefused(Event event, const char[] name, bool dontBroadcast
 		BuildContext(ctx, sizeof(ctx), bd, client);
 		GetPlayerLocation(client, loc, sizeof(loc));
 		if (loc[0]) { char tmp[640]; Format(tmp, sizeof(tmp), ls, ctx, loc); strcopy(ctx, sizeof(ctx), tmp); }
-		GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = client; strcopy(ev.eventType, sizeof(ev.eventType), "bomb_defused");
+		GameEvent ev; strcopy(ev.description, sizeof(ev.description), ctx); ev.preferredBot = client; strcopy(ev.eventType, sizeof(ev.eventType), "bomb_defused");
 		AskBotChat(ev);
 	}
 }
@@ -412,10 +433,12 @@ void GetGameFunfactText(const char[] token, char[] buffer, int maxlen, int playe
 		g_GameKV.Rewind(); if (g_GameKV.JumpToKey("Tokens")) { g_GameKV.GetString(clean, raw, sizeof(raw)); g_GameKV.GoBack(); }
 	}
 	if (raw[0]) {
-		char smone[64], pName[64]; GetStr("misc", "someone", smone, sizeof(smone), "Someone");
-		if (player > 0 && IsClientInGame(player)) GetClientName(player, pName, sizeof(pName)); else strcopy(pName, sizeof(pName), smone);
+		char pName[64];
+		if (player > 0 && IsClientInGame(player)) GetClientName(player, pName, sizeof(pName)); else pName[0] = '\0';
 		char d1[16], d2[16]; IntToString(data1, d1, sizeof(d1)); IntToString(data2, d2, sizeof(d2));
-		ReplaceString(raw, sizeof(raw), "%s3", d2); ReplaceString(raw, sizeof(raw), "%s2", d1); ReplaceString(raw, sizeof(raw), "%s1", pName);
+		ReplaceString(raw, sizeof(raw), "%s3", d2); ReplaceString(raw, sizeof(raw), "%s2", d1);
+		if (pName[0]) ReplaceString(raw, sizeof(raw), "%s1", pName); else ReplaceString(raw, sizeof(raw), "%s1", "");
+		TrimString(raw); while (ReplaceString(raw, sizeof(raw), "  ", " ")) {}
 		strcopy(buffer, maxlen, raw);
 	}
 }
@@ -424,12 +447,10 @@ public void Event_WinPanel(Event event, const char[] name, bool dontBroadcast) {
 	if (!CanBotChat() || !RollInterest(IntBase_WinPanel)) return;
 	char ff[128]; event.GetString("funfact_token", ff, sizeof(ff)); if (!ff[0]) return;
 	int player = event.GetInt("funfact_player"), d1 = event.GetInt("funfact_data1"), d2 = event.GetInt("funfact_data2");
-	char msg[512], sml[32], pName[32], ctx[1024];
+	char msg[512], ctx[1024];
 	GetGameFunfactText(ff, msg, sizeof(msg), player, d1, d2);
-	GetStr("misc", "someone_lower", sml, sizeof(sml), "someone");
-	if (player > 0 && IsClientInGame(player)) GetClientName(player, pName, sizeof(pName)); else strcopy(pName, sizeof(pName), sml);
-	if (msg[0]) Format(ctx, sizeof(ctx), "@%s: \"%s\"", pName, msg); else Format(ctx, sizeof(ctx), "@%s: %s", pName, ff);
-	GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = (player > 0 && IsFakeClient(player)) ? player : -1; strcopy(ev.eventType, sizeof(ev.eventType), "default");
+	if (msg[0]) strcopy(ctx, sizeof(ctx), msg); else Format(ctx, sizeof(ctx), "Fun fact: %s", ff);
+	GameEvent ev; strcopy(ev.description, sizeof(ev.description), ctx); ev.preferredBot = (player > 0 && IsFakeClient(player)) ? player : -1; strcopy(ev.eventType, sizeof(ev.eventType), "default");
 	AskBotChat(ev);
 }
 
@@ -439,9 +460,9 @@ public void Event_PlayerSay(Event event, const char[] name, bool dontBroadcast) 
 	if (client < 1 || IsFakeClient(client) || IsClientSourceTV(client)) return;
 	char text[128]; event.GetString("text", text, sizeof(text)); if (text[0] == '!' || text[0] == '/') return;
 	char pName[32], fmt[128], ctx[1024]; GetClientName(client, pName, sizeof(pName));
-	GetStr("events", "player_chat", fmt, sizeof(fmt), "@%s said: \"%s\"");
+	GetStr("events", "player_chat", fmt, sizeof(fmt), "%s says: %s");
 	Format(ctx, sizeof(ctx), fmt, pName, text);
-	GameEvent ev; strcopy(ev.context, sizeof(ev.context), ctx); ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "default");
+	GameEvent ev; strcopy(ev.description, sizeof(ev.description), ctx); ev.preferredBot = -1; strcopy(ev.eventType, sizeof(ev.eventType), "default");
 	AskBotChat(ev);
 }
 
@@ -453,8 +474,8 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 	GetStr("events", "ff_take", fT, sizeof(fT), "took friendly fire from");
 	GetStr("events", "ff_give", fG, sizeof(fG), "gave friendly fire to");
 	GameEvent ev; strcopy(ev.eventType, sizeof(ev.eventType), "default"); strcopy(ev.weapon, sizeof(ev.weapon), wpn);
-	if (IsFakeClient(vic)) { ev.preferredBot = vic; BuildContext(ctx, sizeof(ctx), fT, vic, atk, wpn); strcopy(ev.context, sizeof(ev.context), ctx); if (atk > 0 && IsClientInGame(atk)) GetClientName(atk, ev.targetName, sizeof(ev.targetName)); }
-	else if (IsFakeClient(atk)) { ev.preferredBot = atk; BuildContext(ctx, sizeof(ctx), fG, atk, vic, wpn); strcopy(ev.context, sizeof(ev.context), ctx); if (vic > 0 && IsClientInGame(vic)) GetClientName(vic, ev.targetName, sizeof(ev.targetName)); }
+	if (IsFakeClient(vic)) { ev.preferredBot = vic; BuildContext(ctx, sizeof(ctx), fT, vic, atk, wpn); strcopy(ev.description, sizeof(ev.description), ctx); if (atk > 0 && IsClientInGame(atk)) GetClientName(atk, ev.targetName, sizeof(ev.targetName)); }
+	else if (IsFakeClient(atk)) { ev.preferredBot = atk; BuildContext(ctx, sizeof(ctx), fG, atk, vic, wpn); strcopy(ev.description, sizeof(ev.description), ctx); if (vic > 0 && IsClientInGame(vic)) GetClientName(vic, ev.targetName, sizeof(ev.targetName)); }
 	else return;
 	AskBotChat(ev);
 }
@@ -487,7 +508,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	else { BuildContext(ctx, sizeof(ctx), kln, kil, vic, wpn); }
 	char loc[64]; GetPlayerLocation(kil, loc, sizeof(loc));
 	if (loc[0]) { char tmp[640]; Format(tmp, sizeof(tmp), ls, ctx, loc); strcopy(ctx, sizeof(ctx), tmp); }
-	strcopy(ev.context, sizeof(ev.context), ctx);
+	strcopy(ev.description, sizeof(ev.description), ctx);
 	if (IsFakeClient(kil) && vic > 0 && IsClientInGame(vic)) GetClientName(vic, ev.targetName, sizeof(ev.targetName));
 	else if (IsFakeClient(vic) && kil > 0 && IsClientInGame(kil)) GetClientName(kil, ev.targetName, sizeof(ev.targetName));
 	ev.preferredBot = IsFakeClient(kil) ? kil : vic;
@@ -565,7 +586,7 @@ public int Native_SubmitChatEvent(Handle plugin, int numParams)
 	if (!eventType[0]) strcopy(eventType, sizeof(eventType), "default");
 	if (!RollInterest(priority > 0 ? priority : IntBase_External)) return 0;
 	if (!StrEqual(eventType, "enemies_left") && !CanBotChat()) return 0;
-	GameEvent ev; strcopy(ev.context, sizeof(ev.context), context); ev.preferredBot = bot; strcopy(ev.eventType, sizeof(ev.eventType), eventType); ev.enemies = enemies; ev.allies = allies;
+	GameEvent ev; strcopy(ev.description, sizeof(ev.description), context); ev.preferredBot = bot; strcopy(ev.eventType, sizeof(ev.eventType), eventType); ev.enemies = enemies; ev.allies = allies;
 	AskBotChat(ev);
 	return 1;
 }
@@ -582,12 +603,26 @@ public int Native_GetCachedResponse(Handle plugin, int numParams)
 			return true;
 		}
 	}
+	// fallback: match enemies count
+	for (int i = 0; i < g_BotCache[bot].count; i++) {
+		if (g_BotCache[bot].entries[i].enemies == enemies && g_BotCache[bot].entries[i].allies == 0) {
+			SetNativeString(4, g_BotCache[bot].entries[i].response, GetNativeCell(5));
+			return true;
+		}
+	}
+	// fallback: match allies count
+	for (int i = 0; i < g_BotCache[bot].count; i++) {
+		if (g_BotCache[bot].entries[i].enemies == 0 && g_BotCache[bot].entries[i].allies == allies) {
+			SetNativeString(4, g_BotCache[bot].entries[i].response, GetNativeCell(5));
+			return true;
+		}
+	}
 	return false;
 }
 
 // ── Timeline History for multi-turn API ──
 enum struct GameEvent {
-    char context[1024];
+    char description[1024];
     int preferredBot;
     char eventType[32];
     char weapon[32];
@@ -595,6 +630,96 @@ enum struct GameEvent {
     int enemies;
     int allies;
 }
+
+void BuildPromptsFromJSON(const char[] json, const char[] section,
+    char[] sysP, int sysPLen, char[] fullP, int fullPLen,
+    int botId)
+{
+    JSONObject obj = JSONObject.FromString(json);
+    if (obj == null) return;
+
+    char templateType[32], description[1024], target[64], weapon[32];
+    obj.GetString("type", templateType, sizeof(templateType));
+    obj.GetString("description", description, sizeof(description));
+    obj.GetString("target", target, sizeof(target));
+    obj.GetString("weapon", weapon, sizeof(weapon));
+    int tScore = obj.GetInt("tScore");
+    int ctScore = obj.GetInt("ctScore");
+    delete obj;
+
+    char bName[32], bTeam[32];
+    GetClientName(botId, bName, sizeof(bName));
+    GetStr("teams", (GetClientTeam(botId) == 2) ? "tr" : "ct", bTeam, sizeof(bTeam), "Team");
+    int bT = GetClientTeam(botId);
+
+    char sS[128];
+    if ((bT == 2 && tScore > ctScore) || (bT == 3 && ctScore > tScore))
+        GetStr("gamestate", "winning", sS, sizeof(sS), " You are winning.");
+    else if ((bT == 2 && tScore < ctScore) || (bT == 3 && ctScore < tScore))
+        GetStr("gamestate", "losing", sS, sizeof(sS), " You are losing.");
+    else sS[0] = '\0';
+
+    char mapName[64]; GetCurrentMap(mapName, sizeof(mapName));
+    char tStr[64]; int gt = RoundFloat(GetGameTime());
+    Format(tStr, sizeof(tStr), "%d:%02d", gt / 60, gt % 60);
+    char wStr[8], lStr[8];
+    IntToString(tScore, wStr, sizeof(wStr)); IntToString(ctScore, lStr, sizeof(lStr));
+    char roundStr[16]; IntToString(g_CurrentRound, roundStr, sizeof(roundStr));
+    char bombStr[32]; GetStr("misc", "bomb_planted", bombStr, sizeof(bombStr), "");
+    if (!g_BombPlanted) bombStr[0] = '\0';
+
+    char wBuf[32]; if (weapon[0]) { FriendlyWeaponName(weapon, wBuf, sizeof(wBuf)); int hsP = StrContains(wBuf, " HS"); if (hsP!=-1) wBuf[hsP]='\0'; }
+    else GetStr("misc", "unknown_weapon", wBuf, sizeof(wBuf), "unknown");
+
+    if (StrEqual(section, "system") || StrEqual(section, "both")) {
+        if (!GetPromptTemplate(templateType, "system", sysP, sysPLen, bName, bTeam, target, sS, description, "", g_CurrentRound, tScore, ctScore))
+            Format(sysP, sysPLen, "Speak as %s (%s). %s", bName, bTeam, description);
+        ReplaceString(sysP, sysPLen, "|map|", mapName);
+        ReplaceString(sysP, sysPLen, "|wins|", wStr);
+        ReplaceString(sysP, sysPLen, "|losses|", lStr);
+        ReplaceString(sysP, sysPLen, "|time|", tStr);
+        ReplaceString(sysP, sysPLen, "|round|", roundStr);
+        ReplaceString(sysP, sysPLen, "|bomb|", bombStr);
+        ReplaceString(sysP, sysPLen, "|weapon|", wBuf);
+        ReplaceString(sysP, sysPLen, "  ", " ");
+        ReplaceString(sysP, sysPLen, " .", ".");
+        ReplaceString(sysP, sysPLen, "..", ".");
+    }
+
+    if (StrEqual(section, "user") || StrEqual(section, "both")) {
+        if (!GetPromptTemplate(templateType, "user", fullP, fullPLen, bName, bTeam, target, sS, description, "", g_CurrentRound, tScore, ctScore))
+            Format(fullP, fullPLen, "Speak as %s about %s", bName, description);
+        ReplaceString(fullP, fullPLen, "|map|", mapName);
+        ReplaceString(fullP, fullPLen, "|wins|", wStr);
+        ReplaceString(fullP, fullPLen, "|losses|", lStr);
+        ReplaceString(fullP, fullPLen, "|time|", tStr);
+        ReplaceString(fullP, fullPLen, "|round|", roundStr);
+        ReplaceString(fullP, fullPLen, "|bomb|", bombStr);
+        ReplaceString(fullP, fullPLen, "|weapon|", wBuf);
+        ReplaceString(fullP, fullPLen, "  ", " ");
+        ReplaceString(fullP, fullPLen, ". .", ".");
+        ReplaceString(fullP, fullPLen, " .", ".");
+        ReplaceString(fullP, fullPLen, "..", ".");
+        TrimString(fullP);
+    }
+}
+
+// NVD_BuildPrompts native for inter-plugin use (ollama.sp calls this)
+public int Native_BuildPrompts(Handle plugin, int numParams)
+{
+    char json[1024], section[16];
+    GetNativeString(1, json, sizeof(json));
+    GetNativeString(2, section, sizeof(section));
+    int botId = GetNativeCell(3);
+
+    char sysP[2048], fullP[1024];
+    BuildPromptsFromJSON(json, section, sysP, sizeof(sysP), fullP, sizeof(fullP), botId);
+
+    SetNativeString(4, sysP, GetNativeCell(5));
+    SetNativeString(6, fullP, GetNativeCell(7));
+    return 1;
+}
+
 void RecordEvent(const char[] description)
 {
 	if (description[0] == '\0') return;
@@ -624,7 +749,7 @@ void EscapeJSON(const char[] input, char[] output, int maxlen)
     output[ep] = '\0';
 }
 
-void BuildHistoryBlock(char[] buffer, int maxlen, const char[] catchphrase = "", const char[] botName = "")
+void BuildHistoryBlock(char[] buffer, int maxlen, const char[] catchphrase = "")
 {
     buffer[0] = '\0';
     int pos = 0;
@@ -665,84 +790,42 @@ void AskBotChat(GameEvent ev) {
         for (int i=1; i<=MaxClients; i++) if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i)) bots[bCnt++] = i;
         if (!bCnt) return; bot = bots[GetRandomInt(0, bCnt-1)];
     }
-    char bName[32], bTeam[32], sS[64];
-    GetClientName(bot, bName, sizeof(bName));
-    GetStr("teams", (GetClientTeam(bot) == 2) ? "tr" : "ct", bTeam, sizeof(bTeam), "Team");
-    int tS = CS_GetTeamScore(2), ctS = CS_GetTeamScore(3), bT = GetClientTeam(bot);
-    if ((bT == 2 && tS > ctS) || (bT == 3 && ctS > tS)) GetStr("gamestate", "winning", sS, sizeof(sS), " You are winning.");
-    else if ((bT == 2 && tS < ctS) || (bT == 3 && ctS < tS)) GetStr("gamestate", "losing", sS, sizeof(sS), " You are losing.");
-    else sS[0]='\0';
 
     char type[32]; strcopy(type, sizeof(type), ev.eventType);
     if (StrEqual(type, "default")) {
-        if (StrContains(ev.context, "eliminated") != -1 || StrContains(ev.context, "eliminou") != -1) strcopy(type, sizeof(type), "kill");
-        else if (StrContains(ev.context, "was eliminated") != -1 || StrContains(ev.context, "foi eliminado") != -1) strcopy(type, sizeof(type), "death");
+        if (StrContains(ev.description, "eliminated") != -1 || StrContains(ev.description, "eliminou") != -1) strcopy(type, sizeof(type), "kill");
+        else if (StrContains(ev.description, "was eliminated") != -1 || StrContains(ev.description, "foi eliminado") != -1) strcopy(type, sizeof(type), "death");
     }
 
     char target[32];
-    if (ev.targetName[0]) {
-        strcopy(target, sizeof(target), ev.targetName);
-    } else {
-        target[0] = '\0';
-    }
+    if (ev.targetName[0]) strcopy(target, sizeof(target), ev.targetName);
+    else target[0] = '\0';
 
-    char sysP[2048], fullP[1024];
-    if (GetPromptTemplate(type, "system", sysP, sizeof(sysP), bName, bTeam, target, sS, ev.context, "", g_CurrentRound, tS, ctS)) {
-    } else Format(sysP, sizeof(sysP), "Speak as %s (%s). %s", bName, bTeam, ev.context);
-
-    char gameState[256];
-    {
-        int ctA = 0, tA = 0;
-        for (int i = 1; i <= MaxClients; i++) {
-            if (!IsClientInGame(i) || !IsPlayerAlive(i)) continue;
-            if (GetClientTeam(i) == 2) tA++; else if (GetClientTeam(i) == 3) ctA++;
-        }
-        char mapName[64]; GetCurrentMap(mapName, sizeof(mapName));
-        char tStr[64]; int gt = RoundFloat(GetGameTime());
-        Format(tStr, sizeof(tStr), "%d:%02d", gt / 60, gt % 60);
-        Format(gameState, sizeof(gameState), "Map %s, Round %d, score %d-%d, %s, %d TR vs %d CT", mapName, g_CurrentRound, tS, ctS, tStr, tA, ctA);
-        if (g_BombPlanted > 0) StrCat(gameState, sizeof(gameState), ", bomb planted");
-    }
-    ReplaceString(sysP, sizeof(sysP), "|game_state|", gameState);
-
-    char kStr[8], dStr[8];
-    IntToString(g_BotKills[bot], kStr, sizeof(kStr));
-    IntToString(g_BotDeaths[bot], dStr, sizeof(dStr));
-    ReplaceString(sysP, sizeof(sysP), "|kills|", kStr);
-    ReplaceString(sysP, sizeof(sysP), "|deaths|", dStr);
-
-    char eStr[8];
-    IntToString(ev.enemies, eStr, sizeof(eStr));
-    ReplaceString(sysP, sizeof(sysP), "|enemies|", eStr);
-
-    char aStr[8];
-    IntToString(ev.allies, aStr, sizeof(aStr));
-    ReplaceString(sysP, sizeof(sysP), "|allies|", aStr);
-
-    ReplaceString(sysP, sizeof(sysP), "  ", " ");
-    ReplaceString(sysP, sizeof(sysP), " .", ".");
-    ReplaceString(sysP, sizeof(sysP), "..", ".");
-
-    if (!GetPromptTemplate(type, "user", fullP, sizeof(fullP), bName, bTeam, target, sS, ev.context, "", g_CurrentRound, tS, ctS))
-        Format(fullP, sizeof(fullP), "Speak as %s about %s", bName, ev.context);
-    ReplaceString(fullP, sizeof(fullP), "|enemies|", eStr);
-    ReplaceString(fullP, sizeof(fullP), "|allies|", aStr);
-    ReplaceString(fullP, sizeof(fullP), "  ", " ");
-    ReplaceString(fullP, sizeof(fullP), ". .", ".");
-    ReplaceString(fullP, sizeof(fullP), " .", ".");
-    ReplaceString(fullP, sizeof(fullP), "..", ".");
-    TrimString(fullP);
-    
     char wBuf[32]; if (ev.weapon[0]) { FriendlyWeaponName(ev.weapon, wBuf, sizeof(wBuf)); int hsP = StrContains(wBuf, " HS"); if (hsP!=-1) wBuf[hsP]='\0'; }
     else GetStr("misc", "unknown_weapon", wBuf, sizeof(wBuf), "unknown");
-    ReplaceString(fullP, sizeof(fullP), "|weapon|", wBuf);
-    
+
+    int tS = CS_GetTeamScore(2), ctS = CS_GetTeamScore(3);
+
+    // ── Context JSON (rebuilt at queue/display time) ──
+    JSONObject ctx = new JSONObject();
+    ctx.SetString("type", type);
+    ctx.SetString("description", ev.description);
+    ctx.SetString("target", target);
+    ctx.SetString("weapon", wBuf);
+    ctx.SetInt("tScore", tS);
+    ctx.SetInt("ctScore", ctS);
+    ctx.SetInt("enemies", ev.enemies);
+    ctx.SetInt("allies", ev.allies);
+    char contextJSON[1024];
+    ctx.ToString(contextJSON, sizeof(contextJSON));
+    delete ctx;
+
     char catchphrase[64], pers[8], sty[8], beh[8];
+    char bName[32]; GetClientName(bot, bName, sizeof(bName));
     GetBotPersonality(bName, pers, sizeof(pers), catchphrase, sizeof(catchphrase), sty, sizeof(sty), beh, sizeof(beh));
     char cpFormatted[128];
     char parts[3][32]; int n = ExplodeString(catchphrase, ";", parts, 3, 32);
     for (int i = 0; i < n; i++) { TrimString(parts[i]); if (parts[i][0]) { if (i > 0) StrCat(cpFormatted, sizeof(cpFormatted), " "); Format(cpFormatted, sizeof(cpFormatted), "%s\"%s\"", cpFormatted, parts[i]); } }
-    ReplaceString(sysP, sizeof(sysP), "|catchphrase|", cpFormatted);
 
     int cachedIdx = -1;
     for (int i = 0; i < g_BotCache[bot].count; i++) {
@@ -763,21 +846,49 @@ void AskBotChat(GameEvent ev) {
             RecordBotMessage(bName, clean);
             char ts[32]; FormatTime(ts, sizeof(ts), "%H:%M:%S");
             PrintToServer("[BOT_CHAT] [%s] ✅ Cached: [BOT %s] %s", ts, bName, clean);
-            RecordEvent(ev.context);
+            RecordEvent(ev.description);
             return;
         }
     }
 
+    if (StrEqual(type, "enemies_left")) {
+        char historyBlock[1024];
+        BuildHistoryBlock(historyBlock, sizeof(historyBlock), catchphrase);
+        g_LastEnemies[bot] = ev.enemies;
+        g_LastAllies[bot] = ev.allies;
+        NVD_AskAI("", "", CacheOnlyResponse, bot, historyBlock, 1, g_CvarTimeout.FloatValue, "", contextJSON);
+        strcopy(g_LastEventType[bot], 32, type); g_LastAskTime[bot] = GetGameTime();
+        RecordEvent(ev.description);
+        return;
+    }
+
     char historyBlock[1024];
-    BuildHistoryBlock(historyBlock, sizeof(historyBlock), catchphrase, bName);
+    BuildHistoryBlock(historyBlock, sizeof(historyBlock), catchphrase);
 
     g_LastEnemies[bot] = ev.enemies;
     g_LastAllies[bot] = ev.allies;
-    int prio = StrEqual(type, "enemies_left") ? 0 : 1;
-    float timeout = StrEqual(type, "enemies_left") ? 0.0 : g_CvarTimeout.FloatValue;
-    NVD_AskAI(fullP, sysP, INVALID_FUNCTION, bot, historyBlock, prio, timeout);
-    strcopy(g_LastEventType[bot], 32, type); strcopy(g_LastSysPrompt[bot], 1024, sysP); strcopy(g_LastUserPrompt[bot], 1024, fullP); g_LastAskTime[bot] = GetGameTime();
-    RecordEvent(ev.context);
+    NVD_AskAI("", "", INVALID_FUNCTION, bot, historyBlock, 1, g_CvarTimeout.FloatValue, "", contextJSON);
+    strcopy(g_LastEventType[bot], 32, type); g_LastAskTime[bot] = GetGameTime();
+    RecordEvent(ev.description);
+}
+
+public void CacheOnlyResponse(const char[] reply, any bot)
+{
+    if (bot < 1 || bot > MaxClients || !IsClientInGame(bot) || !IsFakeClient(bot)) return;
+    if (StrContains(reply, "ERROR_") != -1 || !reply[0]) return;
+    char clean[320]; strcopy(clean, sizeof(clean), reply);
+    ReplaceString(clean, sizeof(clean), "\"", ""); ReplaceString(clean, sizeof(clean), "[", ""); ReplaceString(clean, sizeof(clean), "]", ""); TrimString(clean);
+    if (!clean[0]) return;
+    if (g_BotCache[bot].count < 30) {
+        int ci = g_BotCache[bot].count;
+        strcopy(g_BotCache[bot].entries[ci].response, sizeof(g_BotCache[bot].entries[ci].response), clean);
+        g_BotCache[bot].entries[ci].enemies = g_LastEnemies[bot];
+        g_BotCache[bot].entries[ci].allies = g_LastAllies[bot];
+        g_BotCache[bot].entries[ci].valid = true;
+        g_BotCache[bot].count++;
+    }
+    char bName[32]; GetClientName(bot, bName, sizeof(bName));
+    PrintToServer("[BOT_CHAT] [CACHE] Cached for bot %s: %s", bName, clean);
 }
 
 public Action Timer_PollResponses(Handle timer) { PollBotResponses(); return Plugin_Continue; }

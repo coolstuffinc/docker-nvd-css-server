@@ -21,6 +21,9 @@ ConVar g_CvarRadio;
 ConVar g_CvarBlind;
 bool g_NvdAvailable;
 
+int g_LastEnemies[MAXPLAYERS+1];
+int g_LastAllies[MAXPLAYERS+1];
+
 public void OnPluginStart()
 {
   LoadTranslations("enemies_left.phrases");
@@ -44,7 +47,7 @@ int FindBotOnTeam(int team)
   return -1;
 }
 
-void SayEnemiesFallback(int bot, int enemies)
+void SayEnemiesFallback(int bot, int enemies, char[] out, int maxlen)
 {
   char msg[64];
   if (enemies > 2)
@@ -56,9 +59,11 @@ void SayEnemiesFallback(int bot, int enemies)
   else
     Format(msg, sizeof(msg), "say_team %T", "Count0", LANG_SERVER);
   FakeClientCommand(bot, msg);
+  int pos = 9; while (msg[pos] == ' ') pos++;
+  strcopy(out, maxlen, msg[pos]);
 }
 
-void SayTeammateFallback(int bot, int allies)
+void SayTeammateFallback(int bot, int allies, char[] out, int maxlen)
 {
   char msg[64];
   if (allies > 2)
@@ -68,7 +73,15 @@ void SayTeammateFallback(int bot, int allies)
   else if (allies == 1)
     Format(msg, sizeof(msg), "say_team %T", "Victim1", LANG_SERVER);
   if (allies > 0)
+  {
     FakeClientCommand(bot, msg);
+    int pos = 9; while (msg[pos] == ' ') pos++;
+    strcopy(out, maxlen, msg[pos]);
+  }
+  else
+  {
+    out[0] = '\0';
+  }
 }
 
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -127,13 +140,16 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
         }
         if (!used)
         {
-          SayEnemiesFallback(attackerBot, enemiesCount);
-          if (g_NvdAvailable)
-          {
-            char context[128];
-            Format(context, sizeof(context), "%d enemies remaining, %d allies alive", enemiesCount, alliesCount);
-            NVD_SubmitChatEvent(context, attackerBot, 40, "enemies_left", enemiesCount, alliesCount);
-          }
+  char fallback[128];
+  SayEnemiesFallback(attackerBot, enemiesCount, fallback, sizeof(fallback));
+  if (g_NvdAvailable && (enemiesCount != g_LastEnemies[attackerBot] || alliesCount != g_LastAllies[attackerBot]))
+  {
+    g_LastEnemies[attackerBot] = enemiesCount;
+    g_LastAllies[attackerBot] = alliesCount;
+    char context[256];
+    Format(context, sizeof(context), "\"%s\" %d/%d", fallback, enemiesCount, alliesCount);
+    NVD_SubmitChatEvent(context, attackerBot, 40, "enemies_left", enemiesCount, alliesCount);
+  }
         }
       }
 
@@ -155,13 +171,16 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
         }
         if (!used)
         {
-          SayTeammateFallback(victimBot, vAllies);
-          if (g_NvdAvailable)
-          {
-            char context[128];
-            Format(context, sizeof(context), "%d enemies remaining, %d allies alive", vEnemies, vAllies);
-            NVD_SubmitChatEvent(context, victimBot, 35, "enemies_left", vEnemies, vAllies);
-          }
+  char fallback2[128];
+  SayTeammateFallback(victimBot, vAllies, fallback2, sizeof(fallback2));
+  if (g_NvdAvailable && fallback2[0] && (vEnemies != g_LastEnemies[victimBot] || vAllies != g_LastAllies[victimBot]))
+  {
+    g_LastEnemies[victimBot] = vEnemies;
+    g_LastAllies[victimBot] = vAllies;
+    char context[256];
+    Format(context, sizeof(context), "\"%s\" %d/%d", fallback2, vEnemies, vAllies);
+    NVD_SubmitChatEvent(context, victimBot, 35, "enemies_left", vEnemies, vAllies);
+  }
         }
       }
     }

@@ -1,7 +1,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
-#include <nvd_core>
+#include <nvd/core>
 #include <clientprefs>
 
 #pragma semicolon 1

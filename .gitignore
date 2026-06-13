@@ -4,7 +4,7 @@ build.log
 IDEAS.md
 ambuild/
 extension/
-sourcemod/
+/sourcemod/
 *.smx
 *.png
 tools/
