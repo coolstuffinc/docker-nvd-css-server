@@ -645,12 +645,19 @@ void BuildPromptsFromJSON(const char[] json, const char[] section,
     obj.GetString("weapon", weapon, sizeof(weapon));
     int tScore = obj.GetInt("tScore");
     int ctScore = obj.GetInt("ctScore");
+    int enemies = obj.GetInt("enemies");
+    int allies = obj.GetInt("allies");
     delete obj;
 
     char bName[32], bTeam[32];
-    GetClientName(botId, bName, sizeof(bName));
-    GetStr("teams", (GetClientTeam(botId) == 2) ? "tr" : "ct", bTeam, sizeof(bTeam), "Team");
-    int bT = GetClientTeam(botId);
+    if (botId < 1 || botId > MaxClients || !IsClientInGame(botId)) {
+        strcopy(bName, sizeof(bName), "Bot");
+        strcopy(bTeam, sizeof(bTeam), "Team");
+    } else {
+        GetClientName(botId, bName, sizeof(bName));
+        GetStr("teams", (GetClientTeam(botId) == 2) ? "tr" : "ct", bTeam, sizeof(bTeam), "Team");
+    }
+    int bT = (botId >= 1 && botId <= MaxClients && IsClientInGame(botId)) ? GetClientTeam(botId) : 0;
 
     char sS[128];
     if ((bT == 2 && tScore > ctScore) || (bT == 3 && ctScore > tScore))
@@ -662,8 +669,9 @@ void BuildPromptsFromJSON(const char[] json, const char[] section,
     char mapName[64]; GetCurrentMap(mapName, sizeof(mapName));
     char tStr[64]; int gt = RoundFloat(GetGameTime());
     Format(tStr, sizeof(tStr), "%d:%02d", gt / 60, gt % 60);
-    char wStr[8], lStr[8];
+    char wStr[8], lStr[8], eStr[8], aStr[8];
     IntToString(tScore, wStr, sizeof(wStr)); IntToString(ctScore, lStr, sizeof(lStr));
+    IntToString(enemies, eStr, sizeof(eStr)); IntToString(allies, aStr, sizeof(aStr));
     char roundStr[16]; IntToString(g_CurrentRound, roundStr, sizeof(roundStr));
     char bombStr[32]; GetStr("misc", "bomb_planted", bombStr, sizeof(bombStr), "");
     if (!g_BombPlanted) bombStr[0] = '\0';
@@ -681,6 +689,8 @@ void BuildPromptsFromJSON(const char[] json, const char[] section,
         ReplaceString(sysP, sysPLen, "|round|", roundStr);
         ReplaceString(sysP, sysPLen, "|bomb|", bombStr);
         ReplaceString(sysP, sysPLen, "|weapon|", wBuf);
+        ReplaceString(sysP, sysPLen, "|enemies|", eStr);
+        ReplaceString(sysP, sysPLen, "|allies|", aStr);
         ReplaceString(sysP, sysPLen, "  ", " ");
         ReplaceString(sysP, sysPLen, " .", ".");
         ReplaceString(sysP, sysPLen, "..", ".");
@@ -696,6 +706,8 @@ void BuildPromptsFromJSON(const char[] json, const char[] section,
         ReplaceString(fullP, fullPLen, "|round|", roundStr);
         ReplaceString(fullP, fullPLen, "|bomb|", bombStr);
         ReplaceString(fullP, fullPLen, "|weapon|", wBuf);
+        ReplaceString(fullP, fullPLen, "|enemies|", eStr);
+        ReplaceString(fullP, fullPLen, "|allies|", aStr);
         ReplaceString(fullP, fullPLen, "  ", " ");
         ReplaceString(fullP, fullPLen, ". .", ".");
         ReplaceString(fullP, fullPLen, " .", ".");

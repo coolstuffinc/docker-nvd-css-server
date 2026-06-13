@@ -790,18 +790,22 @@ void ProcessQueue()
 	while (g_RequestQueue.Length > 0) {
 		int active = 0; for (int i = 0; i < MAX_REQUESTS; i++) if (g_Requests[i].state == ReqState_Processing) active++;
 		if (active >= concurrency) break;
+		
 		DataPack pack = view_as<DataPack>(g_RequestQueue.Get(0)); g_RequestQueue.Erase(0); pack.Reset();
 		Handle ownerPlugin; Function cb; any cbData;
 		char prompt[512], system[2048], model[64], endpoint[32], ownerName[64], historyJSON[2048], playerName[32], contextJSON[1024];
 		float timeout, startTime; int retries, reqId, pid;
 		UnpackRequest(pack, ownerPlugin, cb, cbData, prompt, sizeof(prompt), system, sizeof(system), model, sizeof(model), endpoint, sizeof(endpoint), ownerName, sizeof(ownerName), historyJSON, sizeof(historyJSON), playerName, sizeof(playerName), timeout, retries, startTime, reqId, pid, contextJSON, 1024);
 		delete pack;
+		
 		int slot = AllocateSlot(cb, cbData, ownerPlugin, ownerName);
 		if (slot != -1) {
 			g_Requests[slot].retries = retries; g_Requests[slot].requestTime = startTime; g_Requests[slot].requestId = reqId;
 			g_Requests[slot].playerId = pid;
 			strcopy(g_Requests[slot].origContext, 1024, contextJSON);
 			SendRequest(slot, prompt, system, model, endpoint, historyJSON, timeout);
+		} else {
+			LogMessage("[NVD] ⚠️ ProcessQueue: Failed to allocate slot for request %d", reqId);
 		}
 	}
 }
