@@ -212,7 +212,9 @@ public Action Command_BotChatHistory(int client, int args)
 
 stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen)
 {
-    NVD_GetStr("nvd", section, key, buffer, maxlen);
+    char path[128];
+    Format(path, sizeof(path), "nvd_bot_chat.%s", section);
+    NVD_GetStr(path, key, buffer, maxlen);
 }
 
 bool GetPromptTemplate(const char[] eventType, const char[] promptType,
@@ -725,6 +727,11 @@ public int Native_BuildPrompts(Handle plugin, int numParams)
     GetNativeString(2, section, sizeof(section));
     int botId = GetNativeCell(3);
 
+    if (botId < 1 || botId > MaxClients || !IsClientInGame(botId)) {
+        LogMessage("[NVD_ERROR] Native_BuildPrompts: Invalid or disconnected botId=%d", botId);
+        return 0;
+    }
+
     char sysP[2048], fullP[1024];
     BuildPromptsFromJSON(json, section, sysP, sizeof(sysP), fullP, sizeof(fullP), botId);
 
@@ -838,7 +845,7 @@ void AskBotChat(GameEvent ev) {
     // ── Context JSON (rebuilt at queue/display time) ──
     JSONObject ctx = new JSONObject();
     ctx.SetString("type", type);
-    ctx.SetString("description", ev.description);
+    ctx.SetString("description", "EVENT"); 
     ctx.SetString("target", target);
     ctx.SetString("weapon", wBuf);
     ctx.SetInt("tScore", tS);
@@ -851,10 +858,13 @@ void AskBotChat(GameEvent ev) {
     delete ctx;
 
     int cachedIdx = -1;
-    for (int i = 0; i < g_BotCache[bot].count; i++) {
-        if (g_BotCache[bot].entries[i].enemies == ev.enemies && g_BotCache[bot].entries[i].allies == ev.allies) {
-            cachedIdx = i;
-            break;
+    // 30% de chance de ignorar o cache para forçar criatividade
+    if (GetRandomInt(1, 100) > 30) {
+        for (int i = 0; i < g_BotCache[bot].count; i++) {
+            if (g_BotCache[bot].entries[i].enemies == ev.enemies && g_BotCache[bot].entries[i].allies == ev.allies) {
+                cachedIdx = i;
+                break;
+            }
         }
     }
     if (cachedIdx != -1)

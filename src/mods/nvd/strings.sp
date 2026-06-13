@@ -24,12 +24,13 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	RegPluginLibrary("nvd_strings");
 	CreateNative("NVD_RegisterStrings", Native_RegisterStrings);
 	CreateNative("NVD_GetStr", Native_GetStr);
+	CreateNative("NVD_HasStr", Native_HasStr);
 	return APLRes_Success;
 }
 
 public void OnPluginStart()
 {
-	g_LangCvar = CreateConVar("nvd_language", "default", "Global language for all NVD plugins");
+	g_LangCvar = CreateConVar("nvd_language", "default", "Global output language for all NVD plugins");
 	g_PromptLangCvar = CreateConVar("nvd_prompt_language", "default", "Language for prompts section (default uses nvd_language)");
 	g_LangCvar.AddChangeHook(OnLanguageChanged);
 	g_PromptLangCvar.AddChangeHook(OnLanguageChanged);
@@ -60,89 +61,78 @@ public int Native_RegisterStrings(Handle plugin, int numParams)
 
 public int Native_GetStr(Handle plugin, int numParams)
 {
-	char prefix[64], section[64], key[64];
-	GetNativeString(1, prefix, sizeof(prefix));
-	GetNativeString(2, section, sizeof(section));
-	GetNativeString(3, key, sizeof(key));
-	int maxlen = GetNativeCell(5);
+    char path[128], key[64], buffer[1024];
+    GetNativeString(1, path, sizeof(path));
+    GetNativeString(2, key, sizeof(key));
+    int maxlen = GetNativeCell(4);
 
-	bool isPrompt = StrEqual(section, "prompts");
+    char parts[8][32];
+    int count = ExplodeString(path, ".", parts, 8, 32);
 
-	// We now ignore the individual plugin prefix and use the centralized "nvd" entry if it exists
-	// or find the one that exactly matches "nvd"
-	int nvdIdx = -1;
+    for (int i = 0; i < g_Count; i++) {
+        // Tenta buscar no arquivo de idioma principal (prompt lang ou lang)
+        KeyValues kv = (g_Plugins[i].kvPromptLang != null) ? g_Plugins[i].kvPromptLang : g_Plugins[i].kvLang;
+        if (kv != null) {
+            kv.Rewind();
+            bool found = true;
+            for (int j = 0; j < count; j++) {
+                if (!kv.JumpToKey(parts[j])) { found = false; break; }
+            }
+            if (found && kv.GetString(key, buffer, sizeof(buffer))) {
+                SetNativeString(3, buffer, maxlen);
+                return 0;
+            }
+        }
+
+        // Tenta buscar no arquivo default
+        if (g_Plugins[i].kvDefault != null) {
+            g_Plugins[i].kvDefault.Rewind();
+            bool found = true;
+            for (int j = 0; j < count; j++) {
+                if (!g_Plugins[i].kvDefault.JumpToKey(parts[j])) { found = false; break; }
+            }
+            if (found && g_Plugins[i].kvDefault.GetString(key, buffer, sizeof(buffer))) {
+                SetNativeString(3, buffer, maxlen);
+                return 0;
+            }
+        }
+    }
+    ThrowNativeError(SP_ERROR_NATIVE, "String key '%s' not found in path '%s'", key, path);
+    return 0;
+}
+
+public int Native_HasStr(Handle plugin, int numParams)
+{
+	char path[128], key[64];
+	GetNativeString(1, path, sizeof(path));
+	GetNativeString(2, key, sizeof(key));
+
+	char parts[8][32];
+	int count = ExplodeString(path, ".", parts, 8, 32);
+
 	for (int i = 0; i < g_Count; i++) {
-		if (StrEqual(g_Plugins[i].prefix, "nvd")) {
-			nvdIdx = i;
-			break;
-		}
-	}
-
-	if (nvdIdx != -1) {
-		char buffer[1024];
-		bool found = false;
-
-		// Centralized structure: nvd -> prefix -> section -> key
-		
-		// Try Prompt Lang
-		if (isPrompt && g_Plugins[nvdIdx].kvPromptLang != null) {
-			g_Plugins[nvdIdx].kvPromptLang.Rewind();
-			if (g_Plugins[nvdIdx].kvPromptLang.JumpToKey(prefix) && g_Plugins[nvdIdx].kvPromptLang.JumpToKey(section)) {
-				if (g_Plugins[nvdIdx].kvPromptLang.GetString(key, buffer, sizeof(buffer))) found = true;
-			}
-		}
-
-		// Try Lang
-		if (!found && g_Plugins[nvdIdx].kvLang != null) {
-			g_Plugins[nvdIdx].kvLang.Rewind();
-			if (g_Plugins[nvdIdx].kvLang.JumpToKey(prefix) && g_Plugins[nvdIdx].kvLang.JumpToKey(section)) {
-				if (g_Plugins[nvdIdx].kvLang.GetString(key, buffer, sizeof(buffer))) found = true;
-			}
-		}
-
-		// Try Default
-		if (!found && g_Plugins[nvdIdx].kvDefault != null) {
-			g_Plugins[nvdIdx].kvDefault.Rewind();
-			if (g_Plugins[nvdIdx].kvDefault.JumpToKey(prefix) && g_Plugins[nvdIdx].kvDefault.JumpToKey(section)) {
-				if (g_Plugins[nvdIdx].kvDefault.GetString(key, buffer, sizeof(buffer))) found = true;
-			}
-		}
-
-		if (found) {
-			SetNativeString(4, buffer, maxlen);
-			return 0;
-		}
-	}
-
-	// Fallback to old behavior if "nvd" prefix not found or key not found in centralized file
-	for (int i = 0; i < g_Count; i++) {
-		if (StrEqual(g_Plugins[i].prefix, prefix)) {
-			char buffer[1024];
-			bool found = false;
-
-			if (isPrompt && g_Plugins[i].kvPromptLang != null) {
-				g_Plugins[i].kvPromptLang.Rewind();
-				if (g_Plugins[i].kvPromptLang.JumpToKey(section) && g_Plugins[i].kvPromptLang.GetString(key, buffer, sizeof(buffer))) found = true;
-			}
-
-			if (!found && g_Plugins[i].kvLang != null) {
+			// Try Lang
+			if (g_Plugins[i].kvLang != null) {
 				g_Plugins[i].kvLang.Rewind();
-				if (g_Plugins[i].kvLang.JumpToKey(section) && g_Plugins[i].kvLang.GetString(key, buffer, sizeof(buffer))) found = true;
+				KeyValues kv = g_Plugins[i].kvLang;
+				bool found = true;
+				for (int j = 0; j < count; j++) {
+					if (!kv.JumpToKey(parts[j])) { found = false; break; }
+				}
+				if (found && kv.JumpToKey(key)) return true;
 			}
-
-			if (!found && g_Plugins[i].kvDefault != null) {
+			// Try Default
+			if (g_Plugins[i].kvDefault != null) {
 				g_Plugins[i].kvDefault.Rewind();
-				if (g_Plugins[i].kvDefault.JumpToKey(section) && g_Plugins[i].kvDefault.GetString(key, buffer, sizeof(buffer))) found = true;
+				KeyValues kv = g_Plugins[i].kvDefault;
+				bool found = true;
+				for (int j = 0; j < count; j++) {
+					if (!kv.JumpToKey(parts[j])) { found = false; break; }
+				}
+				if (found && kv.JumpToKey(key)) return true;
 			}
-
-			if (found) {
-				SetNativeString(4, buffer, maxlen);
-				return 0;
-			}
-		}
 	}
-	ThrowNativeError(SP_ERROR_NATIVE, "String key '%s' not found in section '%s' (prefix: %s)", key, section, prefix);
-	return 0;
+	return false;
 }
 
 void LoadStrings(int idx)

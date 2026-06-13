@@ -53,9 +53,9 @@ enum struct OllamaRequest
 {
 	Function callback;
 	any callbackData;
-	char ownerName[64];
+	char ownerName[128]; // Aumentado para 128
 	Handle plugin;
-	char playerName[32];
+	char playerName[64]; // Aumentado para 64
 	int playerId;
 	int requestId;
 	float requestTime;
@@ -153,6 +153,14 @@ void ProcessTemplates(char[] buffer, int maxlen)
 
 	char dateStr[32]; FormatTime(dateStr, sizeof(dateStr), "%Y-%m-%d");
 	ReplaceString(buffer, maxlen, "|date|", dateStr);
+    
+    char lang[32], promptLang[32];
+    ConVar hLang = FindConVar("nvd_language");
+    ConVar hPromptLang = FindConVar("nvd_prompt_language");
+    if(hLang != null) hLang.GetString(lang, sizeof(lang)); else strcopy(lang, sizeof(lang), "default");
+    if(hPromptLang != null) hPromptLang.GetString(promptLang, sizeof(promptLang)); else strcopy(promptLang, sizeof(promptLang), "default");
+    ReplaceString(buffer, maxlen, "|server_lang|", lang);
+    ReplaceString(buffer, maxlen, "|prompt_lang|", promptLang);
 
 	for (int i = 0; i < g_MetaCount; i++) {
 		char placeholder[68]; Format(placeholder, sizeof(placeholder), "|%s|", g_MetaKeys[i]);
@@ -450,7 +458,9 @@ public Action Command_OllamaStatus(int client, int args)
 			int id = g_Requests[i].requestId;
 			int pSize = strlen(g_Requests[i].retryBody);
 			if (pSize > 1024) Format(payloadSize, sizeof(payloadSize), "%.1fkb", pSize / 1024.0); else Format(payloadSize, sizeof(payloadSize), "%db", pSize);
-			// Build display prompt from context if available
+			char cleanOwner[64]; strcopy(cleanOwner, sizeof(cleanOwner), g_Requests[i].ownerName);
+			ReplaceString(cleanOwner, sizeof(cleanOwner), ".smx", "");
+			
 			char dispBuf[512];
 			if (g_Requests[i].origContext[0] != '\0' && 
 			    GetFeatureStatus(FeatureType_Native, "NVD_BuildPrompts") == FeatureStatus_Available) {
@@ -461,38 +471,21 @@ public Action Command_OllamaStatus(int client, int args)
 			} else {
 				strcopy(dispBuf, sizeof(dispBuf), g_Requests[i].prompt[0] ? g_Requests[i].prompt : g_Requests[i].origPrompt);
 			}
-			if (strlen(dispBuf) > 100) { dispBuf[100] = '\0'; strcopy(dispBuf[97], 4, "..."); }
+			
+			if (strlen(dispBuf) > 60) {
+                int cut = 60;
+                // Se o byte em 'cut' for um byte de continuação UTF-8 (10xxxxxx), recua até achar o início
+                while (cut > 0 && (dispBuf[cut] & 0xC0) == 0x80) cut--;
+                
+                dispBuf[cut] = '\0';
+                strcopy(dispBuf[cut-3], 4, "...");
+            }
 			ReplaceString(dispBuf, sizeof(dispBuf), "\n", " ");
+			
 			if (g_Requests[i].playerName[0])
-				ReplyToCommand(client, "[NVD]   T%d Slot %d [%s](%s) %.1fs/%.0fs %s | %s", id, i, g_Requests[i].ownerName, g_Requests[i].playerName, elapsed, g_Requests[i].timeout, payloadSize, dispBuf);
+				ReplyToCommand(client, "[NVD]   T%d Slot %d [%s](%s) %.1fs/%.0fs %s | %s", id, i, cleanOwner, g_Requests[i].playerName, elapsed, g_Requests[i].timeout, payloadSize, dispBuf);
 			else
-				ReplyToCommand(client, "[NVD]   T%d Slot %d [%s] %.1fs/%.0fs %s | %s", id, i, g_Requests[i].ownerName, elapsed, g_Requests[i].timeout, payloadSize, dispBuf);
-		}
-	}
-
-	if (g_RequestQueue.Length > 0) {
-		ReplyToCommand(client, "[NVD] ── Waiting Queue ──");
-		char prompt[512], _sys[2048], _mdl[64], _ep[32], ownerName[64], hist[2048], playerName[32];
-		for (int i = 0; i < g_RequestQueue.Length; i++) {
-			DataPack pack = view_as<DataPack>(g_RequestQueue.Get(i));
-			pack.Reset();
-			Handle _pl; Function _cb; any _data; float _to, _st; int _ret, id, _pid;
-			char contextJSON[1024];
-			UnpackRequest(pack, _pl, _cb, _data, prompt, sizeof(prompt), _sys, sizeof(_sys), _mdl, sizeof(_mdl), _ep, sizeof(_ep), ownerName, sizeof(ownerName), hist, sizeof(hist), playerName, sizeof(playerName), _to, _ret, _st, id, _pid, contextJSON, 1024);
-			char displayBuf[512];
-			if (contextJSON[0] != '\0' && GetFeatureStatus(FeatureType_Native, "NVD_BuildPrompts") == FeatureStatus_Available) {
-				char sysP[2048], fullP[1024];
-				NVD_BuildPrompts(contextJSON, "user", _pid, sysP, sizeof(sysP), fullP, sizeof(fullP));
-				strcopy(displayBuf, sizeof(displayBuf), fullP);
-			} else {
-				strcopy(displayBuf, sizeof(displayBuf), prompt);
-			}
-			if (strlen(displayBuf) > 60) { displayBuf[60] = '\0'; strcopy(displayBuf[57], 4, "..."); }
-			if (strlen(prompt) > 60) { prompt[60] = '\0'; strcopy(prompt[57], 4, "..."); }
-			if (playerName[0])
-				ReplyToCommand(client, "[NVD]   T%d #%d: [%s](%s) %s", id, i+1, ownerName, playerName, displayBuf);
-			else
-				ReplyToCommand(client, "[NVD]   T%d #%d: [%s] %s", id, i+1, ownerName, displayBuf);
+				ReplyToCommand(client, "[NVD]   T%d Slot %d [%s] %.1fs/%.0fs %s | %s", id, i, cleanOwner, elapsed, g_Requests[i].timeout, payloadSize, dispBuf);
 		}
 	}
 
@@ -520,7 +513,37 @@ public Action Command_OllamaStatus(int client, int args)
 					ReplyToCommand(client, "[NVD]   H%d ❌ %.1fs [%s] %s", i, g_OllamaHistory[idx].duration, g_OllamaHistory[idx].ownerName, truncPrompt);
 			}
 		}
-	}
+	} else {
+        ReplyToCommand(client, "[NVD] ── Recent History (Empty) ──");
+    }
+
+	if (g_RequestQueue.Length > 0) {
+		ReplyToCommand(client, "[NVD] ── Waiting Queue ──");
+		for (int i = 0; i < g_RequestQueue.Length; i++) {
+			DataPack pack = view_as<DataPack>(g_RequestQueue.Get(i));
+			pack.Reset();
+			Handle _pl; Function _cb; any _data; float _to, _st; int _ret, id, _pid;
+			char prompt[512], _sys[2048], _mdl[64], _ep[32], ownerName[64], hist[2048], playerName[32], contextJSON[1024];
+			UnpackRequest(pack, _pl, _cb, _data, prompt, sizeof(prompt), _sys, sizeof(_sys), _mdl, sizeof(_mdl), _ep, sizeof(_ep), ownerName, sizeof(ownerName), hist, sizeof(hist), playerName, sizeof(playerName), _to, _ret, _st, id, _pid, contextJSON, 1024);
+			char displayBuf[512];
+			if (contextJSON[0] != '\0' && GetFeatureStatus(FeatureType_Native, "NVD_BuildPrompts") == FeatureStatus_Available) {
+				char sysP[2048], fullP[1024];
+				NVD_BuildPrompts(contextJSON, "user", _pid, sysP, sizeof(sysP), fullP, sizeof(fullP));
+				strcopy(displayBuf, sizeof(displayBuf), fullP);
+			} else {
+				strcopy(displayBuf, sizeof(displayBuf), prompt);
+			}
+			if (strlen(displayBuf) > 60) { displayBuf[60] = '\0'; strcopy(displayBuf[57], 4, "..."); }
+			if (strlen(prompt) > 60) { prompt[60] = '\0'; strcopy(prompt[57], 4, "..."); }
+			float waitTime = GetGameTime() - _st;
+			if (playerName[0])
+				ReplyToCommand(client, "[NVD]   T%d #%d: [%s](%s) %.1fs %s", id, i+1, ownerName, playerName, waitTime, displayBuf);
+			else
+				ReplyToCommand(client, "[NVD]   T%d #%d: [%s] %.1fs %s", id, i+1, ownerName, waitTime, displayBuf);
+		}
+	} else {
+        ReplyToCommand(client, "[NVD] ── Waiting Queue (Empty) ──");
+    }
 	ReplyToCommand(client, "[NVD] Use T<id> to inspect an entry: sm_ollama_status T123");
 	return Plugin_Handled;
 }
@@ -613,7 +636,7 @@ public int Native_AskAI(Handle plugin, int numParams)
 
 void SendRequest(int slot, const char[] prompt, const char[] system, const char[] model, const char[] endpoint, const char[] historyJSON = "", float timeout = 120.0)
 {
-    // If contextJSON is set, build prompts from template instead of using pre-built ones
+    // Build prompts from template
     char finalPrompt[1024], finalSystem[3072];
     if (g_Requests[slot].origContext[0] != '\0' && 
         GetFeatureStatus(FeatureType_Native, "NVD_BuildPrompts") == FeatureStatus_Available) {
@@ -623,31 +646,14 @@ void SendRequest(int slot, const char[] prompt, const char[] system, const char[
         strcopy(finalPrompt, sizeof(finalPrompt), prompt);
         strcopy(finalSystem, sizeof(finalSystem), system);
     }
-    strcopy(g_Requests[slot].origPrompt, 512, finalPrompt); strcopy(g_Requests[slot].origSystem, 2048, finalSystem);
-    strcopy(g_Requests[slot].origModel, 64, model); strcopy(g_Requests[slot].origEndpoint, 32, endpoint);
-    strcopy(g_Requests[slot].origHistory, 2048, historyJSON);
-    ProcessTemplates(finalPrompt, sizeof(finalPrompt)); ProcessTemplates(finalSystem, sizeof(finalSystem));
-    ConVar hLang = FindConVar("nvd_language");
-    ConVar hPromptLang = FindConVar("nvd_prompt_language");
-    if (hLang != null && hPromptLang != null) {
-        char lang[16], promptLang[16];
-        hLang.GetString(lang, sizeof(lang));
-        hPromptLang.GetString(promptLang, sizeof(promptLang));
-        
-        char effectivePromptLang[16];
-        strcopy(effectivePromptLang, sizeof(effectivePromptLang), promptLang);
-        if (StrEqual(effectivePromptLang, "default")) hLang.GetString(effectivePromptLang, sizeof(effectivePromptLang));
+    
+    // Process templates BEFORE sending to AI
+    ProcessTemplates(finalPrompt, sizeof(finalPrompt)); 
+    ProcessTemplates(finalSystem, sizeof(finalSystem));
 
-        if (!StrEqual(lang, "default") && !StrEqual(lang, effectivePromptLang)) {
-            char langName[32];
-            if (StrEqual(lang, "pt-br") || StrEqual(lang, "pt")) strcopy(langName, sizeof(langName), "Portuguese");
-            else if (StrEqual(lang, "en")) strcopy(langName, sizeof(langName), "English");
-            else if (StrEqual(lang, "zh")) strcopy(langName, sizeof(langName), "Chinese");
-            else strcopy(langName, sizeof(langName), lang);
-            Format(finalSystem, sizeof(finalSystem), "%s Answer only in %s.", finalSystem, langName);
-        }
-    }
-	char url[64]; Format(url, sizeof(url), "/api/%s", endpoint);
+    strcopy(g_Requests[slot].origPrompt, 512, finalPrompt); strcopy(g_Requests[slot].origSystem, 2048, finalSystem);
+    // REMOVIDO: injeção de idioma dinâmica para evitar conflito com templates
+    char url[64]; Format(url, sizeof(url), "/api/%s", endpoint);
 	JSONObject payload = new JSONObject(); payload.SetString("model", model); payload.SetBool("stream", false);
 	JSONArray msgs = new JSONArray();
 	JSONObject sMsg = new JSONObject(); sMsg.SetString("role", "system"); sMsg.SetString("content", finalSystem); msgs.Push(sMsg); delete sMsg;
@@ -760,10 +766,11 @@ public int Native_CanRequest(Handle plugin, int numParams)
 
 int AllocateSlot(Function cb, any data, Handle plugin, const char[] ownerName)
 {
-	for (int i = 0; i < GetMaxPending(); i++) if (g_Requests[i].state == ReqState_Queued) {
+	for (int i = 0; i < MAX_REQUESTS; i++) {
+        if (g_Requests[i].state == ReqState_Queued) {
 		g_Requests[i].callback = cb; g_Requests[i].callbackData = data;
 		g_Requests[i].plugin = plugin; g_Requests[i].state = ReqState_Processing;
-		strcopy(g_Requests[i].ownerName, 64, ownerName);
+		strcopy(g_Requests[i].ownerName, 128, ownerName); // Usando novo tamanho
 		g_Requests[i].requestTime = GetGameTime(); g_Requests[i].retries = 0;
 		g_Requests[i].requestId = g_NextRequestId++;
 		g_Requests[i].prompt[0] = '\0';
@@ -774,10 +781,15 @@ int AllocateSlot(Function cb, any data, Handle plugin, const char[] ownerName)
 		g_Requests[i].playerId = 0; g_Requests[i].playerName[0] = '\0';
 		if (data >= 1 && data <= MaxClients && IsClientInGame(data)) {
 			g_Requests[i].playerId = data;
-			GetClientName(data, g_Requests[i].playerName, sizeof(g_Requests[i].playerName));
+			GetClientName(data, g_Requests[i].playerName, 64); // Usando novo tamanho
 		}
 		return i;
-	}
+        }
+    }
+    // Debug: logar o estado de todos os slots se falhar
+    char debugBuf[512];
+    for (int i = 0; i < MAX_REQUESTS; i++) Format(debugBuf, sizeof(debugBuf), "%s%d:%d ", debugBuf, i, g_Requests[i].state);
+    LogMessage("[NVD_DEBUG] AllocateSlot failed. States: %s", debugBuf);
 	return -1;
 }
 
@@ -790,9 +802,29 @@ bool FreeSlot(int id, Function &cb, any &data, Handle &plugin, char[] ownerName)
 	g_Requests[id].state = ReqState_Queued; ProcessQueue(); return true;
 }
 
+void CleanupQueue()
+{
+	if (g_RequestQueue == null || g_RequestQueue.Length == 0) return;
+	for (int i = g_RequestQueue.Length - 1; i >= 0; i--) {
+		DataPack pack = view_as<DataPack>(g_RequestQueue.Get(i));
+		pack.Reset();
+        // Unpack apenas o necessário para checar o timeout
+		Handle _pl; Function _cb; any _data; float _to, _st; int _ret, id, _pid;
+		char prompt[512], _sys[2048], _m[64], _e[32], _on[64], _h[2048], _pn[32], _ctx[1024];
+		UnpackRequest(pack, _pl, _cb, _data, prompt, sizeof(prompt), _sys, sizeof(_sys), _m, sizeof(_m), _e, sizeof(_e), _on, sizeof(_on), _h, sizeof(_h), _pn, sizeof(_pn), _to, _ret, _st, id, _pid, _ctx, 1024);
+		
+		if (GetGameTime() - _st > _to) {
+			LogMessage("[NVD] ⚠️ Queue: Removing expired request %d", id);
+			delete pack;
+			g_RequestQueue.Erase(i);
+		}
+	}
+}
+
 void ProcessQueue()
 {
 	if (g_RequestQueue == null || g_RequestQueue.Length == 0) return;
+    CleanupQueue();
 	int concurrency = g_ConcurrencyCvar.IntValue; if (concurrency < 1) concurrency = 1;
 	while (g_RequestQueue.Length > 0) {
 		int active = 0; for (int i = 0; i < MAX_REQUESTS; i++) if (g_Requests[i].state == ReqState_Processing) active++;

@@ -18,7 +18,8 @@ native void NVD_RegisterStrings(const char[] prefix);
  * key: Chave da string.
  * fallback: Valor se não encontrar.
  */
-native void NVD_GetStr(const char[] prefix, const char[] section, const char[] key, char[] buffer, int maxlen, const char[] fallback = "");
+native void NVD_GetStr(const char[] path, const char[] key, char[] buffer, int maxlen);
+native bool NVD_HasStr(const char[] path, const char[] key);
 
 public SharedPlugin __pl_nvd_strings = 
 {

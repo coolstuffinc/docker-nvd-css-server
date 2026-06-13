@@ -56,7 +56,9 @@ public void OnPluginStart()
 
 stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen)
 {
-    NVD_GetStr("nvd", section, key, buffer, maxlen);
+    char path[128];
+    Format(path, sizeof(path), "nvd.agent.%s", section);
+    NVD_GetStr(path, key, buffer, maxlen);
 }
 
 public void OnMapStart()
