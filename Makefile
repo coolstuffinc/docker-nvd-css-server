@@ -18,13 +18,17 @@ MODS_NVD = $(filter-out $(MODS_CORE), $(wildcard src/mods/nvd/*.sp))
 MODS_ROOT = $(wildcard src/mods/*.sp)
 ALL_MODS = $(MODS_CORE) $(MODS_NVD) $(MODS_ROOT)
 
-.PHONY: all sync compile deploy reload mods clean help rcon
+.PHONY: all sync compile deploy reload mods clean help rcon match
 
 all: mods
 
 rcon:
 	@if [ -z "$(cmd)" ]; then echo "Erro: Use make rcon cmd=\"seu comando\""; exit 1; fi
 	@uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "$(cmd)"
+
+match:
+	@echo "--- Iniciando partida ---"
+	@uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "bot_join_after_player 0; bot_quota 10; bot_quota_mode fill; mp_restartgame 1"
 
 sync:
 	@echo "--- Sincronizando fontes e recursos ---"
@@ -80,3 +84,5 @@ clean:
 help:
 	@echo "Comandos disponíveis:"
 	@echo "  make mods    - Compila, faz deploy e recarrega todos os plugins"
+	@echo "  make match   - Inicia uma partida com bots"
+	@echo "  make rcon cmd=\"...\" - Executa um comando RCON"
