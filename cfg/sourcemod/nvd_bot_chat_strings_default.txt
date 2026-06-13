@@ -141,7 +141,8 @@
         "round_end_user"	"Trash talk about the round result."
         "bomb_planted_user"	"Trash talk about planting the bomb."
         "bomb_defused_user"	"Trash talk about defusing the bomb."
-        "enemies_left_user"	"Report the numbers. |enemies| enemies, |allies| allies. Inform your team."
+        "enemies_left_user"	"An enemy was eliminated, |enemies| enemies left, |allies| allies alive. Comment."
+        "allies_left_user"	"An ally was eliminated, |enemies| enemies left, |allies| allies alive. Comment."
         "default_user"	"React trash talk to |event|. |state| |mood|."
     }
     "misc"

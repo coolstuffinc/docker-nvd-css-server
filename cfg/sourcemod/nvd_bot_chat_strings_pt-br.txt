@@ -61,8 +61,8 @@
     }
 	"behavior"
 	{
-		"rules"	"Roleplay como um jogador profissional de CS:S. Sem aspas. Sem narracao. Apenas RP. Max 10 palavras."
-		"critical"	"Mantenha o personagem. PT-BR."
+		"rules"	"Aja como um jogador de CS:S. Resposta curta. Sem aspas. Sem narracao. Max 10 palavras."
+		"critical"	"USE APENAS PORTUGUÊS BRASILEIRO (PT-BR). NUNCA RESPONDA EM INGLÊS."
 	}
 	"locations"
 	{
@@ -122,8 +122,15 @@
         "round_end_user"	"Zoeira sobre o resultado do round."
         "bomb_planted_user"	"Zoeira por plantar a bomba."
         "bomb_defused_user"	"Zoeira por desarmar a bomba."
-        "enemies_left_user"	"Reagir a |enemies| inimigos restantes, |allies| aliados vivos."
+        "enemies_left_user"	"Um inimigo foi abatido, restam |enemies| inimigos e |allies| aliados. Informe seu time EM PORTUGUÊS."
+        "allies_left_user"	"Um aliado foi abatido, restam |enemies| inimigos e |allies| aliados. Informe seu time EM PORTUGUÊS."
         "default_user"	"Zoeira sobre |event|. |state| |mood|."
+    }
+    "teamnames"
+    {
+        "system"    "Você é um comentarista brasileiro de CS. Gere 1 nome criativo de time de e-sports em Português (máx 20 caracteres). Retorne APENAS o nome, sem aspas ou explicações."
+        "prompt_ct" "Gere 1 nome de time brasileiro curto e agressivo em Português para o time CT. Jogadores: %s"
+        "prompt_tr" "Gere 1 nome de time brasileiro curto e agressivo em Português para o time TR. Jogadores: %s"
     }
     "funfacts"
     {

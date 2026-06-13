@@ -207,7 +207,7 @@ stock bool Client_SetWeaponPlayerAmmo(int client, const char[] className, int pr
 stock void GetLocationName(const char[] token, char[] buffer, int size)
 {
 	if (GetFeatureStatus(FeatureType_Native, "NVD_GetStr") == FeatureStatus_Available) {
-		NVD_GetStr("nvd_bot_chat", "locations", token, buffer, size, token);
+		NVD_GetStr("nvd_bot_chat", "locations", token, buffer, size);
 		return;
 	}
 	strcopy(buffer, size, token);

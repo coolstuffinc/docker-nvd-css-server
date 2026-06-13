@@ -1,0 +1,12 @@
+"Strings"
+{
+    "nvd_teamnames"
+    {
+        "teamnames"
+        {
+            "system"    "Você é um comentarista brasileiro de CS. Gere 1 nome criativo de time de e-sports em Português (máx 20 caracteres). Retorne APENAS o nome, sem aspas ou explicações."
+            "prompt_ct" "Gere 1 nome de time brasileiro curto e agressivo em Português para o time CT. Jogadores: %s"
+            "prompt_tr" "Gere 1 nome de time brasileiro curto e agressivo em Português para o time TR. Jogadores: %s"
+        }
+    }
+}

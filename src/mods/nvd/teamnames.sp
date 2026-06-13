@@ -2,6 +2,7 @@
 #include <sdktools>
 #include <cstrike>
 #include <nvd/core>
+#include <nvd/strings>
 #include <clientprefs>
 
 #pragma semicolon 1
@@ -43,6 +44,7 @@ public void OnPluginStart()
 		if (IsClientInGame(i) && AreClientCookiesCached(i))
 			OnClientCookiesCached(i);
 	}
+	NVD_RegisterStrings("nvd");
 }
 
 public void OnClientDisconnect(int client)
@@ -209,13 +211,15 @@ void RefreshPlayerLists()
 
 void QueryOllama(const char[] team)
 {
-	char prompt[512];
+	char promptFmt[512], prompt[512], sys[256];
 	if (StrEqual(team, "CT"))
-		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the CT team. Players: %s", g_PlayersCt);
+		NVD_GetStr("nvd", "teamnames", "prompt_ct", promptFmt, sizeof(promptFmt));
 	else
-		Format(prompt, sizeof(prompt), "Generate 1 short, aggressive Brazilian team name in Portuguese for the TR team. Players: %s.", g_PlayersT);
+		NVD_GetStr("nvd", "teamnames", "prompt_tr", promptFmt, sizeof(promptFmt));
 
-	char sys[256] = "You are a Brazilian CS commentator. Generate 1 creative e-sports team name in Portuguese (max 20 chars). Return ONLY the name, no quotes or explanations.";
+	NVD_GetStr("nvd", "teamnames", "system", sys, sizeof(sys));
+	
+	Format(prompt, sizeof(prompt), promptFmt, StrEqual(team, "CT") ? g_PlayersCt : g_PlayersT);
 
 	any teamData = StrEqual(team, "CT") ? 1 : 0;
 	NVD_AskAI(prompt, sys, INVALID_FUNCTION, teamData, "", 0, 0.0);

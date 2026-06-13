@@ -54,9 +54,9 @@ public void OnPluginStart()
 	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT);
 }
 
-stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen, const char[] fallback = "")
+stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen)
 {
-    NVD_GetStr("nvd_agent", section, key, buffer, maxlen, fallback);
+    NVD_GetStr("nvd_agent", section, key, buffer, maxlen);
 }
 
 public void OnMapStart()
@@ -88,7 +88,7 @@ public Action Command_Agent(int client, int args)
 {
 	if (!CheckCommandAccess(client, "sm_agent", ADMFLAG_KICK))
 	{
-		char msg[128]; GetStr("misc", "no_perm", msg, sizeof(msg), "No permission.");
+		char msg[128]; GetStr("misc", "no_perm", msg, sizeof(msg));
 		ReplyToCommand(client, msg);
 		return Plugin_Handled;
 	}
@@ -96,7 +96,7 @@ public Action Command_Agent(int client, int args)
 	float now = GetGameTime();
 	if (client > 0 && now - g_PlayerLastAgent[client] < AGENT_COOLDOWN)
 	{
-		char msg[128]; GetStr("misc", "cooldown", msg, sizeof(msg), "Wait %.0fs.");
+		char msg[128]; GetStr("misc", "cooldown", msg, sizeof(msg));
 		ReplyToCommand(client, msg, AGENT_COOLDOWN - (now - g_PlayerLastAgent[client]));
 		return Plugin_Handled;
 	}
@@ -104,8 +104,8 @@ public Action Command_Agent(int client, int args)
 	if (args < 1)
 	{
 		char usage[64], example[64];
-		GetStr("misc", "usage", usage, sizeof(usage), "Usage: !agent <request>");
-		GetStr("misc", "example", example, sizeof(example), "Example: !agent change map");
+		GetStr("misc", "usage", usage, sizeof(usage));
+		GetStr("misc", "example", example, sizeof(example));
 		ReplyToCommand(client, "[\x04AGENT\x01] %s", usage);
 		ReplyToCommand(client, "[\x04AGENT\x01] %s", example);
 		return Plugin_Handled;
@@ -117,15 +117,15 @@ public Action Command_Agent(int client, int args)
 	TrimString(request);
 	
 	if (client > 0) g_PlayerLastAgent[client] = now;
-	char proc[64]; GetStr("misc", "processing", proc, sizeof(proc), "Thinking...");
+	char proc[64]; GetStr("misc", "processing", proc, sizeof(proc));
 	ReplyToCommand(client, proc);
 
 	char context[MAX_CTX];
 	BuildContext(context, sizeof(context), request, client);
 
 	char sysBase[1024], sysRules[1024], systemPrompt[2048];
-	GetStr("behavior", "system", sysBase, sizeof(sysBase), "You are the Admin AGENT. Map:[map].");
-	GetStr("behavior", "rules", sysRules, sizeof(sysRules), "FORMAT: [SAY:msg] [CMD:cmd].");
+	GetStr("behavior", "system", sysBase, sizeof(sysBase));
+	GetStr("behavior", "rules", sysRules, sizeof(sysRules));
 	Format(systemPrompt, sizeof(systemPrompt), "%s %s", sysBase, sysRules);
 
 	NVD_AskAI(context, systemPrompt, INVALID_FUNCTION, client);
@@ -176,9 +176,9 @@ void ProcessResponse(const char[] response, any data)
 	if (client != 0 && !IsClientInGame(client)) return;
 
 	char line[256], unknownMsg[128], noAccMsg[128], execMsg[128];
-	GetStr("misc", "unknown_cmd", unknownMsg, sizeof(unknownMsg), "Unknown: %s");
-	GetStr("misc", "no_access", noAccMsg, sizeof(noAccMsg), "Denied: %s");
-	GetStr("misc", "executing", execMsg, sizeof(execMsg), "Executing: %s");
+	GetStr("misc", "unknown_cmd", unknownMsg, sizeof(unknownMsg));
+	GetStr("misc", "no_access", noAccMsg, sizeof(noAccMsg));
+	GetStr("misc", "executing", execMsg, sizeof(execMsg));
 
 	int start = 0, len = strlen(response);
 	while (start < len) {

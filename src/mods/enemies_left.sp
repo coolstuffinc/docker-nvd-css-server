@@ -179,7 +179,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     g_LastAllies[victimBot] = vAllies;
     char context[256];
     Format(context, sizeof(context), "\"%s\" %d/%d", fallback2, vEnemies, vAllies);
-    NVD_SubmitChatEvent(context, victimBot, 35, "enemies_left", vEnemies, vAllies);
+    NVD_SubmitChatEvent(context, victimBot, 35, "allies_left", vEnemies, vAllies);
   }
         }
       }

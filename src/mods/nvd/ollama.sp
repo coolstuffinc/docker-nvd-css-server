@@ -92,7 +92,7 @@ OllamaRequest g_OllamaHistory[MAX_OLLAMA_HISTORY];
 int g_OllamaHistoryIdx = 0;
 int g_OllamaHistoryCount = 0;
 
-ConVar g_IpCvar, g_PortCvar, g_ModelCvar, g_EndpointCvar, g_DebugCvar, g_DumpCvar;
+ConVar g_IpCvar, g_PortCvar, g_ModelCvar, g_EndpointCvar;
 ConVar g_ConcurrencyCvar, g_MaxPendingCvar, g_MaxRetriesCvar;
 char g_BaseUrl[256];
 bool g_WarmupDone;
@@ -166,8 +166,6 @@ public void OnPluginStart()
 	g_PortCvar = CreateConVar("nvd_ollama_port", "11433");
 	g_ModelCvar = CreateConVar("nvd_ollama_model", "qwen2.5:1.5b");
 	g_EndpointCvar = CreateConVar("nvd_ollama_endpoint", "chat");
-	g_DebugCvar = CreateConVar("nvd_ollama_debug", "1");
-	g_DumpCvar = CreateConVar("nvd_ollama_dump", "1");
 	g_ConcurrencyCvar = CreateConVar("nvd_ollama_concurrency", "3");
 	g_MaxPendingCvar = CreateConVar("nvd_ollama_max_pending", "16");
 	g_MaxRetriesCvar = CreateConVar("nvd_ollama_max_retries", "3");
@@ -445,7 +443,7 @@ public Action Command_OllamaStatus(int client, int args)
 	ReplyToCommand(client, "[NVD] Active: %d | Waiting: %d", used, g_RequestQueue.Length);
 
 	if (used > 0) {
-		char truncated[256], payloadSize[16];
+		char payloadSize[16];
 		for (int i = 0; i < GetMaxPending(); i++) {
 			if (g_Requests[i].state != ReqState_Processing) continue;
 			float elapsed = GetGameTime() - g_Requests[i].requestTime;
@@ -571,9 +569,8 @@ public int Native_AskAI(Handle plugin, int numParams)
     char prompt[512], system[2048], historyJSON[2048] = "";
     GetNativeString(1, prompt, sizeof(prompt)); GetNativeString(2, system, sizeof(system));
     ProcessTemplates(prompt, sizeof(prompt)); ProcessTemplates(system, sizeof(system));
-    Function cb = GetNativeFunction(3); any cbData = GetNativeCell(4);
+    Function cb =     GetNativeFunction(3); any cbData = GetNativeCell(4);
     if (numParams >= 5) GetNativeString(5, historyJSON, sizeof(historyJSON));
-    int priority = (numParams >= 6) ? GetNativeCell(6) : 0;
     float timeout = (numParams >= 7) ? view_as<float>(GetNativeCell(7)) : 120.0;
     char contextJSON[1024] = "";
     if (numParams >= 9) GetNativeString(9, contextJSON, sizeof(contextJSON));
@@ -631,15 +628,25 @@ void SendRequest(int slot, const char[] prompt, const char[] system, const char[
     strcopy(g_Requests[slot].origHistory, 2048, historyJSON);
     ProcessTemplates(finalPrompt, sizeof(finalPrompt)); ProcessTemplates(finalSystem, sizeof(finalSystem));
     ConVar hLang = FindConVar("nvd_language");
-	if (hLang != null) {
-		char lang[16]; hLang.GetString(lang, sizeof(lang));
-		if (!StrEqual(lang, "default")) {
-			char langName[32];
-			if (StrEqual(lang, "pt")) strcopy(langName, sizeof(langName), "Portuguese");
-			else strcopy(langName, sizeof(langName), lang);
-			Format(finalSystem, sizeof(finalSystem), "%s Answer in %s.", finalSystem, langName);
-		}
-	}
+    ConVar hPromptLang = FindConVar("nvd_prompt_language");
+    if (hLang != null && hPromptLang != null) {
+        char lang[16], promptLang[16];
+        hLang.GetString(lang, sizeof(lang));
+        hPromptLang.GetString(promptLang, sizeof(promptLang));
+        
+        char effectivePromptLang[16];
+        strcopy(effectivePromptLang, sizeof(effectivePromptLang), promptLang);
+        if (StrEqual(effectivePromptLang, "default")) hLang.GetString(effectivePromptLang, sizeof(effectivePromptLang));
+
+        if (!StrEqual(lang, "default") && !StrEqual(lang, effectivePromptLang)) {
+            char langName[32];
+            if (StrEqual(lang, "pt-br") || StrEqual(lang, "pt")) strcopy(langName, sizeof(langName), "Portuguese");
+            else if (StrEqual(lang, "en")) strcopy(langName, sizeof(langName), "English");
+            else if (StrEqual(lang, "zh")) strcopy(langName, sizeof(langName), "Chinese");
+            else strcopy(langName, sizeof(langName), lang);
+            Format(finalSystem, sizeof(finalSystem), "%s Answer only in %s.", finalSystem, langName);
+        }
+    }
 	char url[64]; Format(url, sizeof(url), "/api/%s", endpoint);
 	JSONObject payload = new JSONObject(); payload.SetString("model", model); payload.SetBool("stream", false);
 	JSONArray msgs = new JSONArray();

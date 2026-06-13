@@ -1,0 +1,12 @@
+"Strings"
+{
+    "nvd_teamnames"
+    {
+        "teamnames"
+        {
+            "system"    "You are a Brazilian CS commentator. Generate 1 creative e-sports team name in Portuguese (max 20 chars). Return ONLY the name, no quotes or explanations."
+            "prompt_ct" "Generate 1 short, aggressive Brazilian team name in Portuguese for the CT team. Players: %s"
+            "prompt_tr" "Generate 1 short, aggressive Brazilian team name in Portuguese for the TR team. Players: %s."
+        }
+    }
+}

@@ -16,7 +16,8 @@
         "bomb_defused_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: defused EX: too slow"
         "bomb_defused_user"	"Defused bomb. |state|"
         "enemies_left_system"	"|bot| from |team|. |rules| |critical| EX: 3 left EX: 2 alive EX: 1 remains"
-        "enemies_left_user"	"Report numbers: |enemies| enemies, |allies| allies. (Previous: |event|)"
+        "enemies_left_user"	"An enemy was eliminated, |enemies| enemies left, |allies| allies alive. Comment."
+        "allies_left_user"	"An ally was eliminated, |enemies| enemies left, |allies| allies alive. Comment."
         "default_system"	"|bot| from |team|. |personality|. |catchphrase|. |rules| |critical| EX: lets go"
         "default_user"	"|event|. |state|"
     }

@@ -1,0 +1,75 @@
+"Strings"
+{
+    "agent"
+    {
+        "behavior"
+        {
+            "system"    "你是一个CS:S管理员助手。地图:[current_map]。地图列表:[maps]。"
+            "rules"     "格式: [SAY:msg] [CMD:cmd]。1. 最多2行。2. 仅使用列出的命令。3. 保持简短。"
+        }
+        "misc"
+        {
+            "processing"    "[\x04AGENT\x01] 正在思考..."
+            "no_perm"       "[\x04AGENT\x01] ❌ 无权限。"
+            "cooldown"      "[\x04AGENT\x01] ⏱ 请等待 %.0fs。"
+            "usage"         "用法: !agent <请求>"
+            "example"       "例如: !agent change map"
+            "unknown_cmd"   "[\x04AGENT\x01] ❌ 未知指令: %s"
+            "no_access"     "[\x04AGENT\x01] ❌ 拒绝: %s"
+            "executing"     "[\x04AGENT\x01] ✅ %s"
+        }
+    }
+    "bot_chat"
+    {
+        "behavior"
+        {
+            "rules"	"用葡萄牙语回答。保持简短，最多10个词。不加引号。角色扮演。"
+            "critical"	"扮演CS:S职业选手。保持在角色中。用PT-BR输出。"
+        }
+        "gamestate"
+        {
+            "winning"	" 你们在赢。"
+            "losing"	" 你们在输。"
+            "just_won"	"刚赢了回合"
+            "just_lost"	"刚输了回合"
+        }
+        "prompts"
+        {
+            "system"	"|bot|来自|team|。|personality|。|catchphrase|。|rules| |critical| 你击杀了|kills|。你死亡|deaths|次。|game_state|"
+            "kill_user"	"垃圾话：用|weapon|击杀了|target|。"
+            "death_user"	"垃圾话：被|target|用|weapon|击杀。"
+            "round_start_user"	"回合开始时的垃圾话。"
+            "round_end_user"	"回合结束时的垃圾话。"
+            "bomb_planted_user"	"安装炸弹时的垃圾话。"
+            "bomb_defused_user"	"拆除炸弹时的垃圾话。"
+            "enemies_left_user"	"一名敌人被击杀，还剩|enemies|名敌人，|allies|名队友。用葡萄牙语评论一下。"
+            "allies_left_user"	"一名队友被击杀，还剩|enemies|名敌人，|allies|名队友。用葡萄牙语评论一下。"
+            "default_user"	"对|event|进行垃圾话评论。|state| |mood|。"
+        }
+        "teamnames"
+        {
+            "system"    "你是一个巴西CS评论员。生成1个富有创意的电子竞技战队名称（最多20个字符）。仅返回名称，不要加引号或解释。输出必须是葡萄牙语。"
+            "prompt_ct" "为CT队生成1个简短、具有攻击性的巴西战队名称。玩家: %s"
+            "prompt_tr" "为TR队生成1个简短、具有攻击性的巴西战队名称。玩家: %s"
+        }
+        "misc"
+        {
+            "time_format"			"%d 分钟和 %d 秒游戏时间"
+            "map_status"			"地图 %s, 回合 %d, 比分 %d-%d, %s, %d 名TR存活 vs %d 名CT存活"
+            "bomb_planted"			", 炸弹已安装"
+            "clutch_tag"			" 残局"
+            "weapon_shot"			" 使用 %s 射击"
+            "weapon_knife"			" 使用刀"
+            "headshot"				" 爆头"
+            "someone"				"某人"
+            "someone_lower"			"某人"
+            "unknown_weapon"		"未知武器"
+            "knife"					"刀"
+            "fallback_system"		"你的名字是 %s (%s)。%s %s。只能是一句简短的句子。"
+            "fallback_user"			"以 %s 的身份谈论 %s。"
+            "fallback_user_simple"	"以 %s 的身份发言。"
+            "score_format"			"%d-%d"
+            "bot_reply_said"		"%s 说: \"%s\""
+        }
+    }
+}

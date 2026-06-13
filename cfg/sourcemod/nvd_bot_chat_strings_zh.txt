@@ -28,7 +28,8 @@
         "bomb_defused_system"	"|bot|来自|team|。|personality|。|catchphrase|。|rules| |critical| 例如：defused 例如：too slow"
         "bomb_defused_user"	"拆除了炸弹。|state|"
         "enemies_left_system"	"|bot|来自|team|。|rules| |critical| 例如：还剩3人 例如：2人存活 例如：只剩1个"
-        "enemies_left_user"	"报告人数：|enemies|名敌人，|allies|名队友。（之前：|event|）"
+        "enemies_left_user"	"一名敌人被击杀，还剩|enemies|名敌人，|allies|名队友。评论一下。"
+        "allies_left_user"	"一名队友被击杀，还剩|enemies|名敌人，|allies|名队友。评论一下。"
         "default_system"	"|bot|来自|team|。|personality|。|catchphrase|。|rules| |critical| 例如：lets go"
         "default_user"	"|event|。|state|"
     }
