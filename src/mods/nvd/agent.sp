@@ -48,7 +48,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_agent_check", Command_AgentCheck, "Poll for the last RCON response");
 	
 	LoadValidMaps();
-	NVD_RegisterStrings("nvd_agent");
+	NVD_RegisterStrings("nvd");
 
 	// Inicia timer de polling
 	CreateTimer(0.5, Timer_PollResponses, _, TIMER_REPEAT);
@@ -56,7 +56,7 @@ public void OnPluginStart()
 
 stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen)
 {
-    NVD_GetStr("nvd_agent", section, key, buffer, maxlen);
+    NVD_GetStr("nvd", section, key, buffer, maxlen);
 }
 
 public void OnMapStart()

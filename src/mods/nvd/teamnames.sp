@@ -44,6 +44,8 @@ public void OnPluginStart()
 		if (IsClientInGame(i) && AreClientCookiesCached(i))
 			OnClientCookiesCached(i);
 	}
+    NVD_RegisterStrings("nvd");
+}
 	NVD_RegisterStrings("nvd");
 }
 

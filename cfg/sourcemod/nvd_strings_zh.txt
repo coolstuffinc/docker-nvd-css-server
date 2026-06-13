@@ -1,6 +1,6 @@
 "Strings"
 {
-    "agent"
+    "nvd_agent"
     {
         "behavior"
         {
@@ -19,12 +19,12 @@
             "executing"     "[\x04AGENT\x01] ✅ %s"
         }
     }
-    "bot_chat"
+    "nvd_bot_chat"
     {
         "behavior"
         {
-            "rules"	"用葡萄牙语回答。保持简短，最多10个词。不加引号。角色扮演。"
-            "critical"	"扮演CS:S职业选手。保持在角色中。用PT-BR输出。"
+            "rules"	"用葡萄牙语回答。保持简短，最多10个词。不加引号。角色扮演。严禁解说比赛。"
+            "critical"	"扮演CS:S职业选手。保持在角色中。用PT-BR输出。严禁解说比赛。"
         }
         "gamestate"
         {
@@ -42,8 +42,8 @@
             "round_end_user"	"回合结束时的垃圾话。"
             "bomb_planted_user"	"安装炸弹时的垃圾话。"
             "bomb_defused_user"	"拆除炸弹时的垃圾话。"
-            "enemies_left_user"	"一名敌人被击杀，还剩|enemies|名敌人，|allies|名队友。用葡萄牙语评论一下。"
-            "allies_left_user"	"一名队友被击杀，还剩|enemies|名敌人，|allies|名队友。用葡萄牙语评论一下。"
+            "enemies_left_user"	"一名敌人被击杀，还剩|enemies|名敌人，|allies|名队友。严禁解说比赛。用葡萄牙语评论一下。"
+            "allies_left_user"	"一名队友被击杀，还剩|enemies|名敌人，|allies|名队友。严禁解说比赛。用葡萄牙语评论一下。"
             "default_user"	"对|event|进行垃圾话评论。|state| |mood|。"
         }
         "teamnames"

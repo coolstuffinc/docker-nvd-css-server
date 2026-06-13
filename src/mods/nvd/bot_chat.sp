@@ -78,7 +78,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	// Centralizado via Core
-	NVD_RegisterStrings("nvd_bot_chat");
+	NVD_RegisterStrings("nvd");
 	LoadMetaFromStrings();
 }
 
@@ -212,7 +212,7 @@ public Action Command_BotChatHistory(int client, int args)
 
 stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen)
 {
-    NVD_GetStr("nvd_bot_chat", section, key, buffer, maxlen);
+    NVD_GetStr("nvd", section, key, buffer, maxlen);
 }
 
 bool GetPromptTemplate(const char[] eventType, const char[] promptType,
