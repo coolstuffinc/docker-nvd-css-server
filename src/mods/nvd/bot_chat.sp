@@ -212,9 +212,9 @@ public Action Command_BotChatHistory(int client, int args)
 
 stock void GetStr(const char[] section, const char[] key, char[] buffer, int maxlen)
 {
-    char path[128];
-    Format(path, sizeof(path), "nvd_bot_chat.%s", section);
-    NVD_GetStr(path, key, buffer, maxlen);
+    char fullPath[256];
+    Format(fullPath, sizeof(fullPath), "nvd.bot_chat.%s.%s", section, key);
+    NVD_GetStr(fullPath, buffer, maxlen);
 }
 
 bool GetPromptTemplate(const char[] eventType, const char[] promptType,
@@ -311,9 +311,8 @@ void FriendlyWeaponName(const char[] weapon, char[] output, int maxlen)
             }
         }
     }
-    char weaponName[32];
-    GetStr("weapons_fallback", base, weaponName, sizeof(weaponName));
-    if (weaponName[0]) strcopy(output, maxlen, weaponName);
+    char fp[256]; Format(fp, sizeof(fp), "nvd.bot_chat.weapons_fallback.%s", base);
+    if (NVD_HasStr(fp)) GetStr("weapons_fallback", base, output, maxlen);
     else strcopy(output, maxlen, base);
     if (headshot) Format(output, maxlen, "%s HS", output);
 }
@@ -845,7 +844,7 @@ void AskBotChat(GameEvent ev) {
     // ── Context JSON (rebuilt at queue/display time) ──
     JSONObject ctx = new JSONObject();
     ctx.SetString("type", type);
-    ctx.SetString("description", "EVENT"); 
+    ctx.SetString("description", type); // ENVIA APENAS O TIPO, NADA DE NARRAÇÃO
     ctx.SetString("target", target);
     ctx.SetString("weapon", wBuf);
     ctx.SetInt("tScore", tS);

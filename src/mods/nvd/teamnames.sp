@@ -213,11 +213,11 @@ void QueryOllama(const char[] team)
 {
 	char promptFmt[512], prompt[512], sys[256];
 	if (StrEqual(team, "CT"))
-		NVD_GetStr("nvd.teamnames", "prompt_ct", promptFmt, sizeof(promptFmt));
+		NVD_GetStr("nvd.teamnames.prompt_ct", promptFmt, sizeof(promptFmt));
 	else
-		NVD_GetStr("nvd.teamnames", "prompt_tr", promptFmt, sizeof(promptFmt));
+		NVD_GetStr("nvd.teamnames.prompt_tr", promptFmt, sizeof(promptFmt));
 
-	NVD_GetStr("nvd.teamnames", "system", sys, sizeof(sys));
+	NVD_GetStr("nvd.teamnames.system", sys, sizeof(sys));
 	
 	Format(prompt, sizeof(prompt), promptFmt, StrEqual(team, "CT") ? g_PlayersCt : g_PlayersT);
 

@@ -19,6 +19,7 @@ public Plugin myinfo = {
 ConVar g_CvarChat;
 ConVar g_CvarRadio;
 ConVar g_CvarBlind;
+ConVar g_CvarAIChance;
 bool g_NvdAvailable;
 
 int g_LastEnemies[MAXPLAYERS+1];
@@ -30,6 +31,7 @@ public void OnPluginStart()
   g_CvarChat = CreateConVar("sm_eleft_chat", "1", "Bot says how many enemies are left on kill.");
   g_CvarRadio = CreateConVar("sm_eleft_radio", "1", "Executes radio command on kill (contextual by remaining enemies).");
   g_CvarBlind = CreateConVar("sm_eleft_blind", "1", "Prints to chat when someone blinded you.");
+  g_CvarAIChance = CreateConVar("sm_eleft_ai_chance", "20", "Chance (1-100) to trigger AI on enemies_left/allies_left");
   CreateConVar("sm_eleft_version", VERSION, "Enemies left version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
   g_NvdAvailable = (GetFeatureStatus(FeatureType_Native, "NVD_SubmitChatEvent") == FeatureStatus_Available);
 
@@ -142,7 +144,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
         {
   char fallback[128];
   SayEnemiesFallback(attackerBot, enemiesCount, fallback, sizeof(fallback));
-  if (g_NvdAvailable && (enemiesCount != g_LastEnemies[attackerBot] || alliesCount != g_LastAllies[attackerBot]))
+  if (g_NvdAvailable && (alliesCount == 1 || GetRandomInt(1, 100) <= g_CvarAIChance.IntValue))
   {
     g_LastEnemies[attackerBot] = enemiesCount;
     g_LastAllies[attackerBot] = alliesCount;
@@ -171,7 +173,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
         {
   char fallback2[128];
   SayTeammateFallback(victimBot, vAllies, fallback2, sizeof(fallback2));
-  if (g_NvdAvailable && fallback2[0] && (vEnemies != g_LastEnemies[victimBot] || vAllies != g_LastAllies[victimBot]))
+  if (g_NvdAvailable && fallback2[0] && (vAllies == 1 || GetRandomInt(1, 100) <= g_CvarAIChance.IntValue))
   {
     g_LastEnemies[victimBot] = vEnemies;
     g_LastAllies[victimBot] = vAllies;

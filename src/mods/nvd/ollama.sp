@@ -1,6 +1,7 @@
 #include <sourcemod>
 #include <ripext>
 #include <nvd/core>
+#include <nvd/strings>
 #undef REQUIRE_PLUGIN
 #include <nvd_bot_chat>
 
@@ -163,8 +164,12 @@ void ProcessTemplates(char[] buffer, int maxlen)
     ReplaceString(buffer, maxlen, "|prompt_lang|", promptLang);
 
 	for (int i = 0; i < g_MetaCount; i++) {
-		char placeholder[68]; Format(placeholder, sizeof(placeholder), "|%s|", g_MetaKeys[i]);
-		ReplaceString(buffer, maxlen, placeholder, g_MetaValues[i]);
+		char placeholder[68], fullPath[128], val[1024]; Format(placeholder, sizeof(placeholder), "|%s|", g_MetaKeys[i]);
+        Format(fullPath, sizeof(fullPath), "nvd.bot_chat.behavior.%s", g_MetaKeys[i]);
+        if (NVD_HasStr(fullPath)) {
+            NVD_GetStr(fullPath, val, sizeof(val));
+            ReplaceString(buffer, maxlen, placeholder, val);
+        }
 	}
 }
 

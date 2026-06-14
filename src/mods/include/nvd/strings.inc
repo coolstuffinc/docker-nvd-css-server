@@ -7,19 +7,20 @@
 
 /**
  * Registers a plugin for centralized string management.
- * O core tentará carregar: configs/[prefix]_strings_default.txt 
- * e configs/[prefix]_strings_[lang].txt
+ * Loads: configs/[prefix]_strings_default.txt and configs/[prefix]_strings_[lang].txt
  */
 native void NVD_RegisterStrings(const char[] prefix);
 
 /**
- * Busca uma string traduzida.
- * section: Seção no KV.
- * key: Chave da string.
- * fallback: Valor se não encontrar.
+ * Retrieves a translated string using dot-notation path.
+ * Example: NVD_GetStr("nvd.bot_chat.events.kill", buffer, sizeof(buffer));
  */
-native void NVD_GetStr(const char[] path, const char[] key, char[] buffer, int maxlen);
-native bool NVD_HasStr(const char[] path, const char[] key);
+native void NVD_GetStr(const char[] path, char[] buffer, int maxlen);
+
+/**
+ * Checks if a string path exists.
+ */
+native bool NVD_HasStr(const char[] path);
 
 public SharedPlugin __pl_nvd_strings = 
 {
@@ -33,5 +34,6 @@ public void __pl_nvd_strings_SetNTVOptional()
 {
 	MarkNativeAsOptional("NVD_RegisterStrings");
 	MarkNativeAsOptional("NVD_GetStr");
+	MarkNativeAsOptional("NVD_HasStr");
 }
 #endif

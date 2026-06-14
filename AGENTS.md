@@ -246,3 +246,37 @@ To verify that bot chat is working properly:
 2. If bots are missing, add them: `make rcon cmd="bot_join_after_player 0; bot_quota 10; bot_quota_mode fill; mp_restartgame 1"`
 3. Lower cooldown for testing: `make rcon cmd="sm_cvar nvd_bot_chat_cooldown 1.0"`
 4. Tail the logs for activity: `docker logs -f css-server | grep -E "\[NVD|\[BOT_CHAT\]"`
+
+## 10. String System (NVD Strings Manager)
+
+### Architecture
+- `strings.sp` manages a flat array of `PluginStrings` structs, each with `kvDefault`, `kvLang`, `kvPromptLang` KeyValues handles.
+- Each plugin registers with a prefix (e.g., `"nvd"`) via `NVD_RegisterStrings(prefix)`.
+- File naming convention: `configs/{prefix}_strings_default.txt` and `configs/{prefix}_strings_{lang}.txt`.
+- Multiple plugins can share the same prefix (e.g., bot_chat, agent, teamnames all use `"nvd"`).
+
+### KeyValues Navigation (CRITICAL)
+- When creating a KV with `new KeyValues("Strings")`, the **root key is "Strings"**.
+- `kv.Rewind()` positions at the root — **do NOT call `JumpToKey("Strings")`** after `Rewind()`.
+- Navigation: `Rewind()` → `JumpToKey("nvd")` → `JumpToKey("bot_chat")` → ... → `GetString(key)`.
+- The `ParsePath` function extracts the last dot-separated component as the key and the rest as navigation parts.
+
+### Native Signatures (match these exactly)
+```pawn
+native void NVD_GetStr(const char[] path, char[] buffer, int maxlen);
+native bool NVD_HasStr(const char[] path);
+```
+- `NVD_GetStr` takes **3 params**: `(path, buffer, maxlen)`. The `path` includes the key as last component (e.g., `"nvd.bot_chat.behavior.rules"`).
+- `NVD_HasStr` takes **1 param**: `(path)`.
+- The native implementation must parse the last component of `path` as the key.
+
+### Required Sections in `nvd_strings_*.txt`
+Under `nvd.bot_chat`: `events`, `moods`, `behavior`, `locations`, `prompts`, `misc`, `weapons_fallback`, `funfacts`, `teams`, `gamestate`.
+Under `nvd`: `agent` (with `misc`, `behavior` subsections), `teamnames` (with `teamnames` subsection).
+
+### Common Pitfalls
+- **`FriendlyWeaponName` crashes**: If the weapon name is not a valid entity name (e.g., translated "arma desconhecida"), `GetStr("weapons_fallback", base, ...)` throws. Guard with `NVD_HasStr` first.
+- **Missing sections**: All keys used by all plugins must exist in ALL language files. Missing keys throw "String key not found" errors.
+- **`kv.GetString` returns `void`**: You cannot `return kv.GetString(...)`. Set `buffer[0] = '\0'` first, call `kv.GetString(...)`, then check `buffer[0] != '\0'`.
+- **No `ContainsKey` method**: SourceMod KeyValues does not have `ContainsKey`. Use `GetString` with empty buffer check instead.
+

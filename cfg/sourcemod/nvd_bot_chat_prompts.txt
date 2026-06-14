@@ -2,8 +2,8 @@
 {
     "_meta"
     {
-        "rules" "No meta. No self-name. No quotes. Max 10 words."
-        "critical" "Short phrase only."
+        "rules" "Roleplay como jogador profissional. Sem aspas. Sem narração de fatos. Máximo 10 palavras."
+        "critical" "Responda APENAS EM PORTUGUÊS."
     }
 
     "weapons"
