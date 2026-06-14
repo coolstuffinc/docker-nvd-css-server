@@ -59,7 +59,11 @@ compile: sync
 
 deploy:
 	@echo "--- Fazendo deploy dos plugins ---"
-	@sudo docker exec -u root $(CONTAINER_NAME) sh -c "rm -f $(PLUGIN_DIR)nvd_*.smx && cp /tmp/compile-src/*.smx $(PLUGIN_DIR) && chown steam:steam $(PLUGIN_DIR)*.smx"
+	@for mod in $(ALL_MODS); do \
+		name=$$(basename $$mod .sp); \
+		sudo docker exec -u root $(CONTAINER_NAME) sh -c "rm -f $(PLUGIN_DIR)$$name.smx"; \
+	done
+	@sudo docker exec -u root $(CONTAINER_NAME) sh -c "cp /tmp/compile-src/*.smx $(PLUGIN_DIR) && chown steam:steam $(PLUGIN_DIR)*.smx"
 
 reload:
 	@echo "--- Recarregando plugins via RCON ---"
@@ -74,12 +78,17 @@ reload:
 	@echo "Reloading enemies_left last..."
 	@uv run python scripts/rcon.py $(RCON_IP) $(RCON_PORT) $(RCON_PASS) "sm plugins reload enemies_left" || true
 
-mods: compile deploy reload
+mods: clean compile deploy reload
 	@echo "✅ Todos os mods atualizados com sucesso!"
 
 clean:
-	@echo "--- Limpando temporários ---"
+	@echo "--- Limpeza completa ---"
 	@sudo docker exec $(CONTAINER_NAME) rm -rf /tmp/compile-src/*.smx /tmp/compile-src/*.sp
+	@for mod in $(ALL_MODS); do \
+		name=$$(basename $$mod .sp); \
+		sudo docker exec -u root $(CONTAINER_NAME) sh -c "rm -f $(PLUGIN_DIR)$$name.smx"; \
+	done
+	@echo "✅ Plugins e temporários limpos"
 
 help:
 	@echo "Comandos disponíveis:"

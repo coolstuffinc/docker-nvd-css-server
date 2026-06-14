@@ -58,6 +58,11 @@ stock void GetStr(const char[] section, const char[] key, char[] buffer, int max
 {
     char fullPath[256];
     Format(fullPath, sizeof(fullPath), "nvd.agent.%s.%s", section, key);
+    if (!NVD_HasStr(fullPath))
+    {
+        buffer[0] = '\0';
+        return;
+    }
     NVD_GetStr(fullPath, buffer, maxlen);
 }
 

@@ -346,7 +346,7 @@ void RecordOllamaHistory(int slot)
 	{
 		ReplyToCommand(client, "[NVD] ═══ History (Last %d) ═══", g_OllamaHistoryCount);
 		for (int i = 0; i < g_OllamaHistoryCount; i++) {
-			int idx = (g_OllamaHistoryIdx - g_OllamaHistoryCount + i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
+			int idx = (g_OllamaHistoryIdx - 1 - i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
 			char pBuf[256];
 			strcopy(pBuf, sizeof(pBuf), g_OllamaHistory[idx].prompt[0] ? g_OllamaHistory[idx].prompt : g_OllamaHistory[idx].origPrompt);
 			ReplyToCommand(client, "[NVD] #%d | %s | %s | %s", i + 1, g_OllamaHistory[idx].state == ReqState_Fulfilled ? "✅" : "❌", g_OllamaHistory[idx].ownerName, pBuf);
@@ -429,7 +429,7 @@ public Action Command_OllamaStatus(int client, int args)
 
 		// History (H prefix)
 		for (int i = 0; i < g_OllamaHistoryCount; i++) {
-			int idx = (g_OllamaHistoryIdx - g_OllamaHistoryCount + i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
+			int idx = (g_OllamaHistoryIdx - 1 - i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
 			if (i == targetId) {
 				ReplyToCommand(client, "[NVD] ═══ History H%d ═══", i);
 				ReplyToCommand(client, "[NVD] Owner: %s", g_OllamaHistory[idx].ownerName);
@@ -499,7 +499,7 @@ public Action Command_OllamaStatus(int client, int args)
 		int show = g_OllamaHistoryCount < 5 ? g_OllamaHistoryCount : 5;
 		char truncPrompt[128], truncRes[128];
 		for (int i = 0; i < show; i++) {
-			int idx = (g_OllamaHistoryIdx - g_OllamaHistoryCount + i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
+			int idx = (g_OllamaHistoryIdx - 1 - i + MAX_OLLAMA_HISTORY) % MAX_OLLAMA_HISTORY;
 			strcopy(truncPrompt, sizeof(truncPrompt), g_OllamaHistory[idx].prompt[0] ? g_OllamaHistory[idx].prompt : g_OllamaHistory[idx].origPrompt);
 			if (strlen(truncPrompt) > 80) { truncPrompt[80] = '\0'; strcopy(truncPrompt[77], 4, "..."); }
 			ReplaceString(truncPrompt, sizeof(truncPrompt), "\n", " ");

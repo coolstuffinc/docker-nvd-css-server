@@ -148,7 +148,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
   {
     g_LastEnemies[attackerBot] = enemiesCount;
     g_LastAllies[attackerBot] = alliesCount;
-    NVD_SubmitChatEvent("ENEMIES_LEFT", attackerBot, 40, "enemies_left", enemiesCount, alliesCount);
+    NVD_SubmitChatEvent("[EVENT: ENEMY_DOWN]", attackerBot, 40, "enemies_left", enemiesCount, alliesCount);
   }
         }
       }
@@ -177,7 +177,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
   {
     g_LastEnemies[victimBot] = vEnemies;
     g_LastAllies[victimBot] = vAllies;
-    NVD_SubmitChatEvent("ALLIES_LEFT", victimBot, 35, "allies_left", vEnemies, vAllies);
+    NVD_SubmitChatEvent("[EVENT: ALLY_DOWN]", victimBot, 35, "allies_left", vEnemies, vAllies);
   }
         }
       }
